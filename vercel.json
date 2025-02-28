@@ -11,8 +11,5 @@
       "src": "/(.*)",
       "dest": "/app.js"
     }
-  ],
-  "env": {
-    "POSTGRES_URL": "@postgres_url"
-  }
+  ]
 }
