@@ -1,0 +1,75 @@
+<!-- views/index.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Processor</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+  <style>
+    .container {
+      max-width: 800px;
+      margin-top: 2rem;
+    }
+    .upload-form {
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background-color: #f8f9fa;
+      border-radius: 5px;
+    }
+    .files-table {
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="mb-4">TXT to JSON File Processor</h1>
+    
+    <div class="upload-form">
+      <h2>Upload Files</h2>
+      <form action="/upload" method="post" enctype="multipart/form-data">
+        <div class="mb-3">
+          <label for="files" class="form-label">Select TXT files</label>
+          <input type="file" class="form-control" id="files" name="files" accept=".txt" multiple required>
+        </div>
+        <button type="submit" class="btn btn-primary">Upload and Process</button>
+      </form>
+    </div>
+    
+    <div class="files-table">
+      <h2>Processed Files</h2>
+      <% if (locals.error) { %>
+        <div class="alert alert-danger"><%= error %></div>
+      <% } %>
+      
+      <% if (files && files.length > 0) { %>
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Filename</th>
+              <th>Uploaded At</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% files.forEach(file => { %>
+              <tr>
+                <td><%= file.filename %></td>
+                <td><%= new Date(file.uploaded_at).toLocaleString() %></td>
+                <td>
+                  <a href="/files/<%= file.id %>" class="btn btn-sm btn-info">View Data</a>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      <% } else { %>
+        <p>No files uploaded yet.</p>
+      <% } %>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
