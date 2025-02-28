@@ -63,8 +63,7 @@ const initializeDatabase = async () => {
         rot_z DECIMAL,
         note TEXT,
         diameter DECIMAL,
-        tolerance DECIMAL,
-        weight DECIMAL(10, 1) DEFAULT NULL
+        tolerance DECIMAL
       )
     `);
 
@@ -149,7 +148,7 @@ app.post("/upload", upload.array("files"), async (req, res) => {
           const diameter = cleanValue(parts[9]);
           const tolerance = parts.length > 10 ? cleanValue(parts[10]) : null;
 
-          // Insert the data - fixed the column order to match x, y, z
+          // Insert the data - fixed to use note instead of rotZ twice
           await pool.query(
             `INSERT INTO file_data 
              (file_id, data_type, index, x, y, z, rot_x, rot_y, rot_z, note, diameter, tolerance) 
@@ -205,15 +204,18 @@ app.post("/upload", upload.array("files"), async (req, res) => {
   }
 });
 
-// View file data route
+// View file data route with enhanced error handling
 app.get("/files/:id", async (req, res) => {
   try {
     const fileId = req.params.id;
+    console.log(`Fetching file data for file ID: ${fileId}`);
 
     // Get file info
     const fileResult = await pool.query("SELECT * FROM files WHERE id = $1", [
       fileId,
     ]);
+
+    console.log(`File query result: ${JSON.stringify(fileResult.rows)}`);
 
     if (fileResult.rows.length === 0) {
       return res.status(404).send("File not found");
@@ -225,40 +227,46 @@ app.get("/files/:id", async (req, res) => {
       [fileId]
     );
 
+    console.log(`Data query result count: ${dataResult.rows.length} rows`);
+
+    // Check if there's any data to display
+    if (dataResult.rows.length === 0) {
+      return res.render("fileData", {
+        file: fileResult.rows[0],
+        data: [],
+        message: "No data found for this file.",
+      });
+    }
+
+    // Log a sample row to debug
+    if (dataResult.rows.length > 0) {
+      console.log(`Sample data row: ${JSON.stringify(dataResult.rows[0])}`);
+    }
+
     res.render("fileData", {
       file: fileResult.rows[0],
       data: dataResult.rows,
     });
   } catch (err) {
     console.error("Error fetching file data:", err);
-    res.status(500).send("Error fetching file data: " + err.message);
+    res
+      .status(500)
+      .send(`Error fetching file data: ${err.message}\n\n${err.stack}`);
   }
 });
 
-// Update weight value
-app.post("/files/:id/update-weight", async (req, res) => {
+// Debug route to initialize the database
+app.get("/init-db", async (req, res) => {
   try {
-    const fileId = req.params.id;
-    const { dataId, weight } = req.body;
-
-    // Format weight to have one digit after comma
-    const formattedWeight = parseFloat(weight).toFixed(1);
-
-    // Update the weight
-    await pool.query(
-      "UPDATE file_data SET weight = $1 WHERE id = $2 AND file_id = $3",
-      [formattedWeight, dataId, fileId]
-    );
-
-    res.redirect(`/files/${fileId}`);
+    await initializeDatabase();
+    res.send("Database initialized successfully");
   } catch (err) {
-    console.error("Error updating weight:", err);
-    res.status(500).send("Error updating weight: " + err.message);
+    console.error("Error initializing database:", err);
+    res.status(500).send("Error initializing database: " + err.message);
   }
 });
 
-// Start server
-// Replace the app.listen section with this:
+// Start server with immediate database initialization
 (async () => {
   try {
     console.log("Initializing database...");

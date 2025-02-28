@@ -18,14 +18,6 @@
         margin-top: 2rem;
         overflow-x: auto;
       }
-      .weight-form {
-        display: flex;
-        align-items: center;
-      }
-      .weight-form input {
-        width: 100px;
-        margin-right: 10px;
-      }
     </style>
   </head>
   <body>
@@ -55,8 +47,6 @@
               <th>Note</th>
               <th>Diameter</th>
               <th>Tolerance</th>
-              <th>Weight</th>
-              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -93,31 +83,6 @@
               <td>
                 <%= item.tolerance !== null ?
                 parseFloat(item.tolerance).toFixed(3) : '-' %>
-              </td>
-              <td>
-                <%= item.weight !== null ? parseFloat(item.weight).toFixed(1) :
-                '-' %>
-              </td>
-              <td>
-                <form
-                  class="weight-form"
-                  action="/files/<%= file.id %>/update-weight"
-                  method="post"
-                >
-                  <input type="hidden" name="dataId" value="<%= item.id %>" />
-                  <input
-                    type="number"
-                    class="form-control form-control-sm"
-                    name="weight"
-                    step="0.1"
-                    value="<%= item.weight || '' %>"
-                    placeholder="Weight"
-                    required
-                  />
-                  <button type="submit" class="btn btn-sm btn-primary">
-                    Update
-                  </button>
-                </form>
               </td>
             </tr>
             <% }); %>
