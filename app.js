@@ -258,9 +258,19 @@ app.post("/files/:id/update-weight", async (req, res) => {
 });
 
 // Start server
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-  initializeDatabase();
-});
+// Replace the app.listen section with this:
+(async () => {
+  try {
+    console.log("Initializing database...");
+    await initializeDatabase();
+    console.log("Database initialized successfully");
+
+    app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+    });
+  } catch (err) {
+    console.error("Failed to initialize database:", err);
+  }
+})();
 
 module.exports = app;
