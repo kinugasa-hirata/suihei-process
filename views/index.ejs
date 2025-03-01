@@ -178,13 +178,12 @@
       <% if (files && files.length > 0) { %>
       <div class="file-grid">
         <% // Sort files by numeric part of filename (ascending) var sortedFiles
-        = files.slice(); // Create a copy of the array
-        sortedFiles.sort(function(a, b) { var numA =
+        = files.slice(); sortedFiles.sort(function(a, b) { var numA =
         parseInt((a.filename.match(/^\d+/) || ['0'])[0], 10); var numB =
         parseInt((b.filename.match(/^\d+/) || ['0'])[0], 10); return numA -
-        numB; }); sortedFiles.forEach(function(file) { // Extract number from
-        filename if possible var fileNumber = file.filename; var match =
-        file.filename.match(/^(\d+)/); if (match) { fileNumber = match[1]; } %>
+        numB; }); sortedFiles.forEach(function(file) { var fileNumber =
+        file.filename; var match = file.filename.match(/^(\d+)/); if (match) {
+        fileNumber = match[1]; } %>
         <div class="file-card" data-file-id="<%= file.id %>">
           <a href="/files/<%= file.id %>" class="text-decoration-none">
             <div class="file-number"><%= fileNumber %></div>
