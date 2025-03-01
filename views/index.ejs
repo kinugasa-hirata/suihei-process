@@ -1,4 +1,4 @@
-<!-- views/index.ejs - With file selection for summary -->
+<!-- views/index.ejs - Simple version to fix syntax errors -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -29,98 +29,16 @@
         background-color: #e9ecef;
         border-radius: 5px;
       }
-      .file-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 1.5rem;
+      .file-table {
         margin-top: 2rem;
       }
-      .file-card {
-        background-color: #f8f9fa;
-        border-radius: 10px;
-        padding: 1.5rem;
-        text-align: center;
-        transition: transform 0.2s, box-shadow 0.2s;
-        cursor: pointer;
-        border: 2px solid #dee2e6;
-        height: 100%;
+      .form-range-group {
         display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        position: relative;
-      }
-      .file-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        border-color: #adb5bd;
-      }
-      .file-number {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #0d6efd;
-        margin-bottom: 0.5rem;
-      }
-      .file-info {
-        color: #6c757d;
-        font-size: 0.85rem;
-        margin-bottom: 0.5rem;
-      }
-      .file-weight {
-        font-weight: bold;
-        font-size: 1.1rem;
-        margin-top: 0.5rem;
-      }
-      .weight-controls {
-        position: absolute;
-        bottom: -20px;
-        left: 0;
-        right: 0;
-        display: flex;
-        justify-content: center;
-        opacity: 0;
-        transition: opacity 0.3s;
-      }
-      .file-card:hover .weight-controls {
-        opacity: 1;
-      }
-      .weight-form {
-        background-color: white;
-        border-radius: 20px;
-        padding: 5px 8px;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        display: flex;
-        z-index: 10;
-      }
-      .weight-input {
-        width: 80px;
-        font-size: 0.9rem;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px 0 0 4px;
-        border: 1px solid #ced4da;
-        border-right: none;
-      }
-      .weight-btn {
-        font-size: 0.9rem;
-        padding: 0.25rem 0.5rem;
-        border-radius: 0 4px 4px 0;
-      }
-      .alert {
-        margin-bottom: 1.5rem;
-      }
-      /* Override bootstrap file input */
-      .form-control.form-control-lg {
-        padding: 0.5rem 1rem;
-        font-size: 1.1rem;
-      }
-      /* File range input styles */
-      .file-range-inputs {
-        display: flex;
-        align-items: center;
         gap: 1rem;
+        align-items: end;
       }
-      .file-range-inputs .form-control {
-        width: 100px;
+      .range-input {
+        width: 120px;
       }
     </style>
   </head>
@@ -136,17 +54,15 @@
       <!-- File selection for summary -->
       <div class="summary-form">
         <h3>Generate Summary Report</h3>
-        <p class="text-muted">
-          Select a range of files to include in the summary report.
-        </p>
+        <p>Select a range of files to include in the summary report.</p>
 
         <form action="/summary" method="get">
-          <div class="file-range-inputs mb-3">
+          <div class="form-range-group mb-3">
             <div>
               <label for="minFile" class="form-label">From File #</label>
               <input
                 type="number"
-                class="form-control"
+                class="form-control range-input"
                 id="minFile"
                 name="minFile"
                 placeholder="e.g., 240"
@@ -156,13 +72,13 @@
               <label for="maxFile" class="form-label">To File #</label>
               <input
                 type="number"
-                class="form-control"
+                class="form-control range-input"
                 id="maxFile"
                 name="maxFile"
                 placeholder="e.g., 250"
               />
             </div>
-            <div class="mt-4">
+            <div>
               <button type="submit" class="btn btn-info">
                 Generate Report
               </button>
@@ -172,29 +88,7 @@
         </form>
       </div>
 
-      <!-- Show success/error messages -->
-      <% if (typeof message != 'undefined' && message) { %>
-      <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <%= message %>
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="alert"
-          aria-label="Close"
-        ></button>
-      </div>
-      <% } %> <% if (typeof error != 'undefined' && error) { %>
-      <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <%= error %>
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="alert"
-          aria-label="Close"
-        ></button>
-      </div>
-      <% } %>
-
+      <!-- Upload form -->
       <div class="upload-form">
         <h2>Upload Files</h2>
         <form action="/upload" method="post" enctype="multipart/form-data">
@@ -202,7 +96,7 @@
             <label for="files" class="form-label">Select TXT files</label>
             <input
               type="file"
-              class="form-control form-control-lg"
+              class="form-control"
               id="files"
               name="files"
               accept=".txt"
@@ -238,64 +132,74 @@
               </label>
             </div>
           </div>
-          <button type="submit" class="btn btn-primary btn-lg">
+          <button type="submit" class="btn btn-primary">
             Upload and Process
           </button>
         </form>
       </div>
 
-      <% if (typeof files != 'undefined' && files && files.length > 0) { %>
+      <!-- File listing -->
       <h2>Processed Files</h2>
-      <div class="file-grid">
-        <% // Sort files by numeric part of filename (ascending to show younger
-        on top) var sortedFiles = [...files].sort(function(a, b) { var numA =
-        parseInt((a.filename.match(/^\d+/) || ['0'])[0], 10); var numB =
-        parseInt((b.filename.match(/^\d+/) || ['0'])[0], 10); return numA -
-        numB; }); for (var i = 0; i < sortedFiles.length; i++) { var file =
-        sortedFiles[i]; // Extract number from filename if possible var
-        fileNumber = file.filename; var match = file.filename.match(/^(\d+)/);
-        if (match) { fileNumber = match[1]; } %>
-        <div class="position-relative">
-          <a href="/files/<%= file.id %>" class="text-decoration-none">
-            <div class="file-card">
-              <div class="file-number"><%= fileNumber %></div>
-              <div class="file-info">
-                <%= new Date(file.uploaded_at).toLocaleString() %>
-              </div>
-              <% if (file.weight != null) { %>
-              <div class="file-weight">
-                <%= parseFloat(file.weight).toFixed(1) %> kg
-              </div>
-              <% } else { %>
-              <div class="file-weight text-muted">No weight</div>
-              <% } %>
-            </div>
-          </a>
-          <div class="weight-controls">
-            <form action="/update-weight" method="post" class="weight-form">
-              <input type="hidden" name="fileId" value="<%= file.id %>" />
-              <input
-                type="number"
-                class="weight-input"
-                name="weight"
-                step="0.1"
-                value="<%= file.weight != null ? parseFloat(file.weight).toFixed(1) : '' %>"
-                placeholder="Weight"
-                required
-              />
-              <button type="submit" class="btn btn-primary weight-btn">
-                Save
-              </button>
-            </form>
-          </div>
-        </div>
-        <% } %>
+
+      <% if (files && files.length > 0) { %>
+      <div class="file-table">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Filename</th>
+              <th>Uploaded At</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% // Sort files by numeric part of filename (ascending) var
+            sortedFiles = []; for (var i = 0; i < files.length; i++) {
+            sortedFiles.push(files[i]); } sortedFiles.sort(function(a, b) { var
+            numA = parseInt((a.filename.match(/^\d+/) || ['0'])[0], 10); var
+            numB = parseInt((b.filename.match(/^\d+/) || ['0'])[0], 10); return
+            numA - numB; }); for (var i = 0; i < sortedFiles.length; i++) { var
+            file = sortedFiles[i]; %>
+            <tr>
+              <td><%= file.filename %></td>
+              <td><%= new Date(file.uploaded_at).toLocaleString() %></td>
+              <td>
+                <div class="d-flex align-items-center">
+                  <a
+                    href="/files/<%= file.id %>"
+                    class="btn btn-sm btn-info me-2"
+                  >
+                    View Data
+                  </a>
+                  <form
+                    action="/update-weight"
+                    method="post"
+                    class="d-flex me-2"
+                  >
+                    <input type="hidden" name="fileId" value="<%= file.id %>" />
+                    <input
+                      type="number"
+                      class="form-control form-control-sm"
+                      style="width: 100px"
+                      name="weight"
+                      step="0.1"
+                      value="<%= file.weight ? parseFloat(file.weight).toFixed(1) : '' %>"
+                      placeholder="Weight"
+                      required
+                    />
+                    <button type="submit" class="btn btn-sm btn-primary ms-1">
+                      Save
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            <% } %>
+          </tbody>
+        </table>
       </div>
       <% } else { %>
-      <div class="alert alert-info mt-4">
-        <p class="mb-0">
-          No files uploaded yet. Upload TXT files to process them.
-        </p>
+      <div class="alert alert-info">
+        <p>No files uploaded yet. Upload TXT files to process them.</p>
       </div>
       <% } %>
     </div>
