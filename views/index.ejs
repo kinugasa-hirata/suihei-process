@@ -254,8 +254,8 @@
                 class="weight-input"
                 name="weight"
                 step="0.1"
-                value="<%= file.weight ? parseFloat(file.weight).toFixed(1) : '' %>"
-                placeholder="Weight (kg)"
+                value="<%= file.weight ? (parseFloat(file.weight) * 1000).toFixed(1) : '' %>"
+                placeholder="Weight (g)"
                 required
               />
               <button type="submit" class="btn btn-primary weight-btn">

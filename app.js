@@ -363,10 +363,10 @@ app.post("/update-weight", async (req, res) => {
   let client;
   try {
     const { fileId, weight } = req.body;
-    console.log(`Updating weight for file ID ${fileId} to ${weight}`);
+    console.log(`Updating weight for file ID ${fileId} to ${weight}g`);
 
-    // Format weight to have one digit after comma
-    const formattedWeight = parseFloat(weight).toFixed(1);
+    // Convert grams to kilograms for storage
+    const weightInKg = parseFloat(weight) / 1000;
 
     client = await pool.connect();
 
@@ -378,7 +378,7 @@ app.post("/update-weight", async (req, res) => {
       ON CONFLICT (file_id)
       DO UPDATE SET weight = $2
     `,
-      [fileId, formattedWeight]
+      [fileId, weightInKg]
     );
 
     res.redirect("/");
