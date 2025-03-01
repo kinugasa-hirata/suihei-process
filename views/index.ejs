@@ -201,6 +201,21 @@
         </form>
       </div>
 
+      <!-- Add this hidden form for the View Selected button -->
+      <form
+        id="viewSelectedForm"
+        action="/summary"
+        method="get"
+        style="display: none"
+      >
+        <input
+          type="hidden"
+          name="selectedFiles"
+          id="selectedFilesInput"
+          value=""
+        />
+      </form>
+
       <!-- File grid -->
       <div class="d-flex justify-content-between align-items-center">
         <h2>Processed Files</h2>
@@ -208,7 +223,7 @@
           id="viewSelectedBtn"
           class="btn btn-info"
           disabled
-          onclick="document.querySelector('form[action=\'/summary\']').submit();"
+          onclick="document.getElementById('viewSelectedForm').submit();"
         >
           View Selected Files
         </button>
@@ -273,36 +288,22 @@
 
         // Helper function to update the summary form with selected files
         function updateSummaryForm() {
-          const minFileInput = document.getElementById("minFile");
-          const maxFileInput = document.getElementById("maxFile");
           const viewSelectedBtn = document.getElementById("viewSelectedBtn");
+          const selectedFilesInput =
+            document.getElementById("selectedFilesInput");
 
           if (selectedFiles.size > 0) {
             // Enable the View Selected button
             viewSelectedBtn.disabled = false;
             viewSelectedBtn.textContent = `View Selected Files (${selectedFiles.size})`;
 
-            // Clear the min/max inputs when files are manually selected
-            minFileInput.value = "";
-            maxFileInput.value = "";
-
-            // Add hidden input for selected files if it doesn't exist
-            let selectedFilesInput = document.querySelector(
-              'input[name="selectedFiles"]'
-            );
-            if (!selectedFilesInput) {
-              selectedFilesInput = document.createElement("input");
-              selectedFilesInput.type = "hidden";
-              selectedFilesInput.name = "selectedFiles";
-              document
-                .querySelector('form[action="/summary"]')
-                .appendChild(selectedFilesInput);
-            }
+            // Update the hidden input with selected file IDs
             selectedFilesInput.value = Array.from(selectedFiles).join(",");
           } else {
             // Disable the View Selected button when no files are selected
             viewSelectedBtn.disabled = true;
             viewSelectedBtn.textContent = "View Selected Files";
+            selectedFilesInput.value = "";
           }
         }
 
