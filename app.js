@@ -458,4 +458,56 @@ app.use((req, res) => {
   }
 })();
 
+// Add this temporary route to app.js for testing
+app.get("/template", (req, res) => {
+  // Mock data for testing
+  const mockFile = {
+    id: 123,
+    filename: "Test File",
+    uploaded_at: new Date(),
+    weight: 10.5,
+  };
+
+  const mockData = [
+    {
+      id: 1,
+      index: 1,
+      data_type: "CIRCLE",
+      x: 10.123,
+      y: 20.456,
+      z: 30.789,
+      diameter: 15.5,
+      tolerance: 0.1,
+      note: "Test note 1",
+    },
+    {
+      id: 2,
+      index: 2,
+      data_type: "PLANE",
+      x: 15.123,
+      y: 25.456,
+      z: 35.789,
+      diameter: null,
+      tolerance: 0.2,
+      note: "Test note 2",
+    },
+    {
+      id: 3,
+      index: 3,
+      data_type: "DISTANCE",
+      x: 20.123,
+      y: 30.456,
+      z: 40.789,
+      diameter: 25.7,
+      tolerance: null,
+      note: "Test note 3",
+    },
+  ];
+
+  res.render("template", {
+    file: mockFile,
+    data: mockData,
+  });
+});
+
 module.exports = app;
