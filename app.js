@@ -661,4 +661,45 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Add new route to handle multiple weight updates
+app.post("/update-weights", async (req, res) => {
+  let client;
+  try {
+    const { weights } = req.body;
+    client = await pool.connect();
+
+    // Start transaction
+    await client.query("BEGIN");
+
+    for (const { fileId, weight } of weights) {
+      // Weight is already in grams, convert to kg for storage
+      const weightInKg = parseFloat(weight) / 1000;
+
+      await client.query(
+        `
+        INSERT INTO file_weights (file_id, weight)
+        VALUES ($1, $2)
+        ON CONFLICT (file_id)
+        DO UPDATE SET weight = $2
+        `,
+        [fileId, weightInKg]
+      );
+    }
+
+    // Commit transaction
+    await client.query("COMMIT");
+
+    res.json({ success: true });
+  } catch (err) {
+    if (client) await client.query("ROLLBACK");
+    console.error("Error updating weights:", err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  } finally {
+    if (client) client.release();
+  }
+});
+
 module.exports = app;

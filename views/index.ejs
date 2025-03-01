@@ -219,9 +219,14 @@
       <!-- File grid -->
       <div class="d-flex justify-content-between align-items-center">
         <h2>Processed Files</h2>
-        <button id="viewSelectedBtn" class="btn btn-info" disabled>
-          View Selected Files
-        </button>
+        <div>
+          <button id="saveAllWeightsBtn" class="btn btn-success me-2">
+            Save All Weights
+          </button>
+          <button id="viewSelectedBtn" class="btn btn-info" disabled>
+            View Selected Files
+          </button>
+        </div>
       </div>
 
       <% if (files && files.length > 0) { %>
@@ -247,21 +252,16 @@
               <%= (parseFloat(file.weight) * 1000).toFixed(1) %> g
             </div>
             <% } %>
-            <form action="/update-weight" method="post" class="weight-form">
-              <input type="hidden" name="fileId" value="<%= file.id %>" />
+            <div class="weight-form">
               <input
                 type="number"
                 class="weight-input"
-                name="weight"
+                data-file-id="<%= file.id %>"
                 step="0.1"
                 value="<%= file.weight ? (parseFloat(file.weight) * 1000).toFixed(1) : '' %>"
                 placeholder="Weight (g)"
-                required
               />
-              <button type="submit" class="btn btn-primary weight-btn">
-                Save
-              </button>
-            </form>
+            </div>
           </div>
         </div>
         <% }); %>
@@ -443,6 +443,65 @@
           card.addEventListener("touchmove", function () {
             clearTimeout(pressTimer);
           });
+        });
+
+        // Add this to your existing DOMContentLoaded event handler
+        const saveAllWeightsBtn = document.getElementById("saveAllWeightsBtn");
+
+        saveAllWeightsBtn.addEventListener("click", async function () {
+          const weightInputs = document.querySelectorAll(".weight-input");
+          const weights = [];
+
+          weightInputs.forEach((input) => {
+            const fileId = input.dataset.fileId;
+            const weight = input.value;
+            if (weight) {
+              weights.push({ fileId, weight });
+            }
+          });
+
+          try {
+            const response = await fetch("/update-weights", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ weights }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+              // Update the weight displays without refreshing
+              weights.forEach(({ fileId, weight }) => {
+                const card = document.querySelector(
+                  `.file-card[data-file-id="${fileId}"]`
+                );
+                let weightDisplay = card.querySelector(".weight-display");
+
+                if (!weightDisplay) {
+                  weightDisplay = document.createElement("div");
+                  weightDisplay.className = "weight-display mb-2";
+                  card
+                    .querySelector(".file-content")
+                    .insertBefore(
+                      weightDisplay,
+                      card.querySelector(".weight-form")
+                    );
+                }
+
+                weightDisplay.textContent = `${weight} g`;
+              });
+
+              // Show success message
+              alert("All weights saved successfully!");
+            } else {
+              throw new Error("Failed to save weights");
+            }
+          } catch (error) {
+            console.error("Error saving weights:", error);
+            alert("Error saving weights. Please try again.");
+          }
         });
       });
     </script>
