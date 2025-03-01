@@ -34,6 +34,13 @@
       .nav-links {
         margin-bottom: 2rem;
       }
+      .debug-section {
+        margin-top: 2rem;
+        padding: 1.5rem;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        border-left: 4px solid #ffc107;
+      }
     </style>
   </head>
   <body>
@@ -71,58 +78,96 @@
         <% if (locals.error) { %>
         <div class="alert alert-danger"><%= error %></div>
         <% } %> <% if (files && files.length > 0) { %>
-        <table class="table table-striped">
-          <thead>
-            <tr>
-              <th>Filename</th>
-              <th>Uploaded At</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% files.forEach(file => { %>
-            <tr>
-              <td><%= file.filename %></td>
-              <td><%= new Date(file.uploaded_at).toLocaleString() %></td>
-              <td>
-                <div class="action-buttons">
-                  <a href="/files/<%= file.id %>" class="btn btn-sm btn-info"
-                    >View Data</a
-                  >
-                  <form
-                    action="/update-weight"
-                    method="post"
-                    class="d-inline ms-2"
-                  >
-                    <div class="input-group">
-                      <input
-                        type="hidden"
-                        name="fileId"
-                        value="<%= file.id %>"
-                      />
-                      <input
-                        type="number"
-                        class="form-control form-control-sm weight-input"
-                        name="weight"
-                        step="0.1"
-                        value="<%= file.weight !== null ? parseFloat(file.weight).toFixed(1) : '' %>"
-                        placeholder="Weight"
-                        required
-                      />
-                      <button type="submit" class="btn btn-sm btn-primary">
-                        Save
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </td>
-            </tr>
-            <% }); %>
-          </tbody>
-        </table>
+        <div class="table-responsive">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Filename</th>
+                <th>Uploaded At</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% files.forEach(file => { %>
+              <tr>
+                <td><%= file.filename %></td>
+                <td><%= new Date(file.uploaded_at).toLocaleString() %></td>
+                <td>
+                  <div class="action-buttons">
+                    <a href="/files/<%= file.id %>" class="btn btn-sm btn-info"
+                      >View Data</a
+                    >
+                    <a
+                      href="/template/<%= file.id %>"
+                      class="btn btn-sm btn-success ms-1"
+                      >Print Report</a
+                    >
+                    <form
+                      action="/update-weight"
+                      method="post"
+                      class="d-inline ms-2"
+                    >
+                      <div class="input-group">
+                        <input
+                          type="hidden"
+                          name="fileId"
+                          value="<%= file.id %>"
+                        />
+                        <input
+                          type="number"
+                          class="form-control form-control-sm weight-input"
+                          name="weight"
+                          step="0.1"
+                          value="<%= file.weight !== null ? parseFloat(file.weight).toFixed(1) : '' %>"
+                          placeholder="Weight"
+                          required
+                        />
+                        <button type="submit" class="btn btn-sm btn-primary">
+                          Save
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
         <% } else { %>
-        <p>No files uploaded yet.</p>
+        <div class="alert alert-info">
+          <p>No files uploaded yet. Upload TXT files to process them.</p>
+        </div>
         <% } %>
+      </div>
+
+      <!-- Debug Tool Section -->
+      <div class="debug-section">
+        <h3>Debug Tool</h3>
+        <p class="text-muted">
+          Use this tool to check how a TXT file is parsed before uploading it
+          for processing.
+        </p>
+        <form
+          action="/debug-upload"
+          method="post"
+          enctype="multipart/form-data"
+        >
+          <div class="mb-3">
+            <label for="file" class="form-label"
+              >Select TXT file to debug</label
+            >
+            <input
+              type="file"
+              class="form-control"
+              id="file"
+              name="file"
+              accept=".txt"
+              required
+            />
+          </div>
+          <button type="submit" class="btn btn-warning">Debug Parse</button>
+        </form>
       </div>
     </div>
 

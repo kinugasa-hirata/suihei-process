@@ -11,7 +11,7 @@
     />
     <style>
       .container {
-        max-width: 1200px;
+        max-width: 1400px;
         margin-top: 2rem;
         margin-bottom: 2rem;
       }
@@ -39,6 +39,17 @@
       .data-type-PT-COMP {
         color: #dc3545;
       }
+      .table-responsive {
+        overflow-x: auto;
+      }
+      .data-cell {
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .action-buttons {
+        margin-top: 1rem;
+      }
     </style>
   </head>
   <body>
@@ -53,65 +64,151 @@
       <% if (typeof file !== 'undefined' && file) { %>
       <div class="file-info">
         <h2><%= file.filename %></h2>
-        <p>
-          <strong>Uploaded:</strong>
-          <%= new Date(file.uploaded_at).toLocaleString() %> <% if (typeof
-          file.weight !== 'undefined' && file.weight !== null) { %> |
-          <strong>Weight:</strong> <%= file.weight %> <% } %>
-        </p>
-
-        <form action="/update-weight" method="post">
-          <div class="input-group" style="max-width: 250px">
-            <input type="hidden" name="fileId" value="<%= file.id %>" />
-            <input
-              type="number"
-              class="form-control"
-              name="weight"
-              step="0.1"
-              value="<%= file.weight !== null ? file.weight : '' %>"
-              placeholder="Enter weight"
-            />
-            <button type="submit" class="btn btn-primary">Update Weight</button>
+        <div class="row">
+          <div class="col-md-6">
+            <p><strong>File ID:</strong> <%= file.id %></p>
+            <p>
+              <strong>Uploaded:</strong> <%= new
+              Date(file.uploaded_at).toLocaleString() %>
+            </p>
           </div>
-        </form>
+          <div class="col-md-6">
+            <p>
+              <% if (typeof file.weight !== 'undefined' && file.weight !== null)
+              { %>
+              <strong>Weight:</strong> <%= file.weight %> <% } else { %>
+              <strong>Weight:</strong> <span class="text-muted">Not set</span>
+              <% } %>
+            </p>
+
+            <form action="/update-weight" method="post">
+              <div class="input-group" style="max-width: 300px">
+                <input type="hidden" name="fileId" value="<%= file.id %>" />
+                <input
+                  type="number"
+                  class="form-control"
+                  name="weight"
+                  step="0.1"
+                  value="<%= file.weight !== null ? file.weight : '' %>"
+                  placeholder="Enter weight"
+                />
+                <button type="submit" class="btn btn-primary">
+                  Update Weight
+                </button>
+              </div>
+            </form>
+
+            <div class="action-buttons">
+              <a
+                href="/template/<%= file.id %>"
+                class="btn btn-success"
+                target="_blank"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  fill="currentColor"
+                  class="bi bi-printer"
+                  viewBox="0 0 16 16"
+                >
+                  <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z" />
+                  <path
+                    d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1z"
+                  />
+                </svg>
+                Print Report
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
       <% } %> <% if (typeof message !== 'undefined' && message) { %>
       <div class="alert alert-info"><%= message %></div>
       <% } %> <% if (typeof data !== 'undefined' && data && data.length > 0) {
       %>
       <h3>Data Points (<%= data.length %>)</h3>
+
       <div class="table-responsive">
-        <table class="table table-striped">
-          <thead>
+        <table class="table table-striped table-bordered">
+          <thead class="table-dark">
             <tr>
-              <th scope="col">Index</th>
-              <th scope="col">Type</th>
-              <th scope="col">X</th>
-              <th scope="col">Y</th>
-              <th scope="col">Z</th>
-              <th scope="col">Diameter</th>
-              <th scope="col">Note</th>
+              <th>ID</th>
+              <th>Index</th>
+              <th>Type</th>
+              <th>X</th>
+              <th>Y</th>
+              <th>Z</th>
+              <th>Rot X</th>
+              <th>Rot Y</th>
+              <th>Rot Z</th>
+              <th>Note</th>
+              <th>Diameter</th>
+              <th>Tolerance</th>
             </tr>
           </thead>
           <tbody>
             <% data.forEach(function(point) { %>
             <tr>
+              <td><%= point.id %></td>
               <td><%= point.index %></td>
               <td>
                 <span class="data-type data-type-<%= point.data_type %>">
                   <%= point.data_type %>
                 </span>
               </td>
-              <td><%= point.x !== null ? point.x : '-' %></td>
-              <td><%= point.y !== null ? point.y : '-' %></td>
-              <td><%= point.z !== null ? point.z : '-' %></td>
-              <td><%= point.diameter !== null ? point.diameter : '-' %></td>
-              <td><%= point.note || '-' %></td>
+              <td><%= point.x !== null ? point.x.toFixed(3) : '-' %></td>
+              <td><%= point.y !== null ? point.y.toFixed(3) : '-' %></td>
+              <td><%= point.z !== null ? point.z.toFixed(3) : '-' %></td>
+              <td>
+                <%= point.rot_x !== null ? point.rot_x.toFixed(3) : '-' %>
+              </td>
+              <td>
+                <%= point.rot_y !== null ? point.rot_y.toFixed(3) : '-' %>
+              </td>
+              <td>
+                <%= point.rot_z !== null ? point.rot_z.toFixed(3) : '-' %>
+              </td>
+              <td class="data-cell"><%= point.note || '-' %></td>
+              <td>
+                <%= point.diameter !== null ? point.diameter.toFixed(3) : '-' %>
+              </td>
+              <td>
+                <%= point.tolerance !== null ? point.tolerance.toFixed(3) : '-'
+                %>
+              </td>
             </tr>
             <% }); %>
           </tbody>
         </table>
       </div>
+
+      <!-- Data Type Summary -->
+      <div class="mt-4">
+        <h4>Data Type Summary</h4>
+        <% const typeCounts = {}; data.forEach(function(point) {
+        typeCounts[point.data_type] = (typeCounts[point.data_type] || 0) + 1;
+        }); %>
+
+        <div class="row">
+          <% Object.entries(typeCounts).forEach(function([type, count]) { %>
+          <div class="col-md-3 mb-3">
+            <div class="card">
+              <div class="card-body">
+                <h5 class="card-title data-type data-type-<%= type %>">
+                  <%= type %>
+                </h5>
+                <p class="card-text">
+                  Count: <%= count %> (<%= Math.round((count / data.length) *
+                  100) %>%)
+                </p>
+              </div>
+            </div>
+          </div>
+          <% }); %>
+        </div>
+      </div>
+
       <% } else { %>
       <div class="alert alert-warning">
         <p>No data found for this file.</p>
