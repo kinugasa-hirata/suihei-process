@@ -67,16 +67,6 @@ const initializeDatabase = async () => {
       )
     `);
 
-    // Create file_weights table to store weights for each file
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS file_weights (
-        id SERIAL PRIMARY KEY,
-        file_id INTEGER REFERENCES files(id) ON DELETE CASCADE,
-        weight DECIMAL(10, 1) NOT NULL,
-        UNIQUE(file_id)
-      )
-    `);
-
     console.log("Database initialized successfully");
   } catch (err) {
     console.error("Error initializing database:", err);
@@ -86,14 +76,9 @@ const initializeDatabase = async () => {
 // Home route
 app.get("/", async (req, res) => {
   try {
-    // Get files with their weights (if available)
-    const result = await pool.query(`
-      SELECT f.id, f.filename, f.uploaded_at, fw.weight
-      FROM files f
-      LEFT JOIN file_weights fw ON f.id = fw.file_id
-      ORDER BY f.uploaded_at DESC
-    `);
-
+    const result = await pool.query(
+      "SELECT * FROM files ORDER BY uploaded_at DESC"
+    );
     res.render("index", { files: result.rows });
   } catch (err) {
     console.error("Error fetching files:", err);
@@ -267,73 +252,6 @@ app.get("/files/:id", async (req, res) => {
     res
       .status(500)
       .send(`Error fetching file data: ${err.message}\n\n${err.stack}`);
-  }
-});
-
-// Update all file weights at once
-app.post("/update-weights", async (req, res) => {
-  try {
-    const { fileIds, weights } = req.body;
-
-    // Check if we received arrays
-    if (!Array.isArray(fileIds) || !Array.isArray(weights)) {
-      return res.status(400).send("Invalid data format");
-    }
-
-    // Process each file weight
-    for (let i = 0; i < fileIds.length; i++) {
-      const fileId = fileIds[i];
-      const weight = weights[i];
-
-      // Skip empty weights
-      if (!weight || weight.trim() === "") continue;
-
-      // Format weight to have one digit after comma
-      const formattedWeight = parseFloat(weight).toFixed(1);
-
-      // Upsert the weight (insert if not exists, update if exists)
-      await pool.query(
-        `
-        INSERT INTO file_weights (file_id, weight)
-        VALUES ($1, $2)
-        ON CONFLICT (file_id)
-        DO UPDATE SET weight = $2
-      `,
-        [fileId, formattedWeight]
-      );
-    }
-
-    res.redirect("/");
-  } catch (err) {
-    console.error("Error updating weights:", err);
-    res.status(500).send("Error updating weights: " + err.message);
-  }
-});
-
-// Summary page with file data
-app.get("/summary", async (req, res) => {
-  try {
-    // Get files with their weights and a specific value from each file
-    const result = await pool.query(`
-      SELECT 
-        f.id, 
-        f.filename, 
-        fw.weight,
-        (
-          SELECT x 
-          FROM file_data 
-          WHERE file_id = f.id AND data_type = 'DISTANCE' AND index = 1
-          LIMIT 1
-        ) AS distance_value
-      FROM files f
-      LEFT JOIN file_weights fw ON f.id = fw.file_id
-      ORDER BY f.uploaded_at DESC
-    `);
-
-    res.render("summary", { files: result.rows });
-  } catch (err) {
-    console.error("Error fetching summary data:", err);
-    res.render("summary", { files: [], error: "Error fetching summary data" });
   }
 });
 
