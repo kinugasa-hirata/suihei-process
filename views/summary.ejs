@@ -31,9 +31,6 @@
         background-color: #fff3cd;
         font-weight: bold;
       }
-      .summary-card {
-        margin-bottom: 1rem;
-      }
       .table-responsive {
         overflow-x: auto;
       }
@@ -104,36 +101,6 @@
 
       <div class="summary-table">
         <% if (typeof files != 'undefined' && files && files.length > 0) { %>
-        <div class="row mb-4">
-          <div class="col-md-6">
-            <div class="card summary-card">
-              <div class="card-header bg-primary text-white">
-                <h5 class="card-title mb-0">Total Files</h5>
-              </div>
-              <div class="card-body">
-                <h2 class="display-4"><%= files.length %></h2>
-                <p class="text-muted">Files in this report</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-md-6">
-            <div class="card summary-card">
-              <div class="card-header bg-success text-white">
-                <h5 class="card-title mb-0">Total Weight</h5>
-              </div>
-              <div class="card-body">
-                <h2 class="display-4">
-                  <% var totalWeight = 0; for (var i = 0; i < files.length; i++)
-                  { var file = files[i]; if (file.weight) { totalWeight +=
-                  parseFloat(file.weight); } } %> <%= totalWeight.toFixed(1) %>
-                </h2>
-                <p class="text-muted">Combined weight of all files (kg)</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <h3>Highlighted Data Points</h3>
         <p class="text-muted mb-3">
           Data from specific coordinates in each file.
@@ -144,41 +111,32 @@
             <thead class="table-dark">
               <tr>
                 <th>Filename</th>
-                <th>Weight</th>
                 <% var headers = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
-                'j', 'k', 'm', 'n']; for (var i = 0; i < headers.length; i++) {
-                %>
-                <th><%= headers[i] %></th>
-                <% } %>
-                <th>Actions</th>
+                'j', 'k', 'm', 'n']; %> <% headers.forEach(function(header) { %>
+                <th><%= header %></th>
+                <% }); %>
+                <th>Weight (g)</th>
               </tr>
             </thead>
             <tbody>
-              <% for (var i = 0; i < files.length; i++) { var file = files[i];
-              %>
+              <% files.forEach(function(file) { %>
               <tr>
                 <td><strong><%= file.filename %></strong></td>
+                <% headers.forEach(function(header) { %>
+                <td class="highlight-cell">
+                  <%= (fileData && fileData[file.id] &&
+                  fileData[file.id][header]) ? fileData[file.id][header] : '-'
+                  %>
+                </td>
+                <% }); %>
                 <td>
-                  <% if (file.weight) { %> <%=
-                  parseFloat(file.weight).toFixed(1) %> kg <% } else { %>
+                  <% if (file.weight) { %> <%= (parseFloat(file.weight) *
+                  1000).toFixed(1) %> <% } else { %>
                   <span class="text-muted">Not set</span>
                   <% } %>
                 </td>
-
-                <% for (var j = 0; j < headers.length; j++) { var cellValue =
-                '-'; if (typeof fileData != 'undefined' && fileData &&
-                fileData[file.id] && fileData[file.id][headers[j]]) { cellValue
-                = fileData[file.id][headers[j]]; } %>
-                <td class="highlight-cell"><%= cellValue %></td>
-                <% } %>
-
-                <td>
-                  <a href="/files/<%= file.id %>" class="btn btn-sm btn-info"
-                    >View Data</a
-                  >
-                </td>
               </tr>
-              <% } %>
+              <% }); %>
             </tbody>
           </table>
         </div>

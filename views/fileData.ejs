@@ -74,8 +74,9 @@
             <p>
               <% if (typeof file.weight !== 'undefined' && file.weight !== null)
               { %>
-              <strong>Weight:</strong> <%= file.weight %> <% } else { %>
-              <strong>Weight:</strong> <span class="text-muted">Not set</span>
+              <strong>Weight:</strong> <%= (parseFloat(file.weight) *
+              1000).toFixed(1) %> g <% } else { %> <strong>Weight:</strong>
+              <span class="text-muted">Not set</span>
               <% } %>
             </p>
 
@@ -88,7 +89,7 @@
                   name="weight"
                   step="0.1"
                   value="<%= file.weight !== null ? file.weight : '' %>"
-                  placeholder="Enter weight"
+                  placeholder="Enter weight (kg)"
                 />
                 <button type="submit" class="btn btn-primary">
                   Update Weight
