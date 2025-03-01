@@ -1,4 +1,4 @@
-<!-- Fixed views/summary.ejs - Corrected syntax issues -->
+<!-- Fixed views/summary.ejs - Revised for compatibility -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -48,7 +48,7 @@
         <a href="/summary" class="btn btn-info active">View Summary</a>
       </div>
 
-      <% if (typeof message !== 'undefined' && message) { %>
+      <% if (typeof message != 'undefined' && message) { %>
       <div class="alert alert-success alert-dismissible fade show" role="alert">
         <%= message %>
         <button
@@ -58,7 +58,7 @@
           aria-label="Close"
         ></button>
       </div>
-      <% } %> <% if (typeof error !== 'undefined' && error) { %>
+      <% } %> <% if (typeof error != 'undefined' && error) { %>
       <div class="alert alert-danger alert-dismissible fade show" role="alert">
         <%= error %>
         <button
@@ -71,7 +71,7 @@
       <% } %>
 
       <div class="summary-table">
-        <% if (typeof files !== 'undefined' && files && files.length > 0) { %>
+        <% if (typeof files != 'undefined' && files && files.length > 0) { %>
         <div class="row mb-4">
           <div class="col-md-6">
             <div class="card summary-card">
@@ -92,9 +92,10 @@
               </div>
               <div class="card-body">
                 <h2 class="display-4">
-                  <% const totalWeight = files.reduce(function(sum, file) {
-                  return sum + (file.weight !== null ? parseFloat(file.weight) :
-                  0); }, 0); %> <%= totalWeight.toFixed(1) %>
+                  <% var totalWeight = 0; for (var i = 0; i < files.length; i++)
+                  { var file = files[i]; totalWeight += (file.weight != null ?
+                  parseFloat(file.weight) : 0); } %> <%= totalWeight.toFixed(1)
+                  %>
                 </h2>
                 <p class="text-muted">Combined weight of all files (kg)</p>
               </div>
@@ -114,11 +115,11 @@
               <tr>
                 <th>Filename</th>
                 <th>Weight</th>
-                <% if (typeof columnLabels !== 'undefined' && columnLabels &&
-                columnLabels.length > 0) { %> <%
-                columnLabels.forEach(function(label) { %>
-                <th><%= label %></th>
-                <% }); %> <% } else { %>
+                <% if (typeof columnLabels != 'undefined' && columnLabels &&
+                columnLabels.length > 0) { %> <% for (var i = 0; i <
+                columnLabels.length; i++) { %>
+                <th><%= columnLabels[i] %></th>
+                <% } %> <% } else { %>
                 <th>Y Value (-8.19x)</th>
                 <th>Y Value (-83.1xx)</th>
                 <th>Y Value (-5.01x)</th>
@@ -132,28 +133,30 @@
               </tr>
             </thead>
             <tbody>
-              <% // Sort files by numeric part of filename (descending) const
-              sortedFiles = [...files].sort(function(a, b) { const numA =
-              parseInt((a.filename.match(/^\d+/) || ['0'])[0], 10); const numB =
-              parseInt((b.filename.match(/^\d+/) || ['0'])[0], 10); return numB
-              - numA; }); sortedFiles.forEach(function(file) { %>
+              <% // Sort files by numeric part of filename (descending) var
+              sortedFiles = []; for (var i = 0; i < files.length; i++) {
+              sortedFiles.push(files[i]); } sortedFiles.sort(function(a, b) {
+              var numA = parseInt((a.filename.match(/^\d+/) || ['0'])[0], 10);
+              var numB = parseInt((b.filename.match(/^\d+/) || ['0'])[0], 10);
+              return numB - numA; }); for (var i = 0; i < sortedFiles.length;
+              i++) { var file = sortedFiles[i]; %>
               <tr>
                 <td><strong><%= file.filename %></strong></td>
                 <td>
-                  <% if (file.weight !== null) { %> <%=
+                  <% if (file.weight != null) { %> <%=
                   parseFloat(file.weight).toFixed(1) %> kg <% } else { %>
                   <span class="text-muted">Not set</span>
                   <% } %>
                 </td>
 
-                <% if (typeof fileData !== 'undefined' && fileData &&
-                fileData[file.id]) { %> <% if (typeof dataColumns !==
-                'undefined' && dataColumns) { %> <%
-                dataColumns.forEach(function(column) { %>
+                <% if (typeof fileData != 'undefined' && fileData &&
+                fileData[file.id]) { %> <% if (typeof dataColumns != 'undefined'
+                && dataColumns) { %> <% for (var j = 0; j < dataColumns.length;
+                j++) { %> <% var column = dataColumns[j]; %>
                 <td class="highlight-cell">
                   <%= fileData[file.id][column] || 'N/A' %>
                 </td>
-                <% }); %> <% } else { %>
+                <% } %> <% } else { %>
                 <!-- Fallback when dataColumns is not defined -->
                 <td class="highlight-cell">-</td>
                 <td class="highlight-cell">-</td>
@@ -181,7 +184,7 @@
                   >
                 </td>
               </tr>
-              <% }); %>
+              <% } %>
             </tbody>
           </table>
         </div>
