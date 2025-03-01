@@ -230,8 +230,6 @@ app.get("/files/:id", async (req, res) => {
       fileId,
     ]);
 
-    console.log(`File query result: ${JSON.stringify(fileResult.rows)}`);
-
     if (fileResult.rows.length === 0) {
       return res.status(404).send("File not found");
     }
@@ -242,24 +240,27 @@ app.get("/files/:id", async (req, res) => {
       [fileId]
     );
 
-    console.log(`Data query result count: ${dataResult.rows.length} rows`);
+    // Get file weight if available
+    const weightResult = await pool.query(
+      "SELECT weight FROM file_weights WHERE file_id = $1",
+      [fileId]
+    );
 
-    // Check if there's any data to display
-    if (dataResult.rows.length === 0) {
-      return res.render("fileData", {
-        file: fileResult.rows[0],
-        data: [],
-        message: "No data found for this file.",
-      });
-    }
+    const fileWeight =
+      weightResult.rows.length > 0 ? weightResult.rows[0].weight : null;
 
-    // Log a sample row to debug
-    if (dataResult.rows.length > 0) {
-      console.log(`Sample data row: ${JSON.stringify(dataResult.rows[0])}`);
-    }
+    // Add weight to the file object
+    const fileWithWeight = {
+      ...fileResult.rows[0],
+      weight: fileWeight,
+    };
+
+    console.log(
+      `Retrieved ${dataResult.rows.length} data rows for file ID: ${fileId}`
+    );
 
     res.render("fileData", {
-      file: fileResult.rows[0],
+      file: fileWithWeight,
       data: dataResult.rows,
     });
   } catch (err) {
