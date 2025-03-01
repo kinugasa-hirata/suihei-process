@@ -377,6 +377,60 @@ app.post("/update-weight", async (req, res) => {
   }
 });
 
+app.post("/delete-file", async (req, res) => {
+  let client;
+  try {
+    const { fileId } = req.body;
+
+    if (!fileId) {
+      return res.status(400).send("File ID is required");
+    }
+
+    client = await pool.connect();
+
+    // Start a transaction to ensure data consistency
+    await client.query("BEGIN");
+
+    // Get file info before deletion (for confirmation message)
+    const fileResult = await client.query(
+      "SELECT filename FROM files WHERE id = $1",
+      [fileId]
+    );
+
+    if (fileResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).send("File not found");
+    }
+
+    const fileName = fileResult.rows[0].filename;
+
+    // Delete file weights (if any)
+    await client.query("DELETE FROM file_weights WHERE file_id = $1", [fileId]);
+
+    // Delete file data
+    await client.query("DELETE FROM file_data WHERE file_id = $1", [fileId]);
+
+    // Delete file record
+    await client.query("DELETE FROM files WHERE id = $1", [fileId]);
+
+    // Commit the transaction
+    await client.query("COMMIT");
+
+    // Redirect back to index with success message
+    res.redirect(
+      "/?message=File '" + fileName + "' has been deleted successfully"
+    );
+  } catch (err) {
+    if (client) {
+      await client.query("ROLLBACK");
+    }
+    console.error("Error deleting file:", err);
+    res.status(500).send("Error deleting file: " + err.message);
+  } finally {
+    if (client) client.release();
+  }
+});
+
 // Summary page with file data
 app.get("/summary", async (req, res) => {
   let client;

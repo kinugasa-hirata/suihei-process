@@ -1,4 +1,4 @@
-<!-- views/index.ejs -->
+<!-- views/index.ejs with delete functionality -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -30,9 +30,13 @@
       .action-buttons {
         display: flex;
         align-items: center;
+        gap: 0.5rem;
       }
       .nav-links {
         margin-bottom: 2rem;
+      }
+      .delete-btn {
+        margin-left: 0.5rem;
       }
     </style>
   </head>
@@ -44,6 +48,29 @@
         <a href="/" class="btn btn-primary">Home</a>
         <a href="/summary" class="btn btn-info">View Summary</a>
       </div>
+
+      <!-- Show success/error messages -->
+      <% if (locals.message) { %>
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <%= message %>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="alert"
+          aria-label="Close"
+        ></button>
+      </div>
+      <% } %> <% if (locals.error) { %>
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <%= error %>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="alert"
+          aria-label="Close"
+        ></button>
+      </div>
+      <% } %>
 
       <div class="upload-form">
         <h2>Upload Files</h2>
@@ -60,6 +87,34 @@
               required
             />
           </div>
+          <div class="mb-3">
+            <label class="form-label">If filename already exists:</label>
+            <div class="form-check">
+              <input
+                class="form-check-input"
+                type="radio"
+                name="overwriteAction"
+                id="skipAction"
+                value="skip"
+                checked
+              />
+              <label class="form-check-label" for="skipAction">
+                Skip (don't upload)
+              </label>
+            </div>
+            <div class="form-check">
+              <input
+                class="form-check-input"
+                type="radio"
+                name="overwriteAction"
+                id="overwriteAction"
+                value="overwrite"
+              />
+              <label class="form-check-label" for="overwriteAction">
+                Overwrite (replace existing data)
+              </label>
+            </div>
+          </div>
           <button type="submit" class="btn btn-primary">
             Upload and Process
           </button>
@@ -68,9 +123,7 @@
 
       <div class="files-table">
         <h2>Processed Files</h2>
-        <% if (locals.error) { %>
-        <div class="alert alert-danger"><%= error %></div>
-        <% } %> <% if (files && files.length > 0) { %>
+        <% if (files && files.length > 0) { %>
         <div class="table-responsive">
           <table class="table table-striped">
             <thead>
@@ -93,7 +146,7 @@
                     <form
                       action="/update-weight"
                       method="post"
-                      class="d-inline ms-2"
+                      class="d-inline"
                     >
                       <div class="input-group">
                         <input
@@ -114,6 +167,40 @@
                           Save
                         </button>
                       </div>
+                    </form>
+                    <form
+                      action="/delete-file"
+                      method="post"
+                      class="d-inline delete-form"
+                      onsubmit="return confirm('Are you sure you want to delete the file \'<%= file.filename %>\'? This will permanently remove all data for this file.');"
+                    >
+                      <input
+                        type="hidden"
+                        name="fileId"
+                        value="<%= file.id %>"
+                      />
+                      <button
+                        type="submit"
+                        class="btn btn-sm btn-danger delete-btn"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          fill="currentColor"
+                          class="bi bi-trash"
+                          viewBox="0 0 16 16"
+                        >
+                          <path
+                            d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"
+                          />
+                          <path
+                            fill-rule="evenodd"
+                            d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"
+                          />
+                        </svg>
+                        Delete
+                      </button>
                     </form>
                   </div>
                 </td>
