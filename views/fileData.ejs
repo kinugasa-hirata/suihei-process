@@ -13,6 +13,7 @@
       .container {
         max-width: 1400px;
         margin-top: 2rem;
+        margin-bottom: 2rem;
       }
       .file-info {
         background-color: #f8f9fa;
@@ -40,6 +41,35 @@
       }
       .table-responsive {
         overflow-x: auto;
+      }
+      .data-cell {
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* Highlight styles */
+      .highlight-cell {
+        position: relative;
+        background-color: rgba(255, 193, 7, 0.2);
+        font-weight: bold;
+      }
+
+      .highlight-cell::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border: 2px solid #fd7e14;
+        border-radius: 4px;
+        pointer-events: none;
+      }
+
+      .highlight-large-value {
+        color: #dc3545;
+        font-weight: bold;
       }
     </style>
   </head>
@@ -116,58 +146,103 @@
             </tr>
           </thead>
           <tbody>
-            <% data.forEach(function(point) { %>
+            <% // Function to check if a value should be highlighted function
+            shouldHighlight(type, value, field) { // No highlighting for null
+            values if (value === null || value === undefined) return false; //
+            Convert to number for comparison if needed const numVal = typeof
+            value === 'number' ? value : parseFloat(value); // Skip if not a
+            valid number if (isNaN(numVal)) return false; // Highlight specific
+            cases based on field switch (field) { case 'y': return
+            Math.abs(numVal) > 20 || (numVal <= -80); case 'z': return numVal >
+            10; case 'tolerance': return numVal > 10; case 'diameter': return
+            numVal > 30; default: return false; } } // Function to format a
+            value for display function formatValue(value, field) { if (value ===
+            null || value === undefined) return '-'; // If not a number or can't
+            be parsed, just return the value if (isNaN(value) &&
+            isNaN(parseFloat(value))) return value; // Format as number with 3
+            decimal places const numVal = typeof value === 'number' ? value :
+            parseFloat(value); if (isNaN(numVal)) return value; return
+            numVal.toFixed(3); } %> <% data.forEach(function(point) { %>
             <tr>
               <td><%= point.id %></td>
               <td><%= point.index %></td>
               <td class="data-type data-type-<%= point.data_type %>">
                 <%= point.data_type %>
               </td>
+
+              <!-- X value -->
               <td>
                 <% if(point.x !== null && point.x !== undefined) { %> <%= typeof
                 point.x === 'number' ? point.x.toFixed(3) : (parseFloat(point.x)
                 ? parseFloat(point.x).toFixed(3) : point.x) %> <% } else { %> -
                 <% } %>
               </td>
-              <td>
+
+              <!-- Y value with potential highlighting -->
+              <td
+                class="<%= shouldHighlight(point.data_type, point.y, 'y') ? 'highlight-cell' : '' %>"
+              >
                 <% if(point.y !== null && point.y !== undefined) { %> <%= typeof
                 point.y === 'number' ? point.y.toFixed(3) : (parseFloat(point.y)
                 ? parseFloat(point.y).toFixed(3) : point.y) %> <% } else { %> -
                 <% } %>
               </td>
-              <td>
+
+              <!-- Z value with potential highlighting -->
+              <td
+                class="<%= shouldHighlight(point.data_type, point.z, 'z') ? 'highlight-cell' : '' %>"
+              >
                 <% if(point.z !== null && point.z !== undefined) { %> <%= typeof
                 point.z === 'number' ? point.z.toFixed(3) : (parseFloat(point.z)
                 ? parseFloat(point.z).toFixed(3) : point.z) %> <% } else { %> -
                 <% } %>
               </td>
+
+              <!-- Rot X value -->
               <td>
                 <% if(point.rot_x !== null && point.rot_x !== undefined) { %>
                 <%= typeof point.rot_x === 'number' ? point.rot_x.toFixed(3) :
                 (parseFloat(point.rot_x) ? parseFloat(point.rot_x).toFixed(3) :
                 point.rot_x) %> <% } else { %> - <% } %>
               </td>
+
+              <!-- Rot Y value -->
               <td>
                 <% if(point.rot_y !== null && point.rot_y !== undefined) { %>
                 <%= typeof point.rot_y === 'number' ? point.rot_y.toFixed(3) :
                 (parseFloat(point.rot_y) ? parseFloat(point.rot_y).toFixed(3) :
                 point.rot_y) %> <% } else { %> - <% } %>
               </td>
+
+              <!-- Rot Z value -->
               <td>
                 <% if(point.rot_z !== null && point.rot_z !== undefined) { %>
                 <%= typeof point.rot_z === 'number' ? point.rot_z.toFixed(3) :
                 (parseFloat(point.rot_z) ? parseFloat(point.rot_z).toFixed(3) :
                 point.rot_z) %> <% } else { %> - <% } %>
               </td>
+
+              <!-- Note -->
               <td><%= point.note || '-' %></td>
+
+              <!-- Diameter with potential highlighting -->
               <td>
                 <% if(point.diameter !== null && point.diameter !== undefined) {
-                %> <%= typeof point.diameter === 'number' ?
-                point.diameter.toFixed(3) : (parseFloat(point.diameter) ?
-                parseFloat(point.diameter).toFixed(3) : point.diameter) %> <% }
-                else { %> - <% } %>
+                %>
+                <span
+                  class="<%= shouldHighlight(point.data_type, point.diameter, 'diameter') ? 'highlight-large-value' : '' %>"
+                >
+                  <%= typeof point.diameter === 'number' ?
+                  point.diameter.toFixed(3) : (parseFloat(point.diameter) ?
+                  parseFloat(point.diameter).toFixed(3) : point.diameter) %>
+                </span>
+                <% } else { %> - <% } %>
               </td>
-              <td>
+
+              <!-- Tolerance with potential highlighting -->
+              <td
+                class="<%= shouldHighlight(point.data_type, point.tolerance, 'tolerance') ? 'highlight-cell' : '' %>"
+              >
                 <% if(point.tolerance !== null && point.tolerance !== undefined)
                 { %> <%= typeof point.tolerance === 'number' ?
                 point.tolerance.toFixed(3) : (parseFloat(point.tolerance) ?
@@ -214,5 +289,50 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // Additional client-side highlighting
+      document.addEventListener("DOMContentLoaded", function () {
+        // Add special highlighting for specific values
+        const highlightValues = {
+          y: [-8.196, -83.153, -5.01, -24.068],
+          z: [15.911],
+          tolerance: [
+            155.194, 37.5, 8.006, 7.997, 8.003, 8.008, 122.197, 29.974,
+          ],
+        };
+
+        // Find and highlight cells with these specific values
+        const table = document.querySelector(".table");
+        if (table) {
+          const rows = table.querySelectorAll("tbody tr");
+
+          rows.forEach((row) => {
+            // Y column is the 5th column (index 4)
+            const yCell = row.cells[4];
+            const yValue = parseFloat(yCell.textContent);
+            if (!isNaN(yValue) && highlightValues.y.includes(yValue)) {
+              yCell.classList.add("highlight-cell");
+            }
+
+            // Z column is the 6th column (index 5)
+            const zCell = row.cells[5];
+            const zValue = parseFloat(zCell.textContent);
+            if (!isNaN(zValue) && highlightValues.z.includes(zValue)) {
+              zCell.classList.add("highlight-cell");
+            }
+
+            // Tolerance column is the 11th column (index 10)
+            const tolCell = row.cells[10];
+            const tolValue = parseFloat(tolCell.textContent);
+            if (
+              !isNaN(tolValue) &&
+              highlightValues.tolerance.includes(tolValue)
+            ) {
+              tolCell.classList.add("highlight-cell");
+            }
+          });
+        }
+      });
+    </script>
   </body>
 </html>
