@@ -432,149 +432,132 @@ app.post("/delete-file", async (req, res) => {
 });
 
 // Summary page with file data
-// Enhanced Summary page route that fetches highlighted data points
 app.get("/summary", async (req, res) => {
   let client;
   try {
     client = await pool.connect();
 
-    // Get files with their weights
-    // Order by numeric part of filename (descending)
-    const filesResult = await client.query(`
+    // Get min and max file numbers from query parameters (if provided)
+    var minFileNumber = req.query.minFile ? parseInt(req.query.minFile, 10) : 0;
+    var maxFileNumber = req.query.maxFile
+      ? parseInt(req.query.maxFile, 10)
+      : 9999;
+
+    // Step 1: Get all files with their weights
+    const filesResult = await client.query(
+      `
       SELECT 
         f.id, 
         f.filename, 
-        fw.weight
+        fw.weight,
+        f.uploaded_at
       FROM files f
       LEFT JOIN file_weights fw ON f.id = fw.file_id
+      WHERE 
+        CASE 
+          WHEN f.filename ~ '^[0-9]+' THEN 
+            CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
+          ELSE 0
+        END BETWEEN $1 AND $2
       ORDER BY 
         CASE 
           WHEN f.filename ~ '^[0-9]+' THEN 
             CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
           ELSE 0
-        END DESC
-    `);
-
-    // Define the coordinates of highlighted cells we want to extract
-    // Format: [data_type, approximate_value, description]
-    const highlightedDataPoints = [
-      {
-        type: "PT-COMP",
-        coord: "y",
-        approxValue: -8.19,
-        description: "Y Value (-8.19x)",
-      },
-      {
-        type: "PT-COMP",
-        coord: "y",
-        approxValue: -83.15,
-        description: "Y Value (-83.1xx)",
-      },
-      {
-        type: "DISTANCE",
-        coord: "y",
-        approxValue: -5.01,
-        description: "Y Value (-5.01x)",
-      },
-      {
-        type: "PT-COMP",
-        coord: "x",
-        approxValue: -24.06,
-        description: "X Value (-24.06x)",
-      },
-      {
-        type: "PT-COMP",
-        coord: "z",
-        approxValue: 15.91,
-        description: "Z Value (15.91x)",
-      },
-      {
-        type: "CIRCLE",
-        coord: "tolerance",
-        approxValue: 155.2,
-        description: "Tolerance (155.2xx)",
-      },
-      {
-        type: "CIRCLE",
-        coord: "tolerance",
-        approxValue: 37.5,
-        description: "Tolerance (37.5xx)",
-      },
-      {
-        type: "CIRCLE",
-        coord: "tolerance",
-        approxValue: 8.0,
-        description: "Tolerance (8.00x)",
-      },
-    ];
-
-    // Extract column labels for the table headers
-    const columnLabels = highlightedDataPoints.map(
-      (point) => point.description
+        END ASC
+    `,
+      [minFileNumber, maxFileNumber]
     );
 
-    // Create a data structure to hold the highlighted values for each file
-    const fileData = {};
+    // Define the highlighted cells
+    const cellCoordinates = [
+      { row: 2, col: 4, label: "a" },
+      { row: 4, col: 4, label: "b" },
+      { row: 6, col: 4, label: "c" },
+      { row: 10, col: 3, label: "d" },
+      { row: 14, col: 5, label: "e" },
+      { row: 15, col: 11, label: "f" },
+      { row: 19, col: 11, label: "g" },
+      { row: 20, col: 11, label: "h" },
+      { row: 21, col: 11, label: "i" },
+      { row: 22, col: 11, label: "j" },
+      { row: 23, col: 11, label: "k" },
+      { row: 24, col: 11, label: "m" },
+      { row: 25, col: 11, label: "n" },
+    ];
 
-    // For each file, fetch the highlighted data points
-    for (const file of filesResult.rows) {
+    // Create the fileData structure
+    var fileData = {};
+
+    // Process each file
+    for (var i = 0; i < filesResult.rows.length; i++) {
+      var file = filesResult.rows[i];
       fileData[file.id] = {};
 
-      // For each highlighted data point, try to find a matching value in the database
-      for (const dataPoint of highlightedDataPoints) {
-        // Query to find the closest match to the approximate value
-        const query = `
-          SELECT ${dataPoint.coord}, data_type
-          FROM file_data
-          WHERE 
-            file_id = $1 AND
-            data_type = $2 AND
-            ${dataPoint.coord} IS NOT NULL AND
-            ${dataPoint.coord} BETWEEN $3 AND $4
-          ORDER BY ABS(${dataPoint.coord} - $5)
-          LIMIT 1
-        `;
-
-        // Calculate a reasonable range around the approximate value (±1% or ±0.05, whichever is larger)
-        const tolerance = Math.max(
-          Math.abs(dataPoint.approxValue) * 0.01,
-          0.05
+      try {
+        // Get all data for this file
+        const dataResult = await client.query(
+          `
+          SELECT * FROM file_data
+          WHERE file_id = $1
+          ORDER BY index, id
+        `,
+          [file.id]
         );
-        const minValue = dataPoint.approxValue - tolerance;
-        const maxValue = dataPoint.approxValue + tolerance;
 
-        try {
-          const result = await client.query(query, [
-            file.id,
-            dataPoint.type,
-            minValue,
-            maxValue,
-            dataPoint.approxValue,
-          ]);
-
-          if (result.rows.length > 0) {
-            // Store the actual value found
-            fileData[file.id][dataPoint.description] = parseFloat(
-              result.rows[0][dataPoint.coord]
-            ).toFixed(3);
-          } else {
-            // No matching data point found
-            fileData[file.id][dataPoint.description] = "N/A";
-          }
-        } catch (err) {
-          console.error(`Error fetching data point for file ${file.id}:`, err);
-          fileData[file.id][dataPoint.description] = "Error";
+        // Skip if no data
+        if (dataResult.rows.length === 0) {
+          continue;
         }
+
+        // Extract values for each coordinate
+        for (var j = 0; j < cellCoordinates.length; j++) {
+          var coord = cellCoordinates[j];
+          var label = coord.label;
+          var rowIdx = coord.row;
+          var colIdx = coord.col;
+
+          // Skip if row doesn't exist
+          if (rowIdx >= dataResult.rows.length) {
+            fileData[file.id][label] = "N/A";
+            continue;
+          }
+
+          // Get the data row
+          var dataRow = dataResult.rows[rowIdx];
+
+          // Extract the value based on the column index
+          var value;
+          if (colIdx === 3) {
+            value = dataRow.x;
+          } else if (colIdx === 4) {
+            value = dataRow.y;
+          } else if (colIdx === 5) {
+            value = dataRow.z;
+          } else if (colIdx === 11) {
+            value = dataRow.tolerance;
+          } else {
+            value = null;
+          }
+
+          // Format the value
+          if (value !== null && !isNaN(parseFloat(value))) {
+            fileData[file.id][label] = parseFloat(value).toFixed(3);
+          } else {
+            fileData[file.id][label] = "N/A";
+          }
+        }
+      } catch (err) {
+        console.error(`Error processing file ${file.id}:`, err);
       }
     }
 
+    // Render the summary template
     res.render("summary", {
       files: filesResult.rows,
       fileData: fileData,
-      columnLabels: columnLabels,
-      dataColumns: columnLabels,
-      message: req.query.message,
-      error: req.query.error,
+      minFile: minFileNumber > 0 ? minFileNumber : "",
+      maxFile: maxFileNumber < 9999 ? maxFileNumber : "",
     });
   } catch (err) {
     console.error("Error fetching summary data:", err);

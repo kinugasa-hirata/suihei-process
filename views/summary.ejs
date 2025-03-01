@@ -1,4 +1,4 @@
-<!-- views/summary.ejs - Updated with coordinate-based data -->
+<!-- Simplified views/summary.ejs to fix server errors -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -43,13 +43,13 @@
         border-radius: 5px;
         margin-bottom: 1.5rem;
       }
-      .file-range-inputs {
+      .form-range-group {
         display: flex;
-        align-items: center;
         gap: 1rem;
+        align-items: end;
       }
-      .file-range-inputs .form-control {
-        width: 100px;
+      .range-input {
+        width: 120px;
       }
     </style>
   </head>
@@ -66,12 +66,12 @@
       <div class="file-filter-form">
         <h5>Filter Files</h5>
         <form action="/summary" method="get">
-          <div class="file-range-inputs mb-2">
+          <div class="form-range-group mb-2">
             <div>
               <label for="minFile" class="form-label">From File #</label>
               <input
                 type="number"
-                class="form-control"
+                class="form-control range-input"
                 id="minFile"
                 name="minFile"
                 value="<%= typeof minFile != 'undefined' ? minFile : '' %>"
@@ -82,7 +82,7 @@
               <label for="maxFile" class="form-label">To File #</label>
               <input
                 type="number"
-                class="form-control"
+                class="form-control range-input"
                 id="maxFile"
                 name="maxFile"
                 value="<%= typeof maxFile != 'undefined' ? maxFile : '' %>"
@@ -101,28 +101,6 @@
           <div class="form-text">Enter file numbers to filter the report.</div>
         </form>
       </div>
-
-      <% if (typeof message != 'undefined' && message) { %>
-      <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <%= message %>
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="alert"
-          aria-label="Close"
-        ></button>
-      </div>
-      <% } %> <% if (typeof error != 'undefined' && error) { %>
-      <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <%= error %>
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="alert"
-          aria-label="Close"
-        ></button>
-      </div>
-      <% } %>
 
       <div class="summary-table">
         <% if (typeof files != 'undefined' && files && files.length > 0) { %>
@@ -147,9 +125,8 @@
               <div class="card-body">
                 <h2 class="display-4">
                   <% var totalWeight = 0; for (var i = 0; i < files.length; i++)
-                  { var file = files[i]; totalWeight += (file.weight != null ?
-                  parseFloat(file.weight) : 0); } %> <%= totalWeight.toFixed(1)
-                  %>
+                  { var file = files[i]; if (file.weight) { totalWeight +=
+                  parseFloat(file.weight); } } %> <%= totalWeight.toFixed(1) %>
                 </h2>
                 <p class="text-muted">Combined weight of all files (kg)</p>
               </div>
@@ -159,7 +136,7 @@
 
         <h3>Highlighted Data Points</h3>
         <p class="text-muted mb-3">
-          Data extracted from specific coordinates in each file [row, column].
+          Data from specific coordinates in each file.
         </p>
 
         <div class="table-responsive">
@@ -168,34 +145,32 @@
               <tr>
                 <th>Filename</th>
                 <th>Weight</th>
-                <% if (typeof columnLabels != 'undefined' && columnLabels &&
-                columnLabels.length > 0) { %> <% for (var i = 0; i <
-                columnLabels.length; i++) { %>
-                <th><%= columnLabels[i] %></th>
-                <% } %> <% } %>
+                <% var headers = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
+                'j', 'k', 'm', 'n']; for (var i = 0; i < headers.length; i++) {
+                %>
+                <th><%= headers[i] %></th>
+                <% } %>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              <% // Files are already sorted from the backend for (var i = 0; i
-              < files.length; i++) { var file = files[i]; %>
+              <% for (var i = 0; i < files.length; i++) { var file = files[i];
+              %>
               <tr>
                 <td><strong><%= file.filename %></strong></td>
                 <td>
-                  <% if (file.weight != null) { %> <%=
+                  <% if (file.weight) { %> <%=
                   parseFloat(file.weight).toFixed(1) %> kg <% } else { %>
                   <span class="text-muted">Not set</span>
                   <% } %>
                 </td>
 
-                <% if (typeof fileData != 'undefined' && fileData &&
-                fileData[file.id]) { %> <% if (typeof dataColumns != 'undefined'
-                && dataColumns) { %> <% for (var j = 0; j < dataColumns.length;
-                j++) { %> <% var column = dataColumns[j]; %>
-                <td class="highlight-cell">
-                  <%= fileData[file.id][column] || 'N/A' %>
-                </td>
-                <% } %> <% } %> <% } %>
+                <% for (var j = 0; j < headers.length; j++) { var cellValue =
+                '-'; if (typeof fileData != 'undefined' && fileData &&
+                fileData[file.id] && fileData[file.id][headers[j]]) { cellValue
+                = fileData[file.id][headers[j]]; } %>
+                <td class="highlight-cell"><%= cellValue %></td>
+                <% } %>
 
                 <td>
                   <a href="/files/<%= file.id %>" class="btn btn-sm btn-info"
