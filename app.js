@@ -21,6 +21,19 @@ const pool = new Pool({
   },
 });
 
+// After creating the pool, add error handling
+pool.on("error", (err) => {
+  console.error("Unexpected error on idle client", err);
+  process.exit(-1);
+});
+
+// Add error logging to the pool connection
+pool.connect((err, client, done) => {
+  if (err) {
+    console.error("Error connecting to the database:", err);
+  }
+});
+
 // Set up EJS as view engine
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
@@ -94,7 +107,6 @@ app.get("/", async (req, res) => {
   let client;
   try {
     client = await pool.connect();
-    // Get files with their weights (if available)
     const result = await client.query(`
       SELECT f.id, f.filename, f.uploaded_at, fw.weight
       FROM files f
@@ -102,12 +114,13 @@ app.get("/", async (req, res) => {
       ORDER BY f.uploaded_at DESC
     `);
 
-    res.render("index", { files: result.rows });
+    res.render("index", { files: result.rows, error: null });
   } catch (err) {
     console.error("Error in home route:", err);
-    res.render("index", {
+    // Send a more user-friendly error page
+    res.status(500).render("index", {
       files: [],
-      error: "Error fetching files. Please try again later.",
+      error: "Database connection error. Please try again later.",
     });
   } finally {
     if (client) client.release();
@@ -639,5 +652,14 @@ app.get("/init-db", async (req, res) => {
     console.error("Failed to start server:", err);
   }
 })();
+
+// Add this near the end of app.js, before module.exports
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).render("error", {
+    message: "Something broke!",
+    error: process.env.NODE_ENV === "development" ? err : {},
+  });
+});
 
 module.exports = app;
