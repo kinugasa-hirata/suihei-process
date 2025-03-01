@@ -432,32 +432,156 @@ app.post("/delete-file", async (req, res) => {
 });
 
 // Summary page with file data
+// Enhanced Summary page route that fetches highlighted data points
 app.get("/summary", async (req, res) => {
   let client;
   try {
     client = await pool.connect();
 
-    // Get files with their weights and a specific value from each file
-    const result = await client.query(`
+    // Get files with their weights
+    // Order by numeric part of filename (descending)
+    const filesResult = await client.query(`
       SELECT 
         f.id, 
         f.filename, 
-        fw.weight,
-        (
-          SELECT x 
-          FROM file_data 
-          WHERE file_id = f.id AND data_type = 'DISTANCE' AND index = 1
-          LIMIT 1
-        ) AS distance_value
+        fw.weight
       FROM files f
       LEFT JOIN file_weights fw ON f.id = fw.file_id
-      ORDER BY f.uploaded_at DESC
+      ORDER BY 
+        CASE 
+          WHEN f.filename ~ '^[0-9]+' THEN 
+            CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
+          ELSE 0
+        END DESC
     `);
 
-    res.render("summary", { files: result.rows });
+    // Define the coordinates of highlighted cells we want to extract
+    // Format: [data_type, approximate_value, description]
+    const highlightedDataPoints = [
+      {
+        type: "PT-COMP",
+        coord: "y",
+        approxValue: -8.19,
+        description: "Y Value (-8.19x)",
+      },
+      {
+        type: "PT-COMP",
+        coord: "y",
+        approxValue: -83.15,
+        description: "Y Value (-83.1xx)",
+      },
+      {
+        type: "DISTANCE",
+        coord: "y",
+        approxValue: -5.01,
+        description: "Y Value (-5.01x)",
+      },
+      {
+        type: "PT-COMP",
+        coord: "x",
+        approxValue: -24.06,
+        description: "X Value (-24.06x)",
+      },
+      {
+        type: "PT-COMP",
+        coord: "z",
+        approxValue: 15.91,
+        description: "Z Value (15.91x)",
+      },
+      {
+        type: "CIRCLE",
+        coord: "tolerance",
+        approxValue: 155.2,
+        description: "Tolerance (155.2xx)",
+      },
+      {
+        type: "CIRCLE",
+        coord: "tolerance",
+        approxValue: 37.5,
+        description: "Tolerance (37.5xx)",
+      },
+      {
+        type: "CIRCLE",
+        coord: "tolerance",
+        approxValue: 8.0,
+        description: "Tolerance (8.00x)",
+      },
+    ];
+
+    // Extract column labels for the table headers
+    const columnLabels = highlightedDataPoints.map(
+      (point) => point.description
+    );
+
+    // Create a data structure to hold the highlighted values for each file
+    const fileData = {};
+
+    // For each file, fetch the highlighted data points
+    for (const file of filesResult.rows) {
+      fileData[file.id] = {};
+
+      // For each highlighted data point, try to find a matching value in the database
+      for (const dataPoint of highlightedDataPoints) {
+        // Query to find the closest match to the approximate value
+        const query = `
+          SELECT ${dataPoint.coord}, data_type
+          FROM file_data
+          WHERE 
+            file_id = $1 AND
+            data_type = $2 AND
+            ${dataPoint.coord} IS NOT NULL AND
+            ${dataPoint.coord} BETWEEN $3 AND $4
+          ORDER BY ABS(${dataPoint.coord} - $5)
+          LIMIT 1
+        `;
+
+        // Calculate a reasonable range around the approximate value (±1% or ±0.05, whichever is larger)
+        const tolerance = Math.max(
+          Math.abs(dataPoint.approxValue) * 0.01,
+          0.05
+        );
+        const minValue = dataPoint.approxValue - tolerance;
+        const maxValue = dataPoint.approxValue + tolerance;
+
+        try {
+          const result = await client.query(query, [
+            file.id,
+            dataPoint.type,
+            minValue,
+            maxValue,
+            dataPoint.approxValue,
+          ]);
+
+          if (result.rows.length > 0) {
+            // Store the actual value found
+            fileData[file.id][dataPoint.description] = parseFloat(
+              result.rows[0][dataPoint.coord]
+            ).toFixed(3);
+          } else {
+            // No matching data point found
+            fileData[file.id][dataPoint.description] = "N/A";
+          }
+        } catch (err) {
+          console.error(`Error fetching data point for file ${file.id}:`, err);
+          fileData[file.id][dataPoint.description] = "Error";
+        }
+      }
+    }
+
+    res.render("summary", {
+      files: filesResult.rows,
+      fileData: fileData,
+      columnLabels: columnLabels,
+      dataColumns: columnLabels,
+      message: req.query.message,
+      error: req.query.error,
+    });
   } catch (err) {
     console.error("Error fetching summary data:", err);
-    res.render("summary", { files: [], error: "Error fetching summary data" });
+    res.render("summary", {
+      files: [],
+      error: "Error fetching summary data: " + err.message,
+    });
   } finally {
     if (client) client.release();
   }
