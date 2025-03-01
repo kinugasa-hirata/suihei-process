@@ -1,17 +1,17 @@
-<!-- views/index.ejs with delete functionality -->
+<!-- views/index.ejs - Updated with Grid Layout -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>File Processor</title>
+    <title>TXT to JSON File Processor</title>
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
     />
     <style>
       .container {
-        max-width: 800px;
+        max-width: 1200px;
         margin-top: 2rem;
       }
       .upload-form {
@@ -20,23 +20,92 @@
         background-color: #f8f9fa;
         border-radius: 5px;
       }
-      .files-table {
-        margin-top: 2rem;
-      }
-      .weight-input {
-        width: 100px;
-        margin-right: 10px;
-      }
-      .action-buttons {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
       .nav-links {
         margin-bottom: 2rem;
       }
-      .delete-btn {
-        margin-left: 0.5rem;
+      .file-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+      }
+      .file-card {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+        border: 2px solid #dee2e6;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+      }
+      .file-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        border-color: #adb5bd;
+      }
+      .file-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #0d6efd;
+        margin-bottom: 0.5rem;
+      }
+      .file-info {
+        color: #6c757d;
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+      }
+      .file-weight {
+        font-weight: bold;
+        font-size: 1.1rem;
+        margin-top: 0.5rem;
+      }
+      .weight-controls {
+        position: absolute;
+        bottom: -20px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      .file-card:hover .weight-controls {
+        opacity: 1;
+      }
+      .weight-form {
+        background-color: white;
+        border-radius: 20px;
+        padding: 5px 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        display: flex;
+        z-index: 10;
+      }
+      .weight-input {
+        width: 80px;
+        font-size: 0.9rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px 0 0 4px;
+        border: 1px solid #ced4da;
+        border-right: none;
+      }
+      .weight-btn {
+        font-size: 0.9rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0 4px 4px 0;
+      }
+      .alert {
+        margin-bottom: 1.5rem;
+      }
+      /* Override bootstrap file input */
+      .form-control.form-control-lg {
+        padding: 0.5rem 1rem;
+        font-size: 1.1rem;
       }
     </style>
   </head>
@@ -79,7 +148,7 @@
             <label for="files" class="form-label">Select TXT files</label>
             <input
               type="file"
-              class="form-control"
+              class="form-control form-control-lg"
               id="files"
               name="files"
               accept=".txt"
@@ -88,7 +157,7 @@
             />
           </div>
           <div class="mb-3">
-            <label class="form-label">If filename already exists:</label>
+            <p class="mb-2">If filename already exists:</p>
             <div class="form-check">
               <input
                 class="form-check-input"
@@ -115,106 +184,65 @@
               </label>
             </div>
           </div>
-          <button type="submit" class="btn btn-primary">
+          <button type="submit" class="btn btn-primary btn-lg">
             Upload and Process
           </button>
         </form>
       </div>
 
-      <div class="files-table">
-        <h2>Processed Files</h2>
-        <% if (files && files.length > 0) { %>
-        <div class="table-responsive">
-          <table class="table table-striped">
-            <thead>
-              <tr>
-                <th>Filename</th>
-                <th>Uploaded At</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% files.forEach(file => { %>
-              <tr>
-                <td><%= file.filename %></td>
-                <td><%= new Date(file.uploaded_at).toLocaleString() %></td>
-                <td>
-                  <div class="action-buttons">
-                    <a href="/files/<%= file.id %>" class="btn btn-sm btn-info">
-                      View Data
-                    </a>
-                    <form
-                      action="/update-weight"
-                      method="post"
-                      class="d-inline"
-                    >
-                      <div class="input-group">
-                        <input
-                          type="hidden"
-                          name="fileId"
-                          value="<%= file.id %>"
-                        />
-                        <input
-                          type="number"
-                          class="form-control form-control-sm weight-input"
-                          name="weight"
-                          step="0.1"
-                          value="<%= file.weight !== null ? parseFloat(file.weight).toFixed(1) : '' %>"
-                          placeholder="Weight"
-                          required
-                        />
-                        <button type="submit" class="btn btn-sm btn-primary">
-                          Save
-                        </button>
-                      </div>
-                    </form>
-                    <form
-                      action="/delete-file"
-                      method="post"
-                      class="d-inline delete-form"
-                      onsubmit="return confirm('Are you sure you want to delete the file \'<%= file.filename %>\'? This will permanently remove all data for this file.');"
-                    >
-                      <input
-                        type="hidden"
-                        name="fileId"
-                        value="<%= file.id %>"
-                      />
-                      <button
-                        type="submit"
-                        class="btn btn-sm btn-danger delete-btn"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          fill="currentColor"
-                          class="bi bi-trash"
-                          viewBox="0 0 16 16"
-                        >
-                          <path
-                            d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"
-                          />
-                          <path
-                            fill-rule="evenodd"
-                            d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"
-                          />
-                        </svg>
-                        Delete
-                      </button>
-                    </form>
-                  </div>
-                </td>
-              </tr>
-              <% }); %>
-            </tbody>
-          </table>
+      <% if (files && files.length > 0) { %>
+      <h2>Processed Files</h2>
+      <div class="file-grid">
+        <% // Sort files by numeric part of filename (descending) const
+        sortedFiles = [...files].sort((a, b) => { const numA =
+        parseInt((a.filename.match(/^\d+/) || ['0'])[0], 10); const numB =
+        parseInt((b.filename.match(/^\d+/) || ['0'])[0], 10); return numB -
+        numA; }); sortedFiles.forEach(file => { // Extract number from filename
+        if possible let fileNumber = file.filename; const match =
+        file.filename.match(/^(\d+)/); if (match) { fileNumber = match[1]; } %>
+        <div class="position-relative">
+          <a href="/files/<%= file.id %>" class="text-decoration-none">
+            <div class="file-card">
+              <div class="file-number"><%= fileNumber %></div>
+              <div class="file-info">
+                <%= new Date(file.uploaded_at).toLocaleString() %>
+              </div>
+              <% if (file.weight !== null) { %>
+              <div class="file-weight">
+                <%= parseFloat(file.weight).toFixed(1) %> kg
+              </div>
+              <% } else { %>
+              <div class="file-weight text-muted">No weight</div>
+              <% } %>
+            </div>
+          </a>
+          <div class="weight-controls">
+            <form action="/update-weight" method="post" class="weight-form">
+              <input type="hidden" name="fileId" value="<%= file.id %>" />
+              <input
+                type="number"
+                class="weight-input"
+                name="weight"
+                step="0.1"
+                value="<%= file.weight !== null ? parseFloat(file.weight).toFixed(1) : '' %>"
+                placeholder="Weight"
+                required
+              />
+              <button type="submit" class="btn btn-primary weight-btn">
+                Save
+              </button>
+            </form>
+          </div>
         </div>
-        <% } else { %>
-        <div class="alert alert-info">
-          <p>No files uploaded yet. Upload TXT files to process them.</p>
-        </div>
-        <% } %>
+        <% }); %>
       </div>
+      <% } else { %>
+      <div class="alert alert-info mt-4">
+        <p class="mb-0">
+          No files uploaded yet. Upload TXT files to process them.
+        </p>
+      </div>
+      <% } %>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
