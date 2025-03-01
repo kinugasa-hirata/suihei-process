@@ -35,18 +35,20 @@
         border-radius: 8px;
         padding: 1.5rem 1rem;
         text-align: center;
-        transition: all 0.2s;
+        transition: all 0.3s ease;
         cursor: pointer;
         border: 2px solid #dee2e6;
         position: relative;
+        user-select: none; /* Prevent text selection during interactions */
       }
       .file-card:hover {
         box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         border-color: #adb5bd;
       }
       .file-card.selected {
+        background-color: #e3f2fd;
         border-color: #0d6efd;
-        background-color: rgba(13, 110, 253, 0.1);
+        box-shadow: 0 0 0 2px #0d6efd;
       }
       .file-card.selected .file-number {
         color: #000;
@@ -74,6 +76,35 @@
         font-size: 0.9rem;
         padding: 0.25rem 0.5rem;
         border-radius: 0 4px 4px 0;
+      }
+      .file-card .file-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .file-name {
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+      }
+      .delete-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(220, 53, 69, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+        border-radius: 6px;
+      }
+      .file-card.deleting .delete-overlay {
+        opacity: 1;
       }
     </style>
   </head>
@@ -184,25 +215,36 @@
         numB; }); sortedFiles.forEach(function(file) { var fileNumber =
         file.filename; var match = file.filename.match(/^(\d+)/); if (match) {
         fileNumber = match[1]; } %>
-        <div class="file-card" data-file-id="<%= file.id %>">
-          <a href="/files/<%= file.id %>" class="text-decoration-none">
+        <div
+          class="file-card"
+          data-file-id="<%= file.id %>"
+          data-filename="<%= file.filename %>"
+        >
+          <div class="delete-overlay">Release to Delete</div>
+          <div class="file-content">
+            <div class="file-name"><%= file.filename %></div>
             <div class="file-number"><%= fileNumber %></div>
-          </a>
-          <form action="/update-weight" method="post" class="weight-form">
-            <input type="hidden" name="fileId" value="<%= file.id %>" />
-            <input
-              type="number"
-              class="weight-input"
-              name="weight"
-              step="0.1"
-              value="<%= file.weight ? parseFloat(file.weight).toFixed(1) : '' %>"
-              placeholder="Weight"
-              required
-            />
-            <button type="submit" class="btn btn-primary weight-btn">
-              Save
-            </button>
-          </form>
+            <% if (file.weight) { %>
+            <div class="weight-display mb-2">
+              <%= (parseFloat(file.weight) * 1000).toFixed(1) %> g
+            </div>
+            <% } %>
+            <form action="/update-weight" method="post" class="weight-form">
+              <input type="hidden" name="fileId" value="<%= file.id %>" />
+              <input
+                type="number"
+                class="weight-input"
+                name="weight"
+                step="0.1"
+                value="<%= file.weight ? parseFloat(file.weight).toFixed(1) : '' %>"
+                placeholder="Weight (kg)"
+                required
+              />
+              <button type="submit" class="btn btn-primary weight-btn">
+                Save
+              </button>
+            </form>
+          </div>
         </div>
         <% }); %>
       </div>
@@ -214,5 +256,160 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const fileCards = document.querySelectorAll(".file-card");
+        const selectedFiles = new Set();
+        let pressTimer;
+        let isDragging = false;
+
+        // Helper function to update the summary form with selected files
+        function updateSummaryForm() {
+          const minFileInput = document.getElementById("minFile");
+          const maxFileInput = document.getElementById("maxFile");
+
+          if (selectedFiles.size > 0) {
+            // Clear the min/max inputs when files are manually selected
+            minFileInput.value = "";
+            maxFileInput.value = "";
+
+            // Add hidden input for selected files if it doesn't exist
+            let selectedFilesInput = document.querySelector(
+              'input[name="selectedFiles"]'
+            );
+            if (!selectedFilesInput) {
+              selectedFilesInput = document.createElement("input");
+              selectedFilesInput.type = "hidden";
+              selectedFilesInput.name = "selectedFiles";
+              document
+                .querySelector('form[action="/summary"]')
+                .appendChild(selectedFilesInput);
+            }
+            selectedFilesInput.value = Array.from(selectedFiles).join(",");
+          }
+        }
+
+        fileCards.forEach((card) => {
+          const fileId = card.dataset.fileId;
+          let tapCount = 0;
+          let lastTap = 0;
+
+          // Handle single tap/click
+          card.addEventListener("click", function (e) {
+            // Ignore clicks on form elements
+            if (e.target.closest("form")) return;
+
+            const now = Date.now();
+            const DOUBLE_TAP_DELAY = 300; // ms
+
+            if (tapCount === 0) {
+              tapCount = 1;
+              lastTap = now;
+
+              // Single tap timer
+              setTimeout(() => {
+                if (tapCount === 1) {
+                  // Single tap action - toggle selection
+                  card.classList.toggle("selected");
+                  if (card.classList.contains("selected")) {
+                    selectedFiles.add(fileId);
+                  } else {
+                    selectedFiles.delete(fileId);
+                  }
+                  updateSummaryForm();
+                }
+                tapCount = 0;
+              }, DOUBLE_TAP_DELAY);
+            } else {
+              if (now - lastTap < DOUBLE_TAP_DELAY) {
+                // Double tap action - view file
+                window.location.href = `/files/${fileId}`;
+              }
+              tapCount = 0;
+            }
+          });
+
+          // Handle long press
+          card.addEventListener("mousedown", function (e) {
+            if (e.target.closest("form")) return;
+
+            pressTimer = setTimeout(() => {
+              card.classList.add("deleting");
+            }, 2000);
+          });
+
+          card.addEventListener("mousemove", function () {
+            isDragging = true;
+            clearTimeout(pressTimer);
+          });
+
+          card.addEventListener("mouseup", function () {
+            clearTimeout(pressTimer);
+            if (card.classList.contains("deleting")) {
+              if (
+                confirm(
+                  `Are you sure you want to delete file ${card.dataset.filename}?`
+                )
+              ) {
+                fetch(`/delete-file`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ fileId: fileId }),
+                })
+                  .then((response) => response.json())
+                  .then((data) => {
+                    if (data.success) {
+                      card.remove();
+                    }
+                  });
+              }
+              card.classList.remove("deleting");
+            }
+            isDragging = false;
+          });
+
+          // Handle touch events for mobile
+          card.addEventListener("touchstart", function (e) {
+            if (e.target.closest("form")) return;
+
+            pressTimer = setTimeout(() => {
+              card.classList.add("deleting");
+            }, 2000);
+          });
+
+          card.addEventListener("touchend", function (e) {
+            clearTimeout(pressTimer);
+            if (card.classList.contains("deleting")) {
+              if (
+                confirm(
+                  `Are you sure you want to delete file ${card.dataset.filename}?`
+                )
+              ) {
+                fetch(`/delete-file`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ fileId: fileId }),
+                })
+                  .then((response) => response.json())
+                  .then((data) => {
+                    if (data.success) {
+                      card.remove();
+                    }
+                  });
+              }
+              card.classList.remove("deleting");
+            }
+          });
+
+          card.addEventListener("touchmove", function () {
+            clearTimeout(pressTimer);
+          });
+        });
+      });
+    </script>
   </body>
 </html>
