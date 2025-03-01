@@ -13,7 +13,6 @@
       .container {
         max-width: 1400px;
         margin-top: 2rem;
-        margin-bottom: 2rem;
       }
       .file-info {
         background-color: #f8f9fa;
@@ -41,11 +40,6 @@
       }
       .table-responsive {
         overflow-x: auto;
-      }
-      .data-cell {
-        max-width: 150px;
-        overflow: hidden;
-        text-overflow: ellipsis;
       }
     </style>
   </head>
@@ -126,30 +120,59 @@
             <tr>
               <td><%= point.id %></td>
               <td><%= point.index %></td>
-              <td>
-                <span class="data-type data-type-<%= point.data_type %>">
-                  <%= point.data_type %>
-                </span>
-              </td>
-              <td><%= point.x !== null ? point.x.toFixed(3) : '-' %></td>
-              <td><%= point.y !== null ? point.y.toFixed(3) : '-' %></td>
-              <td><%= point.z !== null ? point.z.toFixed(3) : '-' %></td>
-              <td>
-                <%= point.rot_x !== null ? point.rot_x.toFixed(3) : '-' %>
+              <td class="data-type data-type-<%= point.data_type %>">
+                <%= point.data_type %>
               </td>
               <td>
-                <%= point.rot_y !== null ? point.rot_y.toFixed(3) : '-' %>
+                <% if(point.x !== null && point.x !== undefined) { %> <%= typeof
+                point.x === 'number' ? point.x.toFixed(3) : (parseFloat(point.x)
+                ? parseFloat(point.x).toFixed(3) : point.x) %> <% } else { %> -
+                <% } %>
               </td>
               <td>
-                <%= point.rot_z !== null ? point.rot_z.toFixed(3) : '-' %>
+                <% if(point.y !== null && point.y !== undefined) { %> <%= typeof
+                point.y === 'number' ? point.y.toFixed(3) : (parseFloat(point.y)
+                ? parseFloat(point.y).toFixed(3) : point.y) %> <% } else { %> -
+                <% } %>
               </td>
-              <td class="data-cell"><%= point.note || '-' %></td>
               <td>
-                <%= point.diameter !== null ? point.diameter.toFixed(3) : '-' %>
+                <% if(point.z !== null && point.z !== undefined) { %> <%= typeof
+                point.z === 'number' ? point.z.toFixed(3) : (parseFloat(point.z)
+                ? parseFloat(point.z).toFixed(3) : point.z) %> <% } else { %> -
+                <% } %>
               </td>
               <td>
-                <%= point.tolerance !== null ? point.tolerance.toFixed(3) : '-'
-                %>
+                <% if(point.rot_x !== null && point.rot_x !== undefined) { %>
+                <%= typeof point.rot_x === 'number' ? point.rot_x.toFixed(3) :
+                (parseFloat(point.rot_x) ? parseFloat(point.rot_x).toFixed(3) :
+                point.rot_x) %> <% } else { %> - <% } %>
+              </td>
+              <td>
+                <% if(point.rot_y !== null && point.rot_y !== undefined) { %>
+                <%= typeof point.rot_y === 'number' ? point.rot_y.toFixed(3) :
+                (parseFloat(point.rot_y) ? parseFloat(point.rot_y).toFixed(3) :
+                point.rot_y) %> <% } else { %> - <% } %>
+              </td>
+              <td>
+                <% if(point.rot_z !== null && point.rot_z !== undefined) { %>
+                <%= typeof point.rot_z === 'number' ? point.rot_z.toFixed(3) :
+                (parseFloat(point.rot_z) ? parseFloat(point.rot_z).toFixed(3) :
+                point.rot_z) %> <% } else { %> - <% } %>
+              </td>
+              <td><%= point.note || '-' %></td>
+              <td>
+                <% if(point.diameter !== null && point.diameter !== undefined) {
+                %> <%= typeof point.diameter === 'number' ?
+                point.diameter.toFixed(3) : (parseFloat(point.diameter) ?
+                parseFloat(point.diameter).toFixed(3) : point.diameter) %> <% }
+                else { %> - <% } %>
+              </td>
+              <td>
+                <% if(point.tolerance !== null && point.tolerance !== undefined)
+                { %> <%= typeof point.tolerance === 'number' ?
+                point.tolerance.toFixed(3) : (parseFloat(point.tolerance) ?
+                parseFloat(point.tolerance).toFixed(3) : point.tolerance) %> <%
+                } else { %> - <% } %>
               </td>
             </tr>
             <% }); %>
