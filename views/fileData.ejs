@@ -228,77 +228,123 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Table Cell Highlighting Script -->
     <script>
       document.addEventListener("DOMContentLoaded", function () {
-        // Highlight specific cells by their position in the table
-        // Format: [rowIndex, columnIndex]
-        // Note: row is 0-based from top, column is 0-based from left
-        const cellsToHighlight = [
-          // Y column cells (rowIndex, 4)
-          [2, 4], // PT-COMP row 1, Y column (-8.196)
-          [4, 4], // PT-COMP row 2, Y column (-83.153)
-          [6, 4], // DISTANCE row 2, Y column (-5.010)
-          [9, 4], // PT-COMP row 4, Y column (-24.068)
-
-          // Z column cells (rowIndex, 5)
-          [13, 5], // PT-COMP row 6, Z column (15.911)
-
-          // Tolerance column cells (rowIndex, 11)
-          [15, 11], // CIRCLE row 7, Tolerance column (155.194)
-          [23, 11], // CIRCLE row 9, Tolerance column (37.500)
-          [24, 11], // CIRCLE row 10, Tolerance column (8.006)
-          [25, 11], // CIRCLE row 11, Tolerance column (7.997)
-          [26, 11], // CIRCLE row 12, Tolerance column (8.003)
-          [27, 11], // CIRCLE row 13, Tolerance column (8.008)
-          [28, 11], // CIRCLE row 14, Tolerance column (122.197)
-          [29, 11], // CIRCLE row 15, Tolerance column (29.974)
-        ];
-
-        // Loop through all rows and add highlight class
+        // Get table and check if it exists
         const table = document.getElementById("dataTable");
+        if (!table) return;
+
+        // Get file ID from page
+        const fileInfoElement = document.querySelector(".file-info");
+        const fileIdElement = fileInfoElement
+          ? fileInfoElement.querySelector("p strong:first-child")
+          : null;
+        let fileId = "";
+
+        if (fileIdElement && fileIdElement.textContent.includes("File ID")) {
+          const fileIdText = fileIdElement.nextSibling
+            ? fileIdElement.nextSibling.textContent.trim()
+            : "";
+          fileId = fileIdText.replace(":", "").trim();
+        }
+
+        // Also check if we can determine file from the URL or heading
+        const fileUrl = window.location.href;
+        const fileHeading = fileInfoElement
+          ? fileInfoElement.querySelector("h2").textContent.trim()
+          : "";
+
+        // Define cells to highlight based on file ID or other identifiers
+        let cellsToHighlight = [];
+
+        if (
+          fileId === "1" ||
+          fileUrl.includes("240") ||
+          fileHeading.includes("240")
+        ) {
+          // For file 240 (ID 1)
+          cellsToHighlight = [
+            // Y column (column 4)
+            [1, 4], // PT-COMP row with Y = -8.194
+            [4, 4], // PT-COMP row with Y = -83.126
+            [6, 4], // DISTANCE row with Y = -5.013
+            [9, 4], // PT-COMP row with Y = -24.067
+
+            // Z column (column 5)
+            [13, 5], // PT-COMP row with Z = 15.912
+
+            // Tolerance column (column 11)
+            [15, 11], // CIRCLE row with Tolerance = 155.222
+            [17, 11], // CIRCLE row with Tolerance = 37.497
+            [18, 11], // CIRCLE row with Tolerance = 8.009
+            [19, 11], // CIRCLE row with Tolerance = 8.006
+            [20, 11], // CIRCLE row with Tolerance = 8.005
+            [21, 11], // CIRCLE row with Tolerance = 8.004
+            [22, 11], // CIRCLE row with Tolerance = 122.209
+            [23, 11], // CIRCLE row with Tolerance = 29.985
+          ];
+        } else if (
+          fileId === "2" ||
+          fileUrl.includes("241") ||
+          fileHeading.includes("241")
+        ) {
+          // For file 241 (ID 2)
+          cellsToHighlight = [
+            // Y column (column 4)
+            [2, 4], // PT-COMP row with Y = -8.196
+            [4, 4], // PT-COMP row with Y = -83.153
+            [6, 4], // DISTANCE row with Y = -5.010
+            [9, 4], // PT-COMP row with Y = -24.068
+
+            // Z column (column 5)
+            [13, 5], // PT-COMP row with Z = 15.911
+
+            // Tolerance column (column 11)
+            [15, 11], // CIRCLE row with Tolerance = 155.194
+            [23, 11], // CIRCLE row with Tolerance = 37.500
+            [24, 11], // CIRCLE row with Tolerance = 8.006
+            [25, 11], // CIRCLE row with Tolerance = 7.997
+            [26, 11], // CIRCLE row with Tolerance = 8.003
+            [27, 11], // CIRCLE row with Tolerance = 8.008
+            [28, 11], // CIRCLE row with Tolerance = 122.197
+            [29, 11], // CIRCLE row with Tolerance = 29.974
+          ];
+        } else {
+          // Default highlighting if we can't determine the file
+          // You can adjust these or remove them
+          cellsToHighlight = [
+            [2, 4],
+            [4, 4],
+            [6, 4],
+            [9, 4],
+            [13, 5],
+            [15, 11],
+            [23, 11],
+          ];
+        }
+
+        // Get all rows in tbody
         const rows = table.querySelectorAll("tbody tr");
 
-        cellsToHighlight.forEach(([rowIdx, colIdx]) => {
-          // Make sure row exists
-          if (rows[rowIdx]) {
-            const cell = rows[rowIdx].cells[colIdx];
-            if (cell) {
-              cell.classList.add("highlight");
+        // Apply highlighting to specified cells
+        cellsToHighlight.forEach(([rowIndex, colIndex]) => {
+          // Make sure row and column exist
+          if (rowIndex < rows.length) {
+            const row = rows[rowIndex];
+            if (colIndex < row.cells.length) {
+              row.cells[colIndex].classList.add("highlight");
             }
           }
         });
 
-        // Alternative method: match specific cells by ID + column
-        const idToHighlight = {
-          // Map ID to column indices that should be highlighted
-          37: [4], // ID 37, highlight Y column (PT-COMP row 1)
-          42: [4], // ID 42, highlight Y column (PT-COMP row 2)
-          48: [4], // ID 48, highlight Y column (DISTANCE row 2)
-          44: [4], // ID 44, highlight Y column (PT-COMP row 4)
-          50: [5], // ID 50, highlight Z column (PT-COMP row 6)
-          34: [11], // ID 34, highlight Tolerance column (CIRCLE row 7)
-          36: [11], // ID 36, highlight Tolerance column (CIRCLE row 9)
-          38: [11], // ID 38, highlight Tolerance column (CIRCLE row 10)
-          39: [11], // ID 39, highlight Tolerance column (CIRCLE row 11)
-          40: [11], // ID 40, highlight Tolerance column (CIRCLE row 12)
-          41: [11], // ID 41, highlight Tolerance column (CIRCLE row 13)
-          46: [11], // ID 46, highlight Tolerance column (CIRCLE row 14)
-          49: [11], // ID 49, highlight Tolerance column (CIRCLE row 15)
-        };
-
-        // Loop through all rows and check by ID
-        rows.forEach((row) => {
-          const idCell = row.cells[0];
-          const id = idCell.textContent.trim();
-
-          if (idToHighlight[id]) {
-            idToHighlight[id].forEach((colIdx) => {
-              if (row.cells[colIdx]) {
-                row.cells[colIdx].classList.add("highlight");
-              }
-            });
-          }
-        });
+        // Log info for debugging (can be removed in production)
+        console.log("File ID:", fileId);
+        console.log("File URL:", fileUrl);
+        console.log("File heading:", fileHeading);
+        console.log("Number of rows:", rows.length);
+        console.log("Cells to highlight:", cellsToHighlight);
       });
     </script>
   </body>
