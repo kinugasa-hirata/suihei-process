@@ -232,6 +232,7 @@
     <!-- Table Cell Highlighting Script -->
     <script>
       // Updated cell highlighting script based on your feedback
+      // Standardized cell highlighting script using file 250 as the base template
       document.addEventListener("DOMContentLoaded", function () {
         // Get table and check if it exists
         const table = document.getElementById("dataTable");
@@ -257,104 +258,31 @@
           ? fileInfoElement.querySelector("h2").textContent.trim()
           : "";
 
-        // Define cells to highlight based on file identifier
-        let cellsToHighlight = [];
+        // The standard set of cells to highlight (using file 250 as the base template)
+        // You can manually adjust these coordinates for each file
+        const cellsToHighlight = [
+          // Y column (column 4)
+          [2, 4], // PT-COMP row with Y value
+          [4, 4], // PT-COMP row with Y value
+          [6, 4], // DISTANCE row with Y value
+          [7, 4], // PT-COMP row with Y value
 
-        if (
-          fileId === "1" ||
-          fileUrl.includes("240") ||
-          fileHeading.includes("240")
-        ) {
-          // For file 240 (ID 1)
-          cellsToHighlight = [
-            // Y column (column 4)
-            [1, 4], // PT-COMP row with Y = -8.194
-            [4, 4], // PT-COMP row with Y = -83.126
-            [6, 4], // DISTANCE row with Y = -5.013
-            [9, 4], // PT-COMP row with Y = -24.067
+          // X column (column 3)
+          [10, 3], // PT-COMP row with X value
 
-            // Z column (column 5)
-            [13, 5], // PT-COMP row with Z = 15.912
+          // Z column (column 5)
+          [14, 5], // PT-COMP row with Z value
 
-            // Tolerance column (column 11)
-            [15, 11], // CIRCLE row with Tolerance = 155.222
-            [17, 11], // CIRCLE row with Tolerance = 37.497
-            [18, 11], // CIRCLE row with Tolerance = 8.009
-            [19, 11], // CIRCLE row with Tolerance = 8.006
-            [20, 11], // CIRCLE row with Tolerance = 8.005
-            [21, 11], // CIRCLE row with Tolerance = 8.004
-            [22, 11], // CIRCLE row with Tolerance = 122.209
-            [23, 11], // CIRCLE row with Tolerance = 29.985
-          ];
-        } else if (
-          fileId === "2" ||
-          fileUrl.includes("241") ||
-          fileHeading.includes("241")
-        ) {
-          // For file 241 (ID 2)
-          cellsToHighlight = [
-            // Y column (column 4)
-            [2, 4], // PT-COMP row with Y = -8.196
-            [4, 4], // PT-COMP row with Y = -83.153
-            [6, 4], // DISTANCE row with Y = -5.010
-            // REMOVED: [9, 4],   // PT-COMP row with Y = -24.068
-
-            // Z column (column 5)
-            [13, 5], // PT-COMP row with Z = 15.911
-
-            // Tolerance column (column 11)
-            [15, 11], // CIRCLE row with Tolerance = 155.194
-            [23, 11], // CIRCLE row with Tolerance = 37.500
-            [24, 11], // CIRCLE row with Tolerance = 8.006
-            [25, 11], // CIRCLE row with Tolerance = 7.997
-            [26, 11], // CIRCLE row with Tolerance = 8.003
-            [27, 11], // CIRCLE row with Tolerance = 8.008
-            [28, 11], // CIRCLE row with Tolerance = 122.197
-            [29, 11], // CIRCLE row with Tolerance = 29.974
-          ];
-        } else if (
-          fileId === "11" ||
-          fileUrl.includes("250") ||
-          fileHeading.includes("250")
-        ) {
-          // For file 250 (ID 11) - NEW FILE
-          cellsToHighlight = [
-            // Y column (column 4)
-            [2, 4], // PT-COMP row with Y = -8.197
-            [4, 4], // PT-COMP row with Y = -83.129
-            [6, 4], // DISTANCE row with Y = -5.013
-            [7, 4], // PT-COMP row with Y = -83.154
-
-            // X column (column 3)
-            [10, 3], // PT-COMP row with X = -24.064 (green circle)
-
-            // Z column (column 5)
-            [13, 5], // Z = -14.989 (marked with red X, but included for consistency)
-            [14, 5], // Z = 15.913 (green circle)
-
-            // Tolerance column (column 11)
-            [17, 11], // CIRCLE row with Tolerance = 155.234
-            [19, 11], // CIRCLE row with Tolerance = 37.502 (green circle)
-            [20, 11], // CIRCLE row with Tolerance = 8.008 (green circle)
-            [21, 11], // CIRCLE row with Tolerance = 8.001 (green circle)
-            [22, 11], // CIRCLE row with Tolerance = 8.002 (green circle)
-            [23, 11], // CIRCLE row with Tolerance = 8.003
-            [24, 11], // CIRCLE row with Tolerance = 122.220 (green circle)
-            [25, 11], // CIRCLE row with Tolerance = 29.967 (green circle)
-          ];
-        } else {
-          // Default highlighting if we can't determine the file
-          // Using some common positions
-          cellsToHighlight = [
-            [2, 4],
-            [4, 4],
-            [6, 4],
-            [13, 5],
-            [17, 11],
-            [23, 11],
-            [24, 11],
-          ];
-        }
+          // Tolerance column (column 11)
+          [17, 11], // CIRCLE row with Tolerance value
+          [19, 11], // CIRCLE row with Tolerance value
+          [20, 11], // CIRCLE row with Tolerance value
+          [21, 11], // CIRCLE row with Tolerance value
+          [22, 11], // CIRCLE row with Tolerance value
+          [23, 11], // CIRCLE row with Tolerance value
+          [24, 11], // CIRCLE row with Tolerance value
+          [25, 11], // CIRCLE row with Tolerance value
+        ];
 
         // Get all rows in tbody
         const rows = table.querySelectorAll("tbody tr");
@@ -375,7 +303,7 @@
         console.log("File URL:", fileUrl);
         console.log("File heading:", fileHeading);
         console.log("Number of rows:", rows.length);
-        console.log("Cells to highlight:", cellsToHighlight);
+        console.log("Cells highlighted:", cellsToHighlight);
       });
     </script>
   </body>
