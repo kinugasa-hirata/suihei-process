@@ -114,7 +114,7 @@ app.get("/", async (req, res) => {
   }
 });
 
-// Enhanced file upload route with better error handling
+// Updated upload route with overwrite option
 app.post("/upload", upload.array("files"), async (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).send("No files were uploaded.");
@@ -124,6 +124,7 @@ app.post("/upload", upload.array("files"), async (req, res) => {
   try {
     client = await pool.connect();
 
+    // Process each uploaded file
     for (const file of req.files) {
       // Extract filename without extension
       const fileNameWithExt = path.basename(file.originalname);
@@ -132,19 +133,47 @@ app.post("/upload", upload.array("files"), async (req, res) => {
         path.extname(fileNameWithExt)
       );
 
+      // Check if file already exists
+      const fileCheckResult = await client.query(
+        "SELECT id FROM files WHERE filename = $1",
+        [fileName]
+      );
+
+      const fileExists = fileCheckResult.rows.length > 0;
+      const existingFileId = fileExists ? fileCheckResult.rows[0].id : null;
+
+      // Default overwrite action
+      let overwriteAction = req.body.overwriteAction || "skip";
+
+      // If file exists and action is to skip, continue to next file
+      if (fileExists && overwriteAction === "skip") {
+        continue;
+      }
+
+      let fileId;
+      if (fileExists && overwriteAction === "overwrite") {
+        // Delete existing file data
+        await client.query("DELETE FROM file_data WHERE file_id = $1", [
+          existingFileId,
+        ]);
+
+        // Keep the existing file record and its ID
+        fileId = existingFileId;
+      } else {
+        // Insert new file record
+        const fileResult = await client.query(
+          "INSERT INTO files (filename) VALUES ($1) RETURNING id",
+          [fileName]
+        );
+        fileId = fileResult.rows[0].id;
+      }
+
       // Parse the file content
       const content = file.buffer.toString("utf8");
       const lines = content
         .split("\n")
         .map((line) => line.trim())
         .filter((line) => line.length > 0);
-
-      // Insert file into database
-      const fileResult = await client.query(
-        "INSERT INTO files (filename) VALUES ($1) RETURNING id",
-        [fileName]
-      );
-      const fileId = fileResult.rows[0].id;
 
       // Process and insert each line
       for (const line of lines) {
