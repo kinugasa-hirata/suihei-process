@@ -1,4 +1,4 @@
-<!-- views/summary.ejs - Table-based data summary -->
+<!-- Fixed views/summary.ejs - Corrected syntax issues -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -48,7 +48,7 @@
         <a href="/summary" class="btn btn-info active">View Summary</a>
       </div>
 
-      <% if (locals.message) { %>
+      <% if (typeof message !== 'undefined' && message) { %>
       <div class="alert alert-success alert-dismissible fade show" role="alert">
         <%= message %>
         <button
@@ -58,7 +58,7 @@
           aria-label="Close"
         ></button>
       </div>
-      <% } %> <% if (locals.error) { %>
+      <% } %> <% if (typeof error !== 'undefined' && error) { %>
       <div class="alert alert-danger alert-dismissible fade show" role="alert">
         <%= error %>
         <button
@@ -71,7 +71,7 @@
       <% } %>
 
       <div class="summary-table">
-        <% if (files && files.length > 0) { %>
+        <% if (typeof files !== 'undefined' && files && files.length > 0) { %>
         <div class="row mb-4">
           <div class="col-md-6">
             <div class="card summary-card">
@@ -92,9 +92,9 @@
               </div>
               <div class="card-body">
                 <h2 class="display-4">
-                  <% const totalWeight = files.reduce((sum, file) => { return
-                  sum + (file.weight !== null ? parseFloat(file.weight) : 0); },
-                  0); %> <%= totalWeight.toFixed(1) %>
+                  <% const totalWeight = files.reduce(function(sum, file) {
+                  return sum + (file.weight !== null ? parseFloat(file.weight) :
+                  0); }, 0); %> <%= totalWeight.toFixed(1) %>
                 </h2>
                 <p class="text-muted">Combined weight of all files (kg)</p>
               </div>
@@ -114,8 +114,9 @@
               <tr>
                 <th>Filename</th>
                 <th>Weight</th>
-                <% if (locals.columnLabels && columnLabels.length > 0) { %> <%
-                columnLabels.forEach(label => { %>
+                <% if (typeof columnLabels !== 'undefined' && columnLabels &&
+                columnLabels.length > 0) { %> <%
+                columnLabels.forEach(function(label) { %>
                 <th><%= label %></th>
                 <% }); %> <% } else { %>
                 <th>Y Value (-8.19x)</th>
@@ -132,10 +133,10 @@
             </thead>
             <tbody>
               <% // Sort files by numeric part of filename (descending) const
-              sortedFiles = [...files].sort((a, b) => { const numA =
+              sortedFiles = [...files].sort(function(a, b) { const numA =
               parseInt((a.filename.match(/^\d+/) || ['0'])[0], 10); const numB =
               parseInt((b.filename.match(/^\d+/) || ['0'])[0], 10); return numB
-              - numA; }); sortedFiles.forEach(file => { %>
+              - numA; }); sortedFiles.forEach(function(file) { %>
               <tr>
                 <td><strong><%= file.filename %></strong></td>
                 <td>
@@ -145,12 +146,24 @@
                   <% } %>
                 </td>
 
-                <% if (locals.fileData && fileData[file.id]) { %> <%
-                locals.dataColumns.forEach(column => { %>
+                <% if (typeof fileData !== 'undefined' && fileData &&
+                fileData[file.id]) { %> <% if (typeof dataColumns !==
+                'undefined' && dataColumns) { %> <%
+                dataColumns.forEach(function(column) { %>
                 <td class="highlight-cell">
                   <%= fileData[file.id][column] || 'N/A' %>
                 </td>
                 <% }); %> <% } else { %>
+                <!-- Fallback when dataColumns is not defined -->
+                <td class="highlight-cell">-</td>
+                <td class="highlight-cell">-</td>
+                <td class="highlight-cell">-</td>
+                <td class="highlight-cell">-</td>
+                <td class="highlight-cell">-</td>
+                <td class="highlight-cell">-</td>
+                <td class="highlight-cell">-</td>
+                <td class="highlight-cell">-</td>
+                <% } %> <% } else { %>
                 <!-- Placeholder cells when we don't have real data yet -->
                 <td class="highlight-cell">-</td>
                 <td class="highlight-cell">-</td>
