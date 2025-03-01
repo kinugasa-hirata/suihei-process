@@ -219,12 +219,7 @@
       <!-- File grid -->
       <div class="d-flex justify-content-between align-items-center">
         <h2>Processed Files</h2>
-        <button
-          id="viewSelectedBtn"
-          class="btn btn-info"
-          disabled
-          onclick="document.getElementById('viewSelectedForm').submit();"
-        >
+        <button id="viewSelectedBtn" class="btn btn-info" disabled>
           View Selected Files
         </button>
       </div>
@@ -293,57 +288,79 @@
             document.getElementById("selectedFilesInput");
 
           if (selectedFiles.size > 0) {
-            // Enable the View Selected button
             viewSelectedBtn.disabled = false;
             viewSelectedBtn.textContent = `View Selected Files (${selectedFiles.size})`;
-
-            // Update the hidden input with selected file IDs
-            selectedFilesInput.value = Array.from(selectedFiles).join(",");
+            const selectedFilesArray = Array.from(selectedFiles);
+            selectedFilesInput.value = selectedFilesArray.join(",");
+            console.log(
+              "Setting selected files input value:",
+              selectedFilesInput.value
+            ); // Debug log
           } else {
-            // Disable the View Selected button when no files are selected
             viewSelectedBtn.disabled = true;
             viewSelectedBtn.textContent = "View Selected Files";
             selectedFilesInput.value = "";
           }
         }
 
-        fileCards.forEach((card) => {
+        // Function to handle file selection
+        function toggleFileSelection(card) {
           const fileId = card.dataset.fileId;
-          let tapCount = 0;
-          let lastTap = 0;
+          if (card.classList.contains("selected")) {
+            selectedFiles.delete(fileId);
+            card.classList.remove("selected");
+          } else {
+            selectedFiles.add(fileId);
+            card.classList.add("selected");
+          }
+          updateSummaryForm();
+        }
 
-          // Handle single tap/click
+        // Handle range selection
+        window.selectFileRange = function (event) {
+          event.preventDefault();
+
+          const minFile = parseInt(document.getElementById("minFile").value);
+          const maxFile = parseInt(document.getElementById("maxFile").value);
+
+          if (isNaN(minFile) || isNaN(maxFile)) {
+            alert("Please enter valid file numbers");
+            return;
+          }
+
+          // Clear previous selections
+          selectedFiles.clear();
+          fileCards.forEach((card) => card.classList.remove("selected"));
+
+          // Add new selections
+          fileCards.forEach((card) => {
+            const filename = card.dataset.filename;
+            const fileNumber = parseInt(filename.match(/^\d+/)?.[0]);
+
+            if (fileNumber >= minFile && fileNumber <= maxFile) {
+              card.classList.add("selected");
+              selectedFiles.add(card.dataset.fileId);
+            }
+          });
+
+          updateSummaryForm();
+        };
+
+        // Handle View Selected button click
+        document
+          .getElementById("viewSelectedBtn")
+          .addEventListener("click", function (e) {
+            e.preventDefault();
+            if (selectedFiles.size > 0) {
+              document.getElementById("viewSelectedForm").submit();
+            }
+          });
+
+        // Add click handlers to file cards
+        fileCards.forEach((card) => {
           card.addEventListener("click", function (e) {
-            // Ignore clicks on form elements
-            if (e.target.closest("form")) return;
-
-            const now = Date.now();
-            const DOUBLE_TAP_DELAY = 300; // ms
-
-            if (tapCount === 0) {
-              tapCount = 1;
-              lastTap = now;
-
-              // Single tap timer
-              setTimeout(() => {
-                if (tapCount === 1) {
-                  // Single tap action - toggle selection
-                  card.classList.toggle("selected");
-                  if (card.classList.contains("selected")) {
-                    selectedFiles.add(fileId);
-                  } else {
-                    selectedFiles.delete(fileId);
-                  }
-                  updateSummaryForm();
-                }
-                tapCount = 0;
-              }, DOUBLE_TAP_DELAY);
-            } else {
-              if (now - lastTap < DOUBLE_TAP_DELAY) {
-                // Double tap action - view file
-                window.location.href = `/files/${fileId}`;
-              }
-              tapCount = 0;
+            if (!e.target.closest("form")) {
+              toggleFileSelection(this);
             }
           });
 
@@ -374,7 +391,7 @@
                   headers: {
                     "Content-Type": "application/json",
                   },
-                  body: JSON.stringify({ fileId: fileId }),
+                  body: JSON.stringify({ fileId: card.dataset.fileId }),
                 })
                   .then((response) => response.json())
                   .then((data) => {
@@ -410,7 +427,7 @@
                   headers: {
                     "Content-Type": "application/json",
                   },
-                  body: JSON.stringify({ fileId: fileId }),
+                  body: JSON.stringify({ fileId: card.dataset.fileId }),
                 })
                   .then((response) => response.json())
                   .then((data) => {
@@ -427,32 +444,6 @@
             clearTimeout(pressTimer);
           });
         });
-
-        // Add this new function to handle range selection
-        window.selectFileRange = function (event) {
-          event.preventDefault();
-
-          const minFile = parseInt(document.getElementById("minFile").value);
-          const maxFile = parseInt(document.getElementById("maxFile").value);
-
-          if (isNaN(minFile) || isNaN(maxFile)) {
-            alert("Please enter valid file numbers");
-            return;
-          }
-
-          fileCards.forEach((card) => {
-            const filename = card.dataset.filename;
-            const fileNumber = parseInt(filename.match(/^\d+/)?.[0]);
-
-            if (fileNumber >= minFile && fileNumber <= maxFile) {
-              // Add to selection
-              card.classList.add("selected");
-              selectedFiles.add(card.dataset.fileId);
-            }
-          });
-
-          updateSummaryForm();
-        };
       });
     </script>
   </body>

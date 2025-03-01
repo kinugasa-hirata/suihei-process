@@ -457,7 +457,10 @@ app.get("/summary", async (req, res) => {
       const selectedFiles = req.query.selectedFiles
         .split(",")
         .filter((id) => id);
+      console.log("Selected files IDs:", selectedFiles); // Debug log
+
       if (selectedFiles.length > 0) {
+        // Use parameterized query with selected file IDs
         const placeholders = selectedFiles
           .map((_, index) => `$${index + 1}`)
           .join(",");
@@ -466,13 +469,18 @@ app.get("/summary", async (req, res) => {
           FROM files f
           LEFT JOIN file_weights fw ON f.id = fw.file_id
           WHERE f.id IN (${placeholders})
-          ORDER BY f.filename
+          ORDER BY 
+            CASE 
+              WHEN f.filename ~ '^[0-9]+' THEN 
+                CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
+              ELSE 0
+            END ASC
         `;
         params = selectedFiles;
       }
     }
 
-    // If no selected files, use min/max range
+    // If no selected files, fall back to min/max range
     if (!query) {
       const minFileNumber = req.query.minFile
         ? parseInt(req.query.minFile, 10)
@@ -485,17 +493,27 @@ app.get("/summary", async (req, res) => {
         SELECT f.id, f.filename, fw.weight, f.uploaded_at
         FROM files f
         LEFT JOIN file_weights fw ON f.id = fw.file_id
-        WHERE CASE 
-          WHEN f.filename ~ '^[0-9]+' THEN 
-            CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
-          ELSE 0
-        END BETWEEN $1 AND $2
-        ORDER BY f.filename
+        WHERE 
+          CASE 
+            WHEN f.filename ~ '^[0-9]+' THEN 
+              CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
+            ELSE 0
+          END BETWEEN $1 AND $2
+        ORDER BY 
+          CASE 
+            WHEN f.filename ~ '^[0-9]+' THEN 
+              CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
+            ELSE 0
+          END ASC
       `;
       params = [minFileNumber, maxFileNumber];
     }
 
+    console.log("Query:", query); // Debug log
+    console.log("Params:", params); // Debug log
+
     const filesResult = await client.query(query, params);
+    console.log("Found files:", filesResult.rows.length); // Debug log
 
     // Define the highlighted cells
     const cellCoordinates = [
@@ -584,12 +602,12 @@ app.get("/summary", async (req, res) => {
     res.render("summary", {
       files: filesResult.rows,
       fileData: fileData,
-      minFile: minFileNumber > 0 ? minFileNumber : "",
-      maxFile: maxFileNumber < 9999 ? maxFileNumber : "",
+      minFile: req.query.minFile || "",
+      maxFile: req.query.maxFile || "",
     });
   } catch (err) {
     console.error("Error fetching summary data:", err);
-    res.render("summary", {
+    res.status(500).render("summary", {
       files: [],
       error: "Error fetching summary data: " + err.message,
     });
