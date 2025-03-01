@@ -16,10 +16,12 @@
       }
       .upload-form,
       .summary-form {
-        margin-bottom: 2rem;
         padding: 1.5rem;
         background-color: #f8f9fa;
         border-radius: 5px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
       }
       .nav-links {
         margin-bottom: 2rem;
@@ -112,11 +114,11 @@
       }
 
       .upload-form {
-        margin-bottom: 1.5rem;
-        padding: 1.5rem;
-        background-color: #f8f9fa;
-        border-radius: 5px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        justify-content: space-between;
+      }
+
+      .summary-form form {
+        margin-top: auto;
       }
     </style>
   </head>
@@ -129,84 +131,92 @@
         <a href="/summary" class="btn btn-info">View Summary</a>
       </div>
 
-      <!-- Summary Report form -->
-      <div class="summary-form">
-        <h3>Generate Summary Report</h3>
-        <p>Select a range of files to include in the summary report.</p>
-
-        <form id="rangeSelectForm" onsubmit="selectFileRange(event)">
-          <div class="row mb-3">
-            <div class="col-md-4">
-              <label for="minFile" class="form-label">From File #</label>
-              <input
-                type="number"
-                class="form-control"
-                id="minFile"
-                name="minFile"
-                placeholder="e.g., 240"
-              />
-            </div>
-            <div class="col-md-4">
-              <label for="maxFile" class="form-label">To File #</label>
-              <input
-                type="number"
-                class="form-control"
-                id="maxFile"
-                name="maxFile"
-                placeholder="e.g., 250"
-              />
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-              <button type="submit" class="btn btn-info">Select Data</button>
-            </div>
+      <!-- Summary Report and Upload forms in a row -->
+      <div class="row mb-4">
+        <!-- Summary Report form -->
+        <div class="col-md-8">
+          <div class="summary-form h-100">
+            <h3>Generate Summary Report</h3>
+            <p>Select a range of files to include in the summary report.</p>
+            <form id="rangeSelectForm" onsubmit="selectFileRange(event)">
+              <div class="row">
+                <div class="col-md-5">
+                  <label for="minFile" class="form-label">From File #</label>
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="minFile"
+                    name="minFile"
+                    placeholder="e.g., 240"
+                  />
+                </div>
+                <div class="col-md-5">
+                  <label for="maxFile" class="form-label">To File #</label>
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="maxFile"
+                    name="maxFile"
+                    placeholder="e.g., 250"
+                  />
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                  <button type="submit" class="btn btn-info w-100">
+                    Select Data
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
-        </form>
-      </div>
+        </div>
 
-      <!-- Upload form -->
-      <div class="upload-form">
-        <form
-          action="/upload"
-          method="post"
-          enctype="multipart/form-data"
-          class="d-flex justify-content-between align-items-center"
-        >
-          <h2 class="mb-0">Upload Files</h2>
-          <div class="d-flex align-items-center">
-            <input
-              type="file"
-              id="files"
-              name="files"
-              accept=".txt"
-              multiple
-              required
-              style="display: none"
-              onchange="this.form.submit()"
-            />
-            <input type="hidden" name="overwriteAction" value="overwrite" />
-            <label
-              for="files"
-              class="btn btn-primary mb-0 d-flex align-items-center"
+        <!-- Upload form -->
+        <div class="col-md-4">
+          <div class="upload-form h-100">
+            <form
+              action="/upload"
+              method="post"
+              enctype="multipart/form-data"
+              class="d-flex justify-content-between align-items-center"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                fill="currentColor"
-                class="bi bi-upload me-2"
-                viewBox="0 0 16 16"
-              >
-                <path
-                  d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"
+              <h2 class="mb-0">Upload Files</h2>
+              <div class="d-flex align-items-center">
+                <input
+                  type="file"
+                  id="files"
+                  name="files"
+                  accept=".txt"
+                  multiple
+                  required
+                  style="display: none"
+                  onchange="this.form.submit()"
                 />
-                <path
-                  d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"
-                />
-              </svg>
-              Upload TXT Files
-            </label>
+                <input type="hidden" name="overwriteAction" value="overwrite" />
+                <label
+                  for="files"
+                  class="btn btn-primary mb-0 d-flex align-items-center"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    fill="currentColor"
+                    class="bi bi-upload me-2"
+                    viewBox="0 0 16 16"
+                  >
+                    <path
+                      d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"
+                    />
+                    <path
+                      d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"
+                    />
+                  </svg>
+                  Upload TXT Files
+                </label>
+              </div>
+            </form>
           </div>
-        </form>
+        </div>
       </div>
 
       <!-- Add this hidden form for the View Selected button -->
