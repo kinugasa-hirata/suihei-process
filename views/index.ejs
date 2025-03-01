@@ -68,14 +68,8 @@
         width: 80px;
         font-size: 0.9rem;
         padding: 0.25rem 0.5rem;
-        border-radius: 4px 0 0 4px;
+        border-radius: 4px;
         border: 1px solid #ced4da;
-        border-right: none;
-      }
-      .weight-btn {
-        font-size: 0.9rem;
-        padding: 0.25rem 0.5rem;
-        border-radius: 0 4px 4px 0;
       }
       .file-card .file-content {
         display: flex;
@@ -105,6 +99,16 @@
       }
       .file-card.deleting .delete-overlay {
         opacity: 1;
+      }
+
+      /* Add this to remove the up/down arrows */
+      .weight-input::-webkit-outer-spin-button,
+      .weight-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      .weight-input[type="number"] {
+        -moz-appearance: textfield;
       }
     </style>
   </head>
@@ -257,9 +261,10 @@
                 type="number"
                 class="weight-input"
                 data-file-id="<%= file.id %>"
-                step="0.1"
+                step="1"
                 value="<%= file.weight ? (parseFloat(file.weight) * 1000).toFixed(1) : '' %>"
                 placeholder="Weight (g)"
+                style="text-align: center"
               />
             </div>
           </div>
