@@ -11,13 +11,8 @@
     />
     <style>
       .container {
-        max-width: 1000px;
+        max-width: 1200px;
         margin-top: 2rem;
-      }
-      .table-responsive {
-        margin-top: 1rem;
-      }
-      .nav-links {
         margin-bottom: 2rem;
       }
       .file-info {
@@ -26,27 +21,23 @@
         border-radius: 5px;
         margin-bottom: 1.5rem;
       }
-      .data-type-badge {
-        font-size: 0.8rem;
-        padding: 0.3rem 0.5rem;
-        margin-right: 0.5rem;
-        border-radius: 4px;
+      .nav-links {
+        margin-bottom: 2rem;
       }
-      .badge-CIRCLE {
-        background-color: #d4edda;
-        color: #155724;
+      .data-type {
+        font-weight: bold;
       }
-      .badge-PLANE {
-        background-color: #cce5ff;
-        color: #004085;
+      .data-type-CIRCLE {
+        color: #198754;
       }
-      .badge-DISTANCE {
-        background-color: #fff3cd;
-        color: #856404;
+      .data-type-PLANE {
+        color: #0d6efd;
       }
-      .badge-PT-COMP {
-        background-color: #f8d7da;
-        color: #721c24;
+      .data-type-DISTANCE {
+        color: #ffc107;
+      }
+      .data-type-PT-COMP {
+        color: #dc3545;
       }
     </style>
   </head>
@@ -59,109 +50,72 @@
         <a href="/summary" class="btn btn-info">View Summary</a>
       </div>
 
+      <% if (typeof file !== 'undefined' && file) { %>
       <div class="file-info">
-        <% if (locals.file) { %>
         <h2><%= file.filename %></h2>
-        <div class="row">
-          <div class="col-md-8">
-            <p>
-              <strong>Uploaded:</strong> <%= new
-              Date(file.uploaded_at).toLocaleString() %>
-            </p>
-          </div>
-          <div class="col-md-4">
-            <% if (file.weight !== null) { %>
-            <p>
-              <strong>Weight:</strong> <%= parseFloat(file.weight).toFixed(1) %>
-            </p>
-            <form action="/update-weight" method="post" class="d-inline">
-              <div class="input-group input-group-sm">
-                <input type="hidden" name="fileId" value="<%= file.id %>" />
-                <input
-                  type="number"
-                  class="form-control"
-                  name="weight"
-                  step="0.1"
-                  value="<%= parseFloat(file.weight).toFixed(1) %>"
-                />
-                <button type="submit" class="btn btn-primary btn-sm">
-                  Update
-                </button>
-              </div>
-            </form>
-            <% } else { %>
-            <form action="/update-weight" method="post" class="d-inline">
-              <div class="input-group input-group-sm">
-                <input type="hidden" name="fileId" value="<%= file.id %>" />
-                <input
-                  type="number"
-                  class="form-control"
-                  name="weight"
-                  step="0.1"
-                  value=""
-                  placeholder="Set weight"
-                />
-                <button type="submit" class="btn btn-primary btn-sm">
-                  Save
-                </button>
-              </div>
-            </form>
-            <% } %>
-          </div>
-        </div>
-        <% } %>
-      </div>
+        <p>
+          <strong>Uploaded:</strong>
+          <%= new Date(file.uploaded_at).toLocaleString() %> <% if (typeof
+          file.weight !== 'undefined' && file.weight !== null) { %> |
+          <strong>Weight:</strong> <%= file.weight %> <% } %>
+        </p>
 
-      <% if (locals.message) { %>
+        <form action="/update-weight" method="post">
+          <div class="input-group" style="max-width: 250px">
+            <input type="hidden" name="fileId" value="<%= file.id %>" />
+            <input
+              type="number"
+              class="form-control"
+              name="weight"
+              step="0.1"
+              value="<%= file.weight !== null ? file.weight : '' %>"
+              placeholder="Enter weight"
+            />
+            <button type="submit" class="btn btn-primary">Update Weight</button>
+          </div>
+        </form>
+      </div>
+      <% } %> <% if (typeof message !== 'undefined' && message) { %>
       <div class="alert alert-info"><%= message %></div>
-      <% } %> <% if (locals.data && data.length > 0) { %>
+      <% } %> <% if (typeof data !== 'undefined' && data && data.length > 0) {
+      %>
       <h3>Data Points (<%= data.length %>)</h3>
       <div class="table-responsive">
-        <table class="table table-striped table-bordered">
-          <thead class="table-dark">
+        <table class="table table-striped">
+          <thead>
             <tr>
-              <th>Index</th>
-              <th>Type</th>
-              <th>X</th>
-              <th>Y</th>
-              <th>Z</th>
-              <th>Rot X</th>
-              <th>Rot Y</th>
-              <th>Rot Z</th>
-              <th>Note</th>
-              <th>Diameter</th>
-              <th>Tolerance</th>
+              <th scope="col">Index</th>
+              <th scope="col">Type</th>
+              <th scope="col">X</th>
+              <th scope="col">Y</th>
+              <th scope="col">Z</th>
+              <th scope="col">Diameter</th>
+              <th scope="col">Note</th>
             </tr>
           </thead>
           <tbody>
-            <% data.forEach(item => { %>
+            <% data.forEach(function(point) { %>
             <tr>
-              <td><%= item.index %></td>
+              <td><%= point.index %></td>
               <td>
-                <span class="data-type-badge badge-<%= item.data_type %>">
-                  <%= item.data_type %>
+                <span class="data-type data-type-<%= point.data_type %>">
+                  <%= point.data_type %>
                 </span>
               </td>
-              <td><%= item.x !== null ? item.x.toFixed(3) : '' %></td>
-              <td><%= item.y !== null ? item.y.toFixed(3) : '' %></td>
-              <td><%= item.z !== null ? item.z.toFixed(3) : '' %></td>
-              <td><%= item.rot_x !== null ? item.rot_x.toFixed(3) : '' %></td>
-              <td><%= item.rot_y !== null ? item.rot_y.toFixed(3) : '' %></td>
-              <td><%= item.rot_z !== null ? item.rot_z.toFixed(3) : '' %></td>
-              <td><%= item.note %></td>
-              <td>
-                <%= item.diameter !== null ? item.diameter.toFixed(3) : '' %>
-              </td>
-              <td>
-                <%= item.tolerance !== null ? item.tolerance.toFixed(3) : '' %>
-              </td>
+              <td><%= point.x !== null ? point.x : '-' %></td>
+              <td><%= point.y !== null ? point.y : '-' %></td>
+              <td><%= point.z !== null ? point.z : '-' %></td>
+              <td><%= point.diameter !== null ? point.diameter : '-' %></td>
+              <td><%= point.note || '-' %></td>
             </tr>
             <% }); %>
           </tbody>
         </table>
       </div>
       <% } else { %>
-      <div class="alert alert-warning">No data available for this file.</div>
+      <div class="alert alert-warning">
+        <p>No data found for this file.</p>
+      </div>
       <% } %>
     </div>
 
