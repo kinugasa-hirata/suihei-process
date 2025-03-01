@@ -78,10 +78,6 @@
         flex-direction: column;
         align-items: center;
       }
-      .file-name {
-        font-size: 1.1rem;
-        margin-bottom: 0.5rem;
-      }
       .delete-overlay {
         position: absolute;
         top: 0;
@@ -177,7 +173,7 @@
               action="/upload"
               method="post"
               enctype="multipart/form-data"
-              class="d-flex justify-content-between align-items-center"
+              class="d-flex justify-content-between align-items-center h-100"
             >
               <h2 class="mb-0">Upload Files</h2>
               <div class="d-flex align-items-center">
@@ -263,7 +259,6 @@
         >
           <div class="delete-overlay">Release to Delete</div>
           <div class="file-content">
-            <div class="file-name"><%= file.filename %></div>
             <div class="file-number"><%= fileNumber %></div>
             <% if (file.weight) { %>
             <div class="weight-display mb-2">
@@ -403,126 +398,3 @@
               if (
                 confirm(
                   `Are you sure you want to delete file ${card.dataset.filename}?`
-                )
-              ) {
-                fetch(`/delete-file`, {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ fileId: card.dataset.fileId }),
-                })
-                  .then((response) => response.json())
-                  .then((data) => {
-                    if (data.success) {
-                      card.remove();
-                    }
-                  });
-              }
-              card.classList.remove("deleting");
-            }
-            isDragging = false;
-          });
-
-          // Handle touch events for mobile
-          card.addEventListener("touchstart", function (e) {
-            if (e.target.closest("form")) return;
-
-            pressTimer = setTimeout(() => {
-              card.classList.add("deleting");
-            }, 2000);
-          });
-
-          card.addEventListener("touchend", function (e) {
-            clearTimeout(pressTimer);
-            if (card.classList.contains("deleting")) {
-              if (
-                confirm(
-                  `Are you sure you want to delete file ${card.dataset.filename}?`
-                )
-              ) {
-                fetch(`/delete-file`, {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ fileId: card.dataset.fileId }),
-                })
-                  .then((response) => response.json())
-                  .then((data) => {
-                    if (data.success) {
-                      card.remove();
-                    }
-                  });
-              }
-              card.classList.remove("deleting");
-            }
-          });
-
-          card.addEventListener("touchmove", function () {
-            clearTimeout(pressTimer);
-          });
-        });
-
-        // Add this to your existing DOMContentLoaded event handler
-        const saveAllWeightsBtn = document.getElementById("saveAllWeightsBtn");
-
-        saveAllWeightsBtn.addEventListener("click", async function () {
-          const weightInputs = document.querySelectorAll(".weight-input");
-          const weights = [];
-
-          weightInputs.forEach((input) => {
-            const fileId = input.dataset.fileId;
-            const weight = input.value;
-            if (weight) {
-              weights.push({ fileId, weight });
-            }
-          });
-
-          try {
-            const response = await fetch("/update-weights", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ weights }),
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-              // Update the weight displays without refreshing
-              weights.forEach(({ fileId, weight }) => {
-                const card = document.querySelector(
-                  `.file-card[data-file-id="${fileId}"]`
-                );
-                let weightDisplay = card.querySelector(".weight-display");
-
-                if (!weightDisplay) {
-                  weightDisplay = document.createElement("div");
-                  weightDisplay.className = "weight-display mb-2";
-                  card
-                    .querySelector(".file-content")
-                    .insertBefore(
-                      weightDisplay,
-                      card.querySelector(".weight-form")
-                    );
-                }
-
-                weightDisplay.textContent = `${weight} g`;
-              });
-
-              // Show success message
-              alert("All weights saved successfully!");
-            } else {
-              throw new Error("Failed to save weights");
-            }
-          } catch (error) {
-            console.error("Error saving weights:", error);
-            alert("Error saving weights. Please try again.");
-          }
-        });
-      });
-    </script>
-  </body>
-</html>
