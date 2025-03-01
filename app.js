@@ -429,35 +429,6 @@ app.get("/error", (req, res) => {
   });
 });
 
-// Catch-all route for 404 errors
-app.use((req, res) => {
-  res.status(404).render("error", {
-    error: "Page Not Found",
-    details: `The requested URL ${req.path} was not found on this server.`,
-  });
-});
-
-// Start server with immediate database initialization
-(async () => {
-  try {
-    console.log("Initializing database...");
-    const success = await initializeDatabase();
-    if (success) {
-      console.log("Database initialized successfully");
-    } else {
-      console.warn(
-        "Database initialization failed, but continuing server startup"
-      );
-    }
-
-    app.listen(port, () => {
-      console.log(`Server running on port ${port}`);
-    });
-  } catch (err) {
-    console.error("Failed to start server:", err);
-  }
-})();
-
 // Add this temporary route to app.js for testing
 app.get("/template", (req, res) => {
   // Mock data for testing
@@ -509,5 +480,34 @@ app.get("/template", (req, res) => {
     data: mockData,
   });
 });
+
+// Catch-all route for 404 errors
+app.use((req, res) => {
+  res.status(404).render("error", {
+    error: "Page Not Found",
+    details: `The requested URL ${req.path} was not found on this server.`,
+  });
+});
+
+// Start server with immediate database initialization
+(async () => {
+  try {
+    console.log("Initializing database...");
+    const success = await initializeDatabase();
+    if (success) {
+      console.log("Database initialized successfully");
+    } else {
+      console.warn(
+        "Database initialization failed, but continuing server startup"
+      );
+    }
+
+    app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+    });
+  } catch (err) {
+    console.error("Failed to start server:", err);
+  }
+})();
 
 module.exports = app;
