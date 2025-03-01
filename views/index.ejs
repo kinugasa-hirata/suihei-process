@@ -1,4 +1,4 @@
-<!-- views/index.ejs - Fixed unexpected token 'if' error -->
+<!-- views/index.ejs - With file selection for summary -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -22,6 +22,12 @@
       }
       .nav-links {
         margin-bottom: 2rem;
+      }
+      .summary-form {
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background-color: #e9ecef;
+        border-radius: 5px;
       }
       .file-grid {
         display: grid;
@@ -107,6 +113,15 @@
         padding: 0.5rem 1rem;
         font-size: 1.1rem;
       }
+      /* File range input styles */
+      .file-range-inputs {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      .file-range-inputs .form-control {
+        width: 100px;
+      }
     </style>
   </head>
   <body>
@@ -116,6 +131,45 @@
       <div class="nav-links">
         <a href="/" class="btn btn-primary">Home</a>
         <a href="/summary" class="btn btn-info">View Summary</a>
+      </div>
+
+      <!-- File selection for summary -->
+      <div class="summary-form">
+        <h3>Generate Summary Report</h3>
+        <p class="text-muted">
+          Select a range of files to include in the summary report.
+        </p>
+
+        <form action="/summary" method="get">
+          <div class="file-range-inputs mb-3">
+            <div>
+              <label for="minFile" class="form-label">From File #</label>
+              <input
+                type="number"
+                class="form-control"
+                id="minFile"
+                name="minFile"
+                placeholder="e.g., 240"
+              />
+            </div>
+            <div>
+              <label for="maxFile" class="form-label">To File #</label>
+              <input
+                type="number"
+                class="form-control"
+                id="maxFile"
+                name="maxFile"
+                placeholder="e.g., 250"
+              />
+            </div>
+            <div class="mt-4">
+              <button type="submit" class="btn btn-info">
+                Generate Report
+              </button>
+            </div>
+          </div>
+          <div class="form-text">Leave fields empty to include all files.</div>
+        </form>
       </div>
 
       <!-- Show success/error messages -->
@@ -193,11 +247,11 @@
       <% if (typeof files != 'undefined' && files && files.length > 0) { %>
       <h2>Processed Files</h2>
       <div class="file-grid">
-        <% // Sort files by numeric part of filename (descending) var
-        sortedFiles = [...files].sort(function(a, b) { var numA =
+        <% // Sort files by numeric part of filename (ascending to show younger
+        on top) var sortedFiles = [...files].sort(function(a, b) { var numA =
         parseInt((a.filename.match(/^\d+/) || ['0'])[0], 10); var numB =
-        parseInt((b.filename.match(/^\d+/) || ['0'])[0], 10); return numB -
-        numA; }); for (var i = 0; i < sortedFiles.length; i++) { var file =
+        parseInt((b.filename.match(/^\d+/) || ['0'])[0], 10); return numA -
+        numB; }); for (var i = 0; i < sortedFiles.length; i++) { var file =
         sortedFiles[i]; // Extract number from filename if possible var
         fileNumber = file.filename; var match = file.filename.match(/^(\d+)/);
         if (match) { fileNumber = match[1]; } %>

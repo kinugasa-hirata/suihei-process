@@ -1,4 +1,4 @@
-<!-- Fixed views/summary.ejs - Revised for compatibility -->
+<!-- views/summary.ejs - Updated with coordinate-based data -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -37,6 +37,20 @@
       .table-responsive {
         overflow-x: auto;
       }
+      .file-filter-form {
+        background-color: #e9ecef;
+        padding: 1rem;
+        border-radius: 5px;
+        margin-bottom: 1.5rem;
+      }
+      .file-range-inputs {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      .file-range-inputs .form-control {
+        width: 100px;
+      }
     </style>
   </head>
   <body>
@@ -46,6 +60,46 @@
       <div class="nav-links">
         <a href="/" class="btn btn-primary">Home</a>
         <a href="/summary" class="btn btn-info active">View Summary</a>
+      </div>
+
+      <!-- File range selection form -->
+      <div class="file-filter-form">
+        <h5>Filter Files</h5>
+        <form action="/summary" method="get">
+          <div class="file-range-inputs mb-2">
+            <div>
+              <label for="minFile" class="form-label">From File #</label>
+              <input
+                type="number"
+                class="form-control"
+                id="minFile"
+                name="minFile"
+                value="<%= typeof minFile != 'undefined' ? minFile : '' %>"
+                placeholder="e.g., 240"
+              />
+            </div>
+            <div>
+              <label for="maxFile" class="form-label">To File #</label>
+              <input
+                type="number"
+                class="form-control"
+                id="maxFile"
+                name="maxFile"
+                value="<%= typeof maxFile != 'undefined' ? maxFile : '' %>"
+                placeholder="e.g., 250"
+              />
+            </div>
+            <div>
+              <button type="submit" class="btn btn-primary">
+                Apply Filter
+              </button>
+              <a href="/summary" class="btn btn-outline-secondary ms-2"
+                >Reset</a
+              >
+            </div>
+          </div>
+          <div class="form-text">Enter file numbers to filter the report.</div>
+        </form>
       </div>
 
       <% if (typeof message != 'undefined' && message) { %>
@@ -80,7 +134,7 @@
               </div>
               <div class="card-body">
                 <h2 class="display-4"><%= files.length %></h2>
-                <p class="text-muted">Files uploaded and processed</p>
+                <p class="text-muted">Files in this report</p>
               </div>
             </div>
           </div>
@@ -105,8 +159,7 @@
 
         <h3>Highlighted Data Points</h3>
         <p class="text-muted mb-3">
-          This table shows the key data points that were highlighted in each
-          file.
+          Data extracted from specific coordinates in each file [row, column].
         </p>
 
         <div class="table-responsive">
@@ -119,27 +172,13 @@
                 columnLabels.length > 0) { %> <% for (var i = 0; i <
                 columnLabels.length; i++) { %>
                 <th><%= columnLabels[i] %></th>
-                <% } %> <% } else { %>
-                <th>Y Value (-8.19x)</th>
-                <th>Y Value (-83.1xx)</th>
-                <th>Y Value (-5.01x)</th>
-                <th>X Value (-24.06x)</th>
-                <th>Z Value (15.91x)</th>
-                <th>Tolerance (155.2xx)</th>
-                <th>Tolerance (37.5xx)</th>
-                <th>Tolerance (8.00x)</th>
-                <% } %>
+                <% } %> <% } %>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              <% // Sort files by numeric part of filename (descending) var
-              sortedFiles = []; for (var i = 0; i < files.length; i++) {
-              sortedFiles.push(files[i]); } sortedFiles.sort(function(a, b) {
-              var numA = parseInt((a.filename.match(/^\d+/) || ['0'])[0], 10);
-              var numB = parseInt((b.filename.match(/^\d+/) || ['0'])[0], 10);
-              return numB - numA; }); for (var i = 0; i < sortedFiles.length;
-              i++) { var file = sortedFiles[i]; %>
+              <% // Files are already sorted from the backend for (var i = 0; i
+              < files.length; i++) { var file = files[i]; %>
               <tr>
                 <td><strong><%= file.filename %></strong></td>
                 <td>
@@ -156,27 +195,7 @@
                 <td class="highlight-cell">
                   <%= fileData[file.id][column] || 'N/A' %>
                 </td>
-                <% } %> <% } else { %>
-                <!-- Fallback when dataColumns is not defined -->
-                <td class="highlight-cell">-</td>
-                <td class="highlight-cell">-</td>
-                <td class="highlight-cell">-</td>
-                <td class="highlight-cell">-</td>
-                <td class="highlight-cell">-</td>
-                <td class="highlight-cell">-</td>
-                <td class="highlight-cell">-</td>
-                <td class="highlight-cell">-</td>
-                <% } %> <% } else { %>
-                <!-- Placeholder cells when we don't have real data yet -->
-                <td class="highlight-cell">-</td>
-                <td class="highlight-cell">-</td>
-                <td class="highlight-cell">-</td>
-                <td class="highlight-cell">-</td>
-                <td class="highlight-cell">-</td>
-                <td class="highlight-cell">-</td>
-                <td class="highlight-cell">-</td>
-                <td class="highlight-cell">-</td>
-                <% } %>
+                <% } %> <% } %> <% } %>
 
                 <td>
                   <a href="/files/<%= file.id %>" class="btn btn-sm btn-info"
@@ -192,7 +211,7 @@
         <% } else { %>
         <div class="no-data">
           <h3>No Data Available</h3>
-          <p class="text-muted">Upload files to see a summary of your data.</p>
+          <p class="text-muted">No files match your current filter criteria.</p>
           <a href="/" class="btn btn-primary">Go to Upload Page</a>
         </div>
         <% } %>
