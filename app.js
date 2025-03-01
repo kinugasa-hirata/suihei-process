@@ -377,6 +377,7 @@ app.post("/update-weight", async (req, res) => {
   }
 });
 
+// Delete file route
 app.post("/delete-file", async (req, res) => {
   let client;
   try {
@@ -388,10 +389,10 @@ app.post("/delete-file", async (req, res) => {
 
     client = await pool.connect();
 
-    // Start a transaction to ensure data consistency
+    // Start a transaction for data consistency
     await client.query("BEGIN");
 
-    // Get file info before deletion (for confirmation message)
+    // Get file info before deletion for the confirmation message
     const fileResult = await client.query(
       "SELECT filename FROM files WHERE id = $1",
       [fileId]
@@ -416,10 +417,8 @@ app.post("/delete-file", async (req, res) => {
     // Commit the transaction
     await client.query("COMMIT");
 
-    // Redirect back to index with success message
-    res.redirect(
-      "/?message=File '" + fileName + "' has been deleted successfully"
-    );
+    // Redirect back to home page with success message
+    res.redirect("/?message=File '" + fileName + "' has been deleted");
   } catch (err) {
     if (client) {
       await client.query("ROLLBACK");
@@ -431,11 +430,17 @@ app.post("/delete-file", async (req, res) => {
   }
 });
 
-// Summary page with file data
+// Updated Summary Route to handle selected files
 app.get("/summary", async (req, res) => {
   let client;
   try {
     client = await pool.connect();
+
+    // Check for selected files first
+    var selectedFiles = [];
+    if (req.query.selectedFiles) {
+      selectedFiles = req.query.selectedFiles.split(",").filter((id) => id);
+    }
 
     // Get min and max file numbers from query parameters (if provided)
     var minFileNumber = req.query.minFile ? parseInt(req.query.minFile, 10) : 0;
@@ -443,31 +448,60 @@ app.get("/summary", async (req, res) => {
       ? parseInt(req.query.maxFile, 10)
       : 9999;
 
-    // Step 1: Get all files with their weights
-    const filesResult = await client.query(
-      `
-      SELECT 
-        f.id, 
-        f.filename, 
-        fw.weight,
-        f.uploaded_at
-      FROM files f
-      LEFT JOIN file_weights fw ON f.id = fw.file_id
-      WHERE 
-        CASE 
-          WHEN f.filename ~ '^[0-9]+' THEN 
-            CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
-          ELSE 0
-        END BETWEEN $1 AND $2
-      ORDER BY 
-        CASE 
-          WHEN f.filename ~ '^[0-9]+' THEN 
-            CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
-          ELSE 0
-        END ASC
-    `,
-      [minFileNumber, maxFileNumber]
-    );
+    // Build the query based on whether we have selected files or a range
+    let query;
+    let params;
+
+    if (selectedFiles.length > 0) {
+      // If we have selected files, use them
+      const placeholders = selectedFiles
+        .map((_, index) => `$${index + 1}`)
+        .join(",");
+      query = `
+        SELECT 
+          f.id, 
+          f.filename, 
+          fw.weight,
+          f.uploaded_at
+        FROM files f
+        LEFT JOIN file_weights fw ON f.id = fw.file_id
+        WHERE f.id IN (${placeholders})
+        ORDER BY 
+          CASE 
+            WHEN f.filename ~ '^[0-9]+' THEN 
+              CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
+            ELSE 0
+          END ASC
+      `;
+      params = selectedFiles;
+    } else {
+      // Otherwise use the min/max range
+      query = `
+        SELECT 
+          f.id, 
+          f.filename, 
+          fw.weight,
+          f.uploaded_at
+        FROM files f
+        LEFT JOIN file_weights fw ON f.id = fw.file_id
+        WHERE 
+          CASE 
+            WHEN f.filename ~ '^[0-9]+' THEN 
+              CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
+            ELSE 0
+          END BETWEEN $1 AND $2
+        ORDER BY 
+          CASE 
+            WHEN f.filename ~ '^[0-9]+' THEN 
+              CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
+            ELSE 0
+          END ASC
+      `;
+      params = [minFileNumber, maxFileNumber];
+    }
+
+    // Execute the query
+    const filesResult = await client.query(query, params);
 
     // Define the highlighted cells
     const cellCoordinates = [
