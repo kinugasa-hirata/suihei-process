@@ -13,30 +13,13 @@ const bodyParser = require("body-parser");
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Set up PostgreSQL connection with more robust error handling
-let pool;
-try {
-  pool = new Pool({
-    connectionString: process.env.POSTGRES_URL,
-    ssl: {
-      rejectUnauthorized: false,
-    },
-    // Add connection timeout and retry settings
-    connectionTimeoutMillis: 10000,
-    idleTimeoutMillis: 30000,
-    max: 20, // Maximum number of clients in the pool
-  });
-
-  // Test connection immediately
-  pool.on("error", (err) => {
-    console.error("Unexpected error on idle client", err);
-    process.exit(-1);
-  });
-
-  console.log("PostgreSQL connection pool initialized");
-} catch (err) {
-  console.error("Error initializing PostgreSQL pool:", err);
-}
+// Set up PostgreSQL connection
+const pool = new Pool({
+  connectionString: process.env.POSTGRES_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
 
 // Set up EJS as view engine
 app.set("view engine", "ejs");
@@ -59,15 +42,7 @@ const upload = multer({
 const initializeDatabase = async () => {
   let client;
   try {
-    // Check if pool is initialized
-    if (!pool) {
-      console.error("Database pool not initialized");
-      return false;
-    }
-
-    // Test connection
     client = await pool.connect();
-    console.log("Database connection successful");
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS files (
@@ -104,7 +79,7 @@ const initializeDatabase = async () => {
       )
     `);
 
-    console.log("Database tables created successfully");
+    console.log("Database initialized successfully");
     return true;
   } catch (err) {
     console.error("Error initializing database:", err);
@@ -139,7 +114,7 @@ app.get("/", async (req, res) => {
   }
 });
 
-// Enhanced file upload route with better error handling and data extraction
+// Enhanced file upload route with better error handling
 app.post("/upload", upload.array("files"), async (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).send("No files were uploaded.");
@@ -148,10 +123,6 @@ app.post("/upload", upload.array("files"), async (req, res) => {
   let client;
   try {
     client = await pool.connect();
-    let processedFiles = 0;
-    let totalLines = 0;
-    let processedLines = 0;
-    let skippedLines = 0;
 
     for (const file of req.files) {
       // Extract filename without extension
@@ -168,8 +139,6 @@ app.post("/upload", upload.array("files"), async (req, res) => {
         .map((line) => line.trim())
         .filter((line) => line.length > 0);
 
-      totalLines += lines.length;
-
       // Insert file into database
       const fileResult = await client.query(
         "INSERT INTO files (filename) VALUES ($1) RETURNING id",
@@ -183,14 +152,10 @@ app.post("/upload", upload.array("files"), async (req, res) => {
           const parts = line.split(";");
 
           // Skip lines that don't have enough data
-          if (parts.length < 3) {
-            console.log(`Skipping line with insufficient parts: ${line}`);
-            skippedLines++;
-            continue;
-          }
+          if (parts.length < 3) continue;
 
           const index = parseInt(parts[0], 10) || 0;
-          // Clean up data type more thoroughly - remove any non-alphanumeric/dash chars
+          // Clean up data type (remove any extra characters like & in CIRCLE&)
           const rawDataType = parts[1].trim();
           const dataType = rawDataType.replace(/[^A-Z0-9-]/g, "");
 
@@ -278,20 +243,12 @@ app.post("/upload", upload.array("files"), async (req, res) => {
               tolerance,
             ]
           );
-
-          processedLines++;
         } catch (lineErr) {
           console.error(`Error processing line: ${line}`, lineErr);
-          skippedLines++;
         }
       }
-
-      processedFiles++;
     }
 
-    console.log(
-      `Processing summary: ${processedFiles} files, ${processedLines}/${totalLines} lines processed, ${skippedLines} lines skipped`
-    );
     res.redirect("/");
   } catch (err) {
     console.error("Error processing files:", err);
@@ -301,7 +258,7 @@ app.post("/upload", upload.array("files"), async (req, res) => {
   }
 });
 
-// View file data route with enhanced error handling
+// View file data route
 app.get("/files/:id", async (req, res) => {
   let client;
   try {
@@ -316,10 +273,7 @@ app.get("/files/:id", async (req, res) => {
     ]);
 
     if (fileResult.rows.length === 0) {
-      return res.status(404).render("error", {
-        error: "File not found",
-        details: `The requested file (ID: ${fileId}) does not exist.`,
-      });
+      return res.status(404).send("File not found");
     }
 
     const file = fileResult.rows[0];
@@ -356,13 +310,7 @@ app.get("/files/:id", async (req, res) => {
     });
   } catch (err) {
     console.error("Error fetching file data:", err);
-    res.status(500).render("error", {
-      error: "Error fetching file data",
-      details:
-        process.env.NODE_ENV === "development"
-          ? err.stack
-          : "An internal server error occurred. Please try again later.",
-    });
+    res.status(500).send("Error fetching file data: " + err.message);
   } finally {
     if (client) client.release();
   }
@@ -432,51 +380,6 @@ app.get("/summary", async (req, res) => {
   }
 });
 
-// Debug route to check txt file parsing
-app.post("/debug-upload", upload.single("file"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).send("No file was uploaded.");
-  }
-
-  try {
-    // Get the file content
-    const content = req.file.buffer.toString("utf8");
-    const lines = content
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-
-    // Parse each line
-    const parsedLines = lines.map((line) => {
-      const parts = line.split(";");
-      const parsedData = {
-        raw: line,
-        parts: parts,
-        parsed: {
-          index: parts.length > 0 ? parseInt(parts[0], 10) : null,
-          dataType: parts.length > 1 ? parts[1].trim() : null,
-          x: parts.length > 2 ? parseFloat(parts[2]) : null,
-          y: parts.length > 3 ? parseFloat(parts[3]) : null,
-          z: parts.length > 4 ? parseFloat(parts[4]) : null,
-        },
-      };
-
-      return parsedData;
-    });
-
-    // Send the parsed results back to the user
-    res.send(`
-      <h1>File Parsing Debug</h1>
-      <h2>Filename: ${req.file.originalname}</h2>
-      <p>Total lines: ${lines.length}</p>
-      <pre>${JSON.stringify(parsedLines, null, 2)}</pre>
-    `);
-  } catch (err) {
-    console.error("Error debugging file:", err);
-    res.status(500).send("Error debugging file: " + err.message);
-  }
-});
-
 // Debug route to initialize the database
 app.get("/init-db", async (req, res) => {
   try {
@@ -490,158 +393,6 @@ app.get("/init-db", async (req, res) => {
     console.error("Error initializing database:", err);
     res.status(500).send("Error initializing database: " + err.message);
   }
-});
-
-// Template route with mock data for testing
-app.get("/template", (req, res) => {
-  try {
-    // Mock data for testing the template
-    const mockFile = {
-      id: 1,
-      filename: "水平ノズル_1_15",
-      uploaded_at: new Date(),
-      weight: 10.5,
-    };
-
-    const mockData = [
-      {
-        id: 1,
-        index: 1,
-        data_type: "CIRCLE",
-        x: 10.123,
-        y: 20.456,
-        z: 30.789,
-        rot_x: 0,
-        rot_y: 0,
-        rot_z: 0,
-        diameter: 15.5,
-        tolerance: 0.1,
-        note: "Test note 1",
-      },
-      {
-        id: 2,
-        index: 2,
-        data_type: "PLANE",
-        x: 15.123,
-        y: 25.456,
-        z: 35.789,
-        rot_x: 0,
-        rot_y: 0,
-        rot_z: 0,
-        diameter: null,
-        tolerance: 0.2,
-        note: "Test note 2",
-      },
-      {
-        id: 3,
-        index: 3,
-        data_type: "DISTANCE",
-        x: 20.123,
-        y: 30.456,
-        z: 40.789,
-        rot_x: 0,
-        rot_y: 0,
-        rot_z: 0,
-        diameter: 25.7,
-        tolerance: null,
-        note: "Test note 3",
-      },
-      {
-        id: 4,
-        index: 4,
-        data_type: "PT-COMP",
-        x: 22.123,
-        y: 32.456,
-        z: 42.789,
-        rot_x: 0,
-        rot_y: 0,
-        rot_z: 0,
-        diameter: null,
-        tolerance: null,
-        note: "Test note 4",
-      },
-    ];
-
-    // Render the template with mock data
-    res.render("template", {
-      file: mockFile,
-      data: mockData,
-    });
-  } catch (err) {
-    console.error("Error rendering template:", err);
-    res.status(500).send("Error rendering template: " + err.message);
-  }
-});
-
-// Template route with real data
-app.get("/template/:id", async (req, res) => {
-  let client;
-  try {
-    const fileId = req.params.id;
-    console.log(`Fetching template for file ID: ${fileId}`);
-
-    client = await pool.connect();
-
-    // Get file info
-    const fileResult = await client.query("SELECT * FROM files WHERE id = $1", [
-      fileId,
-    ]);
-
-    if (fileResult.rows.length === 0) {
-      return res.status(404).send("File not found");
-    }
-
-    const file = fileResult.rows[0];
-
-    // Get file weight if available
-    const weightResult = await client.query(
-      "SELECT weight FROM file_weights WHERE file_id = $1",
-      [fileId]
-    );
-
-    const weight =
-      weightResult.rows.length > 0 ? weightResult.rows[0].weight : null;
-
-    // Get file data
-    const dataResult = await client.query(
-      "SELECT * FROM file_data WHERE file_id = $1 ORDER BY index",
-      [fileId]
-    );
-
-    // Add weight to file object
-    const fileWithWeight = {
-      ...file,
-      weight: weight,
-    };
-
-    // Render template with data
-    res.render("template", {
-      file: fileWithWeight,
-      data: dataResult.rows,
-    });
-  } catch (err) {
-    console.error("Error fetching template data:", err);
-    res.status(500).send("Error generating report template: " + err.message);
-  } finally {
-    if (client) client.release();
-  }
-});
-
-// Error page template route
-app.get("/error", (req, res) => {
-  res.render("error", {
-    error: "Test error page",
-    details:
-      "This is a test error page to ensure the error template is working correctly.",
-  });
-});
-
-// Catch-all route for 404 errors
-app.use((req, res) => {
-  res.status(404).render("error", {
-    error: "Page Not Found",
-    details: `The requested URL ${req.path} was not found on this server.`,
-  });
 });
 
 // Start server with immediate database initialization

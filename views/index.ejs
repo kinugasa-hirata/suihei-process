@@ -34,13 +34,6 @@
       .nav-links {
         margin-bottom: 2rem;
       }
-      .debug-section {
-        margin-top: 2rem;
-        padding: 1.5rem;
-        background-color: #f8f9fa;
-        border-radius: 5px;
-        border-left: 4px solid #ffc107;
-      }
     </style>
   </head>
   <body>
@@ -94,14 +87,9 @@
                 <td><%= new Date(file.uploaded_at).toLocaleString() %></td>
                 <td>
                   <div class="action-buttons">
-                    <a href="/files/<%= file.id %>" class="btn btn-sm btn-info"
-                      >View Data</a
-                    >
-                    <a
-                      href="/template/<%= file.id %>"
-                      class="btn btn-sm btn-success ms-1"
-                      >Print Report</a
-                    >
+                    <a href="/files/<%= file.id %>" class="btn btn-sm btn-info">
+                      View Data
+                    </a>
                     <form
                       action="/update-weight"
                       method="post"
@@ -139,35 +127,6 @@
           <p>No files uploaded yet. Upload TXT files to process them.</p>
         </div>
         <% } %>
-      </div>
-
-      <!-- Debug Tool Section -->
-      <div class="debug-section">
-        <h3>Debug Tool</h3>
-        <p class="text-muted">
-          Use this tool to check how a TXT file is parsed before uploading it
-          for processing.
-        </p>
-        <form
-          action="/debug-upload"
-          method="post"
-          enctype="multipart/form-data"
-        >
-          <div class="mb-3">
-            <label for="file" class="form-label"
-              >Select TXT file to debug</label
-            >
-            <input
-              type="file"
-              class="form-control"
-              id="file"
-              name="file"
-              accept=".txt"
-              required
-            />
-          </div>
-          <button type="submit" class="btn btn-warning">Debug Parse</button>
-        </form>
       </div>
     </div>
 
