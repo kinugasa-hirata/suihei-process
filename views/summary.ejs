@@ -165,41 +165,46 @@
       }
 
       @media print {
-        /* Remove browser's default headers and footers */
+        /* Remove ALL headers and footers except page number */
         @page {
           size: A4 landscape;
           margin: 10mm;
+          @bottom-right {
+            content: counter(page);
+          }
         }
 
-        /* Hide browser's default header/footer */
-        html {
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
+        html,
+        body {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          margin: 0;
+          padding: 0;
+        }
+
+        /* Hide ALL browser elements except page number */
+        head,
+        title,
+        meta {
+          display: none !important;
         }
 
         /* Hide Data Summary and other unnecessary elements */
-        .container > h1,
-        .container > .nav-links,
-        .container > .file-filter-form,
+        h1,
+        .nav-links,
+        .file-filter-form,
         .button-container,
-        .no-print {
+        .no-print,
+        .page-header {
           display: none !important;
         }
 
         /* Remove URLs from printing */
-        a {
-          text-decoration: none !important;
-        }
-        a[href]:after {
+        a,
+        a[href]:after,
+        a[href]:before {
           content: none !important;
-        }
-
-        /* Hide everything except what we need */
-        .button-container,
-        .no-print,
-        .nav-links,
-        .file-filter-form {
-          display: none;
+          display: none !important;
         }
 
         /* A4 Landscape setup */
@@ -462,7 +467,16 @@
               <% files.forEach(function(file) { %>
               <tr>
                 <td class="filename-cell" data-file-id="<%= file.id %>">
-                  <strong><%= file.filename %></strong>
+                  <a
+                    href="/?view=<%= file.id %>"
+                    style="
+                      text-decoration: none;
+                      color: inherit;
+                      border-bottom: 1px dotted #666;
+                    "
+                  >
+                    <strong><%= file.filename %></strong>
+                  </a>
                 </td>
                 <% headers.forEach(function(header) { %>
                 <td class="highlight-cell data-cell">
@@ -542,39 +556,6 @@
             });
           });
         });
-
-      // Long press on filename logic
-      document.querySelectorAll(".filename-cell").forEach((cell) => {
-        let pressTimer;
-
-        cell.addEventListener("mousedown", function () {
-          const fileId = this.dataset.fileId;
-          pressTimer = setTimeout(() => {
-            window.location.href = `/?view=${fileId}`;
-          }, 2000); // 2 seconds
-        });
-
-        cell.addEventListener("mouseup", function () {
-          clearTimeout(pressTimer);
-        });
-
-        cell.addEventListener("mouseleave", function () {
-          clearTimeout(pressTimer);
-        });
-
-        // For touch devices
-        cell.addEventListener("touchstart", function (e) {
-          const fileId = this.dataset.fileId;
-          pressTimer = setTimeout(() => {
-            window.location.href = `/?view=${fileId}`;
-          }, 2000); // 2 seconds
-          e.preventDefault();
-        });
-
-        cell.addEventListener("touchend", function () {
-          clearTimeout(pressTimer);
-        });
-      });
     </script>
   </body>
 </html>
