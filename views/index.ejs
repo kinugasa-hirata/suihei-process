@@ -111,6 +111,7 @@
       }
       .weight-input[type="number"] {
         -moz-appearance: textfield;
+        appearance: textfield;
       }
 
       .upload-form {
@@ -386,75 +387,65 @@
         document
           .querySelectorAll(".weight-input")
           .forEach((input, index, inputs) => {
-            input.addEventListener("keypress", async function (e) {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                const weight = this.value;
-                const fileId = this.dataset.fileId;
+            input.addEventListener("change", async function (e) {
+              const weight = this.value;
+              const fileId = this.dataset.fileId;
 
-                if (weight && !isNaN(weight)) {
-                  const success = await saveWeight(fileId, weight);
-                  if (success) {
-                    // Update the display immediately
-                    let weightDisplay =
-                      this.closest(".file-card").querySelector(
-                        ".weight-display"
-                      );
-                    if (!weightDisplay) {
-                      weightDisplay = document.createElement("div");
-                      weightDisplay.className = "weight-display mb-2";
-                      this.closest(".file-content").insertBefore(
-                        weightDisplay,
-                        this.closest(".weight-form")
-                      );
-                    }
-                    weightDisplay.textContent = `${weight} g`;
-
-                    // Move to next input if available
-                    const nextInput = inputs[index + 1];
-                    if (nextInput) {
-                      nextInput.focus();
-                    } else {
-                      this.blur(); // Remove focus if it's the last input
-                    }
-                  } else {
-                    alert("重量の保存に失敗しました。もう一度お試しください。");
+              if (weight && !isNaN(weight)) {
+                const success = await saveWeight(fileId, weight);
+                if (success) {
+                  // Update the display immediately
+                  let weightDisplay =
+                    this.closest(".file-card").querySelector(".weight-display");
+                  if (!weightDisplay) {
+                    weightDisplay = document.createElement("div");
+                    weightDisplay.className = "weight-display mb-2";
+                    this.closest(".file-content").insertBefore(
+                      weightDisplay,
+                      this.closest(".weight-form")
+                    );
                   }
+                  weightDisplay.textContent = `${weight} g`;
+                } else {
+                  alert("重量の保存に失敗しました。もう一度お試しください。");
                 }
               }
             });
 
-            // Add blur event to save when input loses focus
-            input.addEventListener("blur", async function () {
-              const weight = this.value;
-              const fileId = this.dataset.fileId;
-              if (weight && !isNaN(weight)) {
-                await saveWeight(fileId, weight);
+            // Handle Enter key separately
+            input.addEventListener("keypress", function (e) {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                const nextInput = inputs[index + 1];
+                if (nextInput) {
+                  nextInput.focus();
+                } else {
+                  this.blur();
+                }
               }
             });
           });
 
         // Fix Save All Weights functionality
         const saveAllWeightsBtn = document.getElementById("saveAllWeightsBtn");
-
         saveAllWeightsBtn.addEventListener("click", async function () {
-          const weightInputs = document.querySelectorAll(".weight-input");
-          const weights = [];
-
-          weightInputs.forEach((input) => {
-            const fileId = input.dataset.fileId;
-            const weight = input.value;
-            if (weight && !isNaN(weight)) {
-              weights.push({ fileId, weight });
-            }
-          });
-
-          if (weights.length === 0) {
-            alert("No weights to save!");
-            return;
-          }
-
           try {
+            const weightInputs = document.querySelectorAll(".weight-input");
+            const weights = [];
+
+            weightInputs.forEach((input) => {
+              const fileId = input.dataset.fileId;
+              const weight = input.value;
+              if (weight && !isNaN(weight)) {
+                weights.push({ fileId, weight });
+              }
+            });
+
+            if (weights.length === 0) {
+              alert("保存する重量がありません!");
+              return;
+            }
+
             const response = await fetch("/update-weights", {
               method: "POST",
               headers: {
@@ -468,15 +459,12 @@
             }
 
             const result = await response.json();
-
             if (result.success) {
-              // Update all weight displays
               weights.forEach(({ fileId, weight }) => {
                 const card = document.querySelector(
                   `.file-card[data-file-id="${fileId}"]`
                 );
                 let weightDisplay = card.querySelector(".weight-display");
-
                 if (!weightDisplay) {
                   weightDisplay = document.createElement("div");
                   weightDisplay.className = "weight-display mb-2";
@@ -487,17 +475,22 @@
                       card.querySelector(".weight-form")
                     );
                 }
-
                 weightDisplay.textContent = `${weight} g`;
               });
-
-              alert("All weights saved successfully!");
-            } else {
-              throw new Error("Failed to save weights");
+              // Use a more subtle notification instead of alert
+              const notification = document.createElement("div");
+              notification.className =
+                "alert alert-success position-fixed top-0 start-50 translate-middle-x mt-3";
+              notification.style.zIndex = "1050";
+              notification.textContent = "全ての重量を保存しました!";
+              document.body.appendChild(notification);
+              setTimeout(() => notification.remove(), 3000);
             }
           } catch (error) {
             console.error("Error saving weights:", error);
-            alert("Error saving weights. Please try again.");
+            alert(
+              "重量の保存中にエラーが発生しました。もう一度お試しください。"
+            );
           }
         });
 
