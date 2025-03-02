@@ -78,10 +78,9 @@ app.get("/login", async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(
-      `SELECT username, login_time, ip_address, status
+      `SELECT username, login_time, ip_address, status, location
        FROM login_logs
-       ORDER BY login_time DESC
-       LIMIT 10`
+       ORDER BY login_time DESC`
     );
     res.render("login", { error: null, logs: result.rows });
   } catch (err) {

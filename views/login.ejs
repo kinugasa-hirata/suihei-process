@@ -122,12 +122,12 @@
             <div class="modal-body">
               <div
                 class="logs-container"
-                style="max-height: 400px; overflow-y: auto"
+                style="max-height: 500px; overflow-y: auto; font-size: 0.9em"
               >
                 <table class="table table-sm">
                   <thead>
                     <tr>
-                      <th>日時</th>
+                      <th style="min-width: 150px">日時</th>
                       <th>ユーザー</th>
                       <th>状態</th>
                       <th>IP</th>
@@ -141,7 +141,10 @@
                       class="<%= log.status === 'success' ? 'table-success' : 'table-danger' %>"
                     >
                       <td>
-                        <%= new Date(log.login_time).toLocaleString('ja-JP') %>
+                        <%= new Date(log.login_time).toLocaleString('ja-JP', {
+                        timeZone: 'Asia/Tokyo', year: 'numeric', month:
+                        '2-digit', day: '2-digit', hour: '2-digit', minute:
+                        '2-digit', second: '2-digit', hour12: false }) %>
                       </td>
                       <td><%= log.username %></td>
                       <td><%= log.status === 'success' ? '成功' : '失敗' %></td>
