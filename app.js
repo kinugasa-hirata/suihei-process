@@ -575,20 +575,20 @@ app.get("/summary", async (req, res) => {
           // Extract the value based on the column index
           var value;
           if (colIdx === 3) {
-            value = dataRow.x;
+            value = Math.abs(parseFloat(dataRow.x));
           } else if (colIdx === 4) {
-            value = dataRow.y;
+            value = Math.abs(parseFloat(dataRow.y));
           } else if (colIdx === 5) {
-            value = dataRow.z;
+            value = Math.abs(parseFloat(dataRow.z));
           } else if (colIdx === 11) {
-            value = dataRow.tolerance;
+            value = Math.abs(parseFloat(dataRow.tolerance));
           } else {
             value = null;
           }
 
           // Format the value
-          if (value !== null && !isNaN(parseFloat(value))) {
-            fileData[file.id][label] = parseFloat(value).toFixed(3);
+          if (value !== null && !isNaN(value)) {
+            fileData[file.id][label] = value.toFixed(2);
           } else {
             fileData[file.id][label] = "N/A";
           }
