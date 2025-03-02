@@ -467,17 +467,7 @@
               <% files.forEach(function(file) { %>
               <tr>
                 <td class="filename-cell" data-file-id="<%= file.id %>">
-                  <a
-                    href="/fileData/<%= file.id %>"
-                    style="
-                      color: #007bff;
-                      text-decoration: none;
-                      cursor: pointer;
-                    "
-                    title="詳細を見る"
-                  >
-                    <strong><%= file.filename %></strong>
-                  </a>
+                  <strong><%= file.filename %></strong>
                 </td>
                 <% headers.forEach(function(header) { %>
                 <td class="highlight-cell data-cell">

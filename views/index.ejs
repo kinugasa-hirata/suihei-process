@@ -282,20 +282,7 @@
             </div>
           </div>
           <div class="card-body">
-            <div class="text-center">
-              <a
-                href="/fileData/<%= file.id %>"
-                style="
-                  font-size: 48px;
-                  color: #007bff;
-                  text-decoration: none;
-                  cursor: pointer;
-                "
-                title="詳細を見る"
-              >
-                <%= file.filename %>
-              </a>
-            </div>
+            <h5 class="card-title"><%= file.filename %></h5>
           </div>
         </div>
         <% }); %>
