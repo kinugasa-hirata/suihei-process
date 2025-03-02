@@ -39,6 +39,16 @@ pool.connect((err, client, done) => {
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
+// Add session middleware (move this up, before routes)
+app.use(
+  session({
+    secret: "your-secret-key",
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false }, // Set to false for development
+  })
+);
+
 // Middleware
 app.use(express.static(path.join(__dirname, "public")));
 app.use(bodyParser.json());
@@ -51,16 +61,6 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
 });
-
-// Add session middleware
-app.use(
-  session({
-    secret: "your-secret-key",
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: process.env.NODE_ENV === "production" },
-  })
-);
 
 // Authentication middleware
 const requireLogin = (req, res, next) => {
