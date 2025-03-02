@@ -15,7 +15,7 @@
         font-family: Arial, sans-serif;
       }
       #gameCanvas {
-        border: 1px solid rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.2);
         margin-top: 20px;
       }
       .game-header {
@@ -24,23 +24,23 @@
         justify-content: space-between;
         align-items: center;
         padding: 10px;
-        color: white;
+        color: rgba(255, 255, 255, 0.2);
       }
       .score {
         font-size: 24px;
-        color: rgba(255, 255, 255, 0.8);
+        color: rgba(255, 255, 255, 0.2);
       }
       .back-button {
         padding: 8px 16px;
         background: transparent;
-        color: rgba(255, 255, 255, 0.8);
+        color: rgba(255, 255, 255, 0.2);
         text-decoration: none;
         border-radius: 4px;
-        border: 1px solid rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.2);
         transition: border-color 0.3s;
       }
       .back-button:hover {
-        border-color: rgba(255, 255, 255, 1);
+        border-color: rgba(255, 255, 255, 0.3);
       }
     </style>
   </head>
@@ -293,9 +293,9 @@
         // Draw blocks
         blocks.forEach((block) => {
           if (block.visible) {
-            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
             ctx.fillRect(block.x, block.y, block.width, block.height);
-            ctx.fillStyle = "#000000";
+            ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
             ctx.font = "16px Arial";
             ctx.textAlign = "center";
             ctx.fillText(
@@ -307,7 +307,7 @@
         });
 
         if (gameOver) {
-          ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+          ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
           ctx.font = "48px Arial";
           ctx.textAlign = "center";
           ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2);
