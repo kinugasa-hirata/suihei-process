@@ -444,7 +444,7 @@ app.post("/delete-file", async (req, res) => {
 });
 
 // Updated Summary Route to handle selected files
-// Updated Summary Route - Replace this in app.js
+// Updated Summary Route with new cell coordinates
 app.get("/summary", async (req, res) => {
   let client;
   try {
@@ -539,26 +539,23 @@ app.get("/summary", async (req, res) => {
       });
     }
 
-    // Define the highlighted cells
+    // Define the highlighted cells with UPDATED coordinates
     const cellCoordinates = [
       // First 4 numbers
       { row: 2, col: 4, label: "A" },
       { row: 19, col: 11, label: "B" },
       { row: 14, col: 5, label: "C" },
       { row: 10, col: 4, label: "D" },
-
       // Two blanks
       { row: null, col: null, label: "E" },
       { row: null, col: null, label: "F" },
-
       // six more values (G,H,I,J,K,L)
-      { row: 20, col: 11, label: "G" }, //
-      { row: 6, col: 4, label: "H" }, //
-      { row: 25, col: 11, label: "I" }, //
-      { row: 15, col: 11, label: "J" }, //
-      { row: 4, col: 4, label: "K" }, //
-      { row: 24, col: 11, label: "L" }, //
-
+      { row: 20, col: 11, label: "G" },
+      { row: 6, col: 4, label: "H" },
+      { row: 25, col: 11, label: "I" },
+      { row: 15, col: 11, label: "J" },
+      { row: 4, col: 4, label: "K" },
+      { row: 24, col: 11, label: "L" },
       // Two final blanks
       { row: null, col: null, label: "M" },
       { row: null, col: null, label: "N" },
@@ -614,10 +611,7 @@ app.get("/summary", async (req, res) => {
           } else if (colIdx === 5) {
             value = dataRow.z !== null ? Math.abs(parseFloat(dataRow.z)) : null;
           } else if (colIdx === 11) {
-            value =
-              dataRow.tolerance !== null
-                ? Math.abs(parseFloat(dataRow.tolerance))
-                : null;
+            value = dataRow.tolerance !== null ? Math.abs(parseFloat(dataRow.tolerance)) : null;
           } else {
             value = null;
           }
