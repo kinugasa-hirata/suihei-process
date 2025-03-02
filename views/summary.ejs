@@ -1,4 +1,4 @@
-<!-- Simplified views/summary.ejs to fix server errors -->
+<!-- Fixed views/summary.ejs -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -59,7 +59,48 @@
 
       <% if (typeof error !== 'undefined' && error) { %>
       <div class="alert alert-danger"><%= error %></div>
-      <% } else if (files && files.length > 0) { %>
+      <% } %>
+
+      <!-- File range filter form -->
+      <div class="file-filter-form">
+        <form action="/summary" method="get">
+          <div class="row">
+            <div class="col-md-4">
+              <label for="minFile" class="form-label"
+                >Minimum File Number</label
+              >
+              <input
+                type="number"
+                class="form-control"
+                id="minFile"
+                name="minFile"
+                value="<%= typeof minFile !== 'undefined' ? minFile : '' %>"
+                placeholder="Enter min file number"
+              />
+            </div>
+            <div class="col-md-4">
+              <label for="maxFile" class="form-label"
+                >Maximum File Number</label
+              >
+              <input
+                type="number"
+                class="form-control"
+                id="maxFile"
+                name="maxFile"
+                value="<%= typeof maxFile !== 'undefined' ? maxFile : '' %>"
+                placeholder="Enter max file number"
+              />
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+              <button type="submit" class="btn btn-primary">
+                Apply Filter
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <% if (typeof files !== 'undefined' && files && files.length > 0) { %>
       <!-- Summary table -->
       <div class="table-responsive">
         <table class="table table-bordered table-hover">
@@ -78,11 +119,16 @@
           <tbody>
             <% files.forEach(function(file) { %>
             <tr>
-              <td><strong><%= file.filename %></strong></td>
+              <td>
+                <a href="/files/<%= file.id %>" target="_blank">
+                  <strong><%= file.filename %></strong>
+                </a>
+              </td>
               <% headers.forEach(function(header) { %>
               <td class="highlight-cell">
-                <%= (fileData && fileData[file.id] && fileData[file.id][header])
-                ? fileData[file.id][header] : '-' %>
+                <%= (typeof fileData !== 'undefined' && fileData &&
+                fileData[file.id] && typeof fileData[file.id][header] !==
+                'undefined') ? fileData[file.id][header] : '-' %>
               </td>
               <% }); %>
               <td>
