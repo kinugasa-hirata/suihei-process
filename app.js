@@ -523,11 +523,11 @@ app.get("/summary", async (req, res) => {
       { row: 14, col: 5, label: "③" },
       { row: 10, col: 4, label: "④" },
 
-      // One blank
+      // Two blanks
       { row: null, col: null, label: "⑤" },
+      { row: null, col: null, label: "⑥" },
 
-      // Seven numerical values (two ⑥'s, then ⑦-⑪)
-      { row: 19, col: 11, label: "⑥" },
+      // Five more values (⑦-⑪)
       { row: 19, col: 11, label: "⑥" },
       { row: 20, col: 11, label: "⑦" },
       { row: 21, col: 11, label: "⑧" },
