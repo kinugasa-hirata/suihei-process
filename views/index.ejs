@@ -282,27 +282,29 @@
             </div>
           </div>
           <div class="card-body">
-            <h5 class="card-title">
-              <%= file.filename %>
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+              "
+            >
+              <h5 class="card-title" style="margin: 0"><%= file.filename %></h5>
               <i
                 class="material-icons"
                 style="
                   color: #007bff;
                   cursor: pointer;
                   font-size: 16px;
-                  margin-left: 8px;
                   vertical-align: middle;
                   opacity: 0.7;
                 "
-                onclick="window.location.href='/?view=<%= file.id %>'"
+                onclick="viewFileData('<%= file.id %>')"
                 title="詳細を見る"
               >
                 visibility
               </i>
-            </h5>
-            <p class="card-text">
-              Uploaded: <%= new Date(file.uploaded_at).toLocaleString() %>
-            </p>
+            </div>
           </div>
         </div>
         <% }); %>
@@ -562,6 +564,10 @@
             }
           });
         });
+
+        function viewFileData(fileId) {
+          window.location.href = `/fileData/${fileId}`;
+        }
       });
     </script>
   </body>
