@@ -77,53 +77,72 @@ app.get("/login", async (req, res) => {
   let client;
   try {
     client = await pool.connect();
+    console.log("Fetching login logs..."); // Debug log
     const result = await client.query(
       `SELECT username, login_time, ip_address, status, location
        FROM login_logs
        ORDER BY login_time DESC`
     );
-    res.render("login", { error: null, logs: result.rows });
+    console.log("Found logs:", result.rows.length); // Debug log
+
+    // Make sure we're passing the logs to the template
+    res.render("login", {
+      error: null,
+      logs: result.rows,
+    });
   } catch (err) {
     console.error("Error fetching login logs:", err);
-    res.render("login", { error: null, logs: [] });
+    // Pass empty array for logs when there's an error
+    res.render("login", {
+      error: "ログの取得に失敗しました",
+      logs: [],
+    });
   } finally {
     if (client) client.release();
   }
 });
 
-app.post("/login", (req, res) => {
+app.post("/login", async (req, res) => {
+  // Make this async
   const { username, password } = req.body;
   const ip = req.ip || req.connection.remoteAddress;
   const userAgent = req.headers["user-agent"];
   const geo = geoip.lookup(ip);
   const location = geo ? `${geo.city}, ${geo.country}` : "Unknown";
+  let client;
 
-  // Log the login attempt
-  const logLoginAttempt = async (status) => {
-    let client;
-    try {
-      client = await pool.connect();
+  try {
+    client = await pool.connect();
+
+    if (username === "hinkan" && /^\d{4}$/.test(password)) {
+      req.session.loggedIn = true;
+      // Log success directly
       await client.query(
         `INSERT INTO login_logs (username, ip_address, user_agent, status, location)
          VALUES ($1, $2, $3, $4, $5)`,
-        [username, ip, userAgent, status, location]
+        [username, ip, userAgent, "success", location]
       );
-    } catch (err) {
-      console.error("Error logging login attempt:", err);
-    } finally {
-      if (client) client.release();
+      res.redirect("/");
+    } else {
+      // Log failure directly
+      await client.query(
+        `INSERT INTO login_logs (username, ip_address, user_agent, status, location)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [username, ip, userAgent, "failed", location]
+      );
+      res.render("login", {
+        error: "ユーザー名またはパスワードが正しくありません",
+        logs: [], // Pass empty array to avoid undefined error
+      });
     }
-  };
-
-  if (username === "hinkan" && /^\d{4}$/.test(password)) {
-    req.session.loggedIn = true;
-    logLoginAttempt("success");
-    res.redirect("/");
-  } else {
-    logLoginAttempt("failed");
+  } catch (err) {
+    console.error("Error in login process:", err);
     res.render("login", {
-      error: "ユーザー名またはパスワードが正しくありません",
+      error: "ログインエラーが発生しました",
+      logs: [],
     });
+  } finally {
+    if (client) client.release();
   }
 });
 
