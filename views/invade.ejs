@@ -35,14 +35,18 @@
         color: white;
         text-decoration: none;
         border-radius: 4px;
-        border: 1px solid white;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: border-color 0.3s;
+      }
+      .back-button:hover {
+        border-color: rgba(255, 255, 255, 0.5);
       }
     </style>
   </head>
   <body>
     <div class="game-header">
       <div class="score">スコア: <span id="scoreDisplay">0</span></div>
-      <a href="/" class="back-button">⬅</a>
+      <a href="/" class="back-button">◂</a>
     </div>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
@@ -186,6 +190,62 @@
         });
       }
 
+      // Block physics constants
+      const BLOCK_REPULSION = 0.5;
+      const MIN_DISTANCE = blockWidth + 5;
+      const SPAWN_INTERVAL = 5000; // New block every 5 seconds
+
+      // Block collision avoidance
+      function avoidBlockCollisions() {
+        for (let i = 0; i < blocks.length; i++) {
+          for (let j = i + 1; j < blocks.length; j++) {
+            if (!blocks[i].visible || !blocks[j].visible) continue;
+
+            const dx = blocks[j].x - blocks[i].x;
+            const dy = blocks[j].y - blocks[i].y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < MIN_DISTANCE) {
+              const angle = Math.atan2(dy, dx);
+              const force = (MIN_DISTANCE - distance) * BLOCK_REPULSION;
+
+              const moveX = Math.cos(angle) * force;
+              const moveY = Math.sin(angle) * force;
+
+              blocks[j].x += moveX;
+              blocks[j].y += moveY;
+              blocks[i].x -= moveX;
+              blocks[i].y -= moveY;
+
+              // Adjust velocities for more natural movement
+              blocks[j].dx += moveX * 0.1;
+              blocks[j].dy += moveY * 0.1;
+              blocks[i].dx -= moveX * 0.1;
+              blocks[i].dy -= moveY * 0.1;
+            }
+          }
+        }
+      }
+
+      // Add new blocks periodically
+      function addNewBlock() {
+        if (gameOver) return;
+
+        const newBlock = {
+          x: Math.random() * (canvas.width - blockWidth - 100) + 50,
+          y: -blockHeight,
+          width: blockWidth,
+          height: blockHeight,
+          number: Math.floor(Math.random() * 10) + 240,
+          visible: true,
+          dx: Math.random() * 2 - 1,
+          dy: 0.2,
+        };
+
+        blocks.push(newBlock);
+        setTimeout(addNewBlock, SPAWN_INTERVAL);
+      }
+
       function moveBlocks() {
         blocks.forEach((block) => {
           if (block.visible) {
@@ -196,14 +256,23 @@
             // Bounce off walls
             if (block.x <= 0 || block.x + block.width >= canvas.width) {
               block.dx = -block.dx;
+              block.x = Math.max(
+                0,
+                Math.min(canvas.width - block.width, block.x)
+              );
             }
 
             // Game over if blocks reach bottom
             if (block.y + block.height >= paddle.y) {
               gameOver = true;
             }
+
+            // Apply friction and gravity
+            block.dx *= 0.99;
+            block.dy = Math.min(block.dy + 0.01, 1);
           }
         });
+        avoidBlockCollisions();
       }
 
       function draw() {
@@ -224,7 +293,7 @@
         // Draw blocks
         blocks.forEach((block) => {
           if (block.visible) {
-            ctx.fillStyle = "#333333";
+            ctx.fillStyle = "#222222";
             ctx.fillRect(block.x, block.y, block.width, block.height);
             ctx.fillStyle = "white";
             ctx.font = "20px Arial";
@@ -254,6 +323,7 @@
 
       // Start game
       initBlocks();
+      setTimeout(addNewBlock, SPAWN_INTERVAL); // Start spawning new blocks
       draw();
     </script>
   </body>
