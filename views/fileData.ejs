@@ -262,20 +262,27 @@
         // The standard set of cells to highlight (using file 250 as the base template)
         // You can manually adjust these coordinates for each file
         const cellsToHighlight = [
+          // First 4 numbers
           [2, 4], //①
           [19, 11], //②
           [14, 5], //③
-          [4, 4], //④
+          [10, 4], //④
+
+          // Two blanks
           ["-", "-"], //⑤
           ["-", "-"], //⑥
-          [20, 11], //⑥　21 22 23
-          [6, 4], //⑥
-          [25, 11], //⑦
-          [15, 11], //⑧
-          [10, 4], //⑨
-          [24, 11], //m
-          ["-", "-"],
-          ["-", "-"],
+
+          // 6 values
+          [19, 11], //⑥
+          [20, 11], //⑦
+          [21, 11], //⑧
+          [22, 11], //⑨
+          [23, 11], //⑩
+          [24, 11], //⑪
+
+          // Two final blanks
+          ["-", "-"], // a〜e
+          ["-", "-"], // 外観
         ];
 
         // Get all rows in tbody

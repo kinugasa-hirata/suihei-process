@@ -517,18 +517,25 @@ app.get("/summary", async (req, res) => {
 
     // Define the highlighted cells
     const cellCoordinates = [
+      // First 4 numbers
       { row: 2, col: 4, label: "①" },
       { row: 19, col: 11, label: "②" },
       { row: 14, col: 5, label: "③" },
       { row: 10, col: 4, label: "④" },
+
+      // Two blanks
       { row: null, col: null, label: "⑤" },
       { row: null, col: null, label: "⑥" },
+
+      // 6 values
       { row: 19, col: 11, label: "⑥" },
-      { row: 6, col: 4, label: "⑥" },
-      { row: 25, col: 11, label: "⑦" },
-      { row: 15, col: 11, label: "⑧" },
-      { row: 2, col: 6, label: "⑨" },
-      { row: 24, col: 11, label: "⑩" },
+      { row: 20, col: 11, label: "⑦" },
+      { row: 21, col: 11, label: "⑧" },
+      { row: 22, col: 11, label: "⑨" },
+      { row: 23, col: 11, label: "⑩" },
+      { row: 24, col: 11, label: "⑪" },
+
+      // Two final blanks
       { row: null, col: null, label: "ａ〜e" },
       { row: null, col: null, label: "外観" },
     ];
