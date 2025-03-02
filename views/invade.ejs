@@ -31,17 +31,18 @@
       }
       .back-button {
         padding: 8px 16px;
-        background: #4caf50;
+        background: transparent;
         color: white;
         text-decoration: none;
         border-radius: 4px;
+        border: 1px solid white;
       }
     </style>
   </head>
   <body>
     <div class="game-header">
       <div class="score">スコア: <span id="scoreDisplay">0</span></div>
-      <a href="/" class="back-button">戻る</a>
+      <a href="/" class="back-button">⬅</a>
     </div>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
@@ -56,14 +57,14 @@
         y: canvas.height - 30,
         width: 100,
         height: 10,
-        speed: 8,
+        speed: 12,
       };
 
       const ball = {
         x: canvas.width / 2,
         y: canvas.height - 50,
         radius: 8,
-        speed: 5,
+        speed: 7,
         dx: 0,
         dy: -5,
       };
@@ -71,10 +72,10 @@
       // File cards as blocks
       let blocks = [];
       const blockRows = 2;
-      const blockCols = 5;
+      const blockCols = 6;
       const blockPadding = 10;
-      const blockWidth = 120;
-      const blockHeight = 80;
+      const blockWidth = 100;
+      const blockHeight = 60;
 
       // Initialize blocks with file numbers
       function initBlocks() {
@@ -89,6 +90,8 @@
               height: blockHeight,
               number: fileNumber++,
               visible: true,
+              dx: Math.random() * 2 - 1, // Random horizontal movement
+              dy: 0.2, // Slow downward movement
             });
           }
         }
@@ -102,13 +105,13 @@
 
       // Event listeners
       document.addEventListener("keydown", (e) => {
-        if (e.key === "Right" || e.key === "ArrowRight") rightPressed = true;
-        if (e.key === "Left" || e.key === "ArrowLeft") leftPressed = true;
+        if (e.key === "." || e.key === "ArrowRight") rightPressed = true;
+        if (e.key === "," || e.key === "ArrowLeft") leftPressed = true;
       });
 
       document.addEventListener("keyup", (e) => {
-        if (e.key === "Right" || e.key === "ArrowRight") rightPressed = false;
-        if (e.key === "Left" || e.key === "ArrowLeft") leftPressed = false;
+        if (e.key === "." || e.key === "ArrowRight") rightPressed = false;
+        if (e.key === "," || e.key === "ArrowLeft") leftPressed = false;
       });
 
       function movePaddle() {
@@ -119,6 +122,21 @@
           paddle.x -= paddle.speed;
         }
       }
+
+      // Add initial velocity to ball
+      function startBall() {
+        if (ball.dx === 0 && ball.dy === -5) {
+          ball.dx = (Math.random() * 4 - 2) * ball.speed;
+          ball.dy = -ball.speed;
+        }
+      }
+
+      // Add space key listener to start ball
+      document.addEventListener("keydown", (e) => {
+        if (e.key === " " && !gameOver) {
+          startBall();
+        }
+      });
 
       function moveBall() {
         ball.x += ball.dx;
@@ -142,7 +160,7 @@
           // Add angle based on where the ball hits the paddle
           const hitPoint =
             (ball.x - (paddle.x + paddle.width / 2)) / (paddle.width / 2);
-          ball.dx = hitPoint * 5;
+          ball.dx = hitPoint * ball.speed * 1.5;
         }
 
         // Game over
@@ -168,28 +186,48 @@
         });
       }
 
+      function moveBlocks() {
+        blocks.forEach((block) => {
+          if (block.visible) {
+            // Move blocks
+            block.x += block.dx;
+            block.y += block.dy;
+
+            // Bounce off walls
+            if (block.x <= 0 || block.x + block.width >= canvas.width) {
+              block.dx = -block.dx;
+            }
+
+            // Game over if blocks reach bottom
+            if (block.y + block.height >= paddle.y) {
+              gameOver = true;
+            }
+          }
+        });
+      }
+
       function draw() {
         // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         // Draw paddle
-        ctx.fillStyle = "#0095DD";
+        ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
 
         // Draw ball
         ctx.beginPath();
         ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-        ctx.fillStyle = "#0095DD";
+        ctx.fillStyle = "#FFFFFF";
         ctx.fill();
         ctx.closePath();
 
         // Draw blocks
         blocks.forEach((block) => {
           if (block.visible) {
-            ctx.fillStyle = "#4CAF50";
+            ctx.fillStyle = "#333333";
             ctx.fillRect(block.x, block.y, block.width, block.height);
             ctx.fillStyle = "white";
-            ctx.font = "24px Arial";
+            ctx.font = "20px Arial";
             ctx.textAlign = "center";
             ctx.fillText(
               block.number.toString(),
@@ -209,6 +247,7 @@
 
         movePaddle();
         moveBall();
+        moveBlocks();
         checkBlockCollision();
         requestAnimationFrame(draw);
       }
