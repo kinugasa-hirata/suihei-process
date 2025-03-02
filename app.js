@@ -517,19 +517,20 @@ app.get("/summary", async (req, res) => {
 
     // Define the highlighted cells
     const cellCoordinates = [
-      { row: 2, col: 4, label: "a" },
-      { row: 4, col: 4, label: "b" },
-      { row: 6, col: 4, label: "c" },
-      { row: 10, col: 3, label: "d" },
-      { row: 14, col: 5, label: "e" },
-      { row: 15, col: 11, label: "f" },
-      { row: 19, col: 11, label: "g" },
-      { row: 20, col: 11, label: "h" },
-      { row: 21, col: 11, label: "i" },
-      { row: 22, col: 11, label: "j" },
-      { row: 23, col: 11, label: "k" },
-      { row: 24, col: 11, label: "m" },
-      { row: 25, col: 11, label: "n" },
+      { row: 2, col: 4, label: "①" },
+      { row: 19, col: 11, label: "②" },
+      { row: 14, col: 5, label: "③" },
+      { row: 4, col: 4, label: "④" },
+      { row: null, col: null, label: "⑤" },
+      { row: null, col: null, label: "⑥" },
+      { row: 20, col: 11, label: "⑥" },
+      { row: 6, col: 4, label: "⑥" },
+      { row: 25, col: 11, label: "⑦" },
+      { row: 15, col: 11, label: "⑧" },
+      { row: 10, col: 4, label: "⑨" },
+      { row: 24, col: 11, label: "⑩" },
+      { row: null, col: null, label: "ａ〜e" },
+      { row: null, col: null, label: "外観" },
     ];
 
     // Create the fileData structure
@@ -543,23 +544,21 @@ app.get("/summary", async (req, res) => {
       try {
         // Get all data for this file
         const dataResult = await client.query(
-          `
-          SELECT * FROM file_data
-          WHERE file_id = $1
-          ORDER BY index, id
-        `,
+          `SELECT * FROM file_data WHERE file_id = $1 ORDER BY index, id`,
           [file.id]
         );
-
-        // Skip if no data
-        if (dataResult.rows.length === 0) {
-          continue;
-        }
 
         // Extract values for each coordinate
         for (var j = 0; j < cellCoordinates.length; j++) {
           var coord = cellCoordinates[j];
           var label = coord.label;
+
+          // Handle empty coordinates
+          if (coord.row === null || coord.col === null) {
+            fileData[file.id][label] = "-";
+            continue;
+          }
+
           var rowIdx = coord.row;
           var colIdx = coord.col;
 
