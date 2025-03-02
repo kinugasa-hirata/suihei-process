@@ -369,7 +369,9 @@
               }
 
               weightDisplay.textContent = `${weight} g`;
-              console.log(`Weight saved successfully: ${weight}g for file ${fileId}`);
+              console.log(
+                `Weight saved successfully: ${weight}g for file ${fileId}`
+              );
               return true;
             }
             console.error("Failed to save weight:", result);
@@ -384,7 +386,7 @@
         document
           .querySelectorAll(".weight-input")
           .forEach((input, index, inputs) => {
-            input.addEventListener("keydown", async function (e) {
+            input.addEventListener("keypress", async function (e) {
               if (e.key === "Enter") {
                 e.preventDefault();
                 const weight = this.value;
@@ -394,11 +396,17 @@
                   const success = await saveWeight(fileId, weight);
                   if (success) {
                     // Update the display immediately
-                    let weightDisplay = this.closest('.file-card').querySelector(".weight-display");
+                    let weightDisplay =
+                      this.closest(".file-card").querySelector(
+                        ".weight-display"
+                      );
                     if (!weightDisplay) {
                       weightDisplay = document.createElement("div");
                       weightDisplay.className = "weight-display mb-2";
-                      this.closest('.file-content').insertBefore(weightDisplay, this.closest('.weight-form'));
+                      this.closest(".file-content").insertBefore(
+                        weightDisplay,
+                        this.closest(".weight-form")
+                      );
                     }
                     weightDisplay.textContent = `${weight} g`;
 
@@ -413,16 +421,16 @@
                     alert("重量の保存に失敗しました。もう一度お試しください。");
                   }
                 }
-              });
+              }
+            });
 
-              // Add blur event to save when input loses focus
-              input.addEventListener("blur", async function() {
-                const weight = this.value;
-                const fileId = this.dataset.fileId;
-                if (weight && !isNaN(weight)) {
-                  await saveWeight(fileId, weight);
-                }
-              });
+            // Add blur event to save when input loses focus
+            input.addEventListener("blur", async function () {
+              const weight = this.value;
+              const fileId = this.dataset.fileId;
+              if (weight && !isNaN(weight)) {
+                await saveWeight(fileId, weight);
+              }
             });
           });
 
@@ -436,7 +444,7 @@
           weightInputs.forEach((input) => {
             const fileId = input.dataset.fileId;
             const weight = input.value;
-            if (weight) {
+            if (weight && !isNaN(weight)) {
               weights.push({ fileId, weight });
             }
           });
@@ -454,6 +462,10 @@
               },
               body: JSON.stringify({ weights }),
             });
+
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
 
             const result = await response.json();
 
