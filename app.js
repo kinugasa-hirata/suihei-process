@@ -10,6 +10,7 @@ const fs = require("fs");
 const { Pool } = require("pg");
 const bodyParser = require("body-parser");
 const session = require("express-session");
+const geoip = require("geoip-lite");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -95,6 +96,8 @@ app.post("/login", (req, res) => {
   const { username, password } = req.body;
   const ip = req.ip || req.connection.remoteAddress;
   const userAgent = req.headers["user-agent"];
+  const geo = geoip.lookup(ip);
+  const location = geo ? `${geo.city}, ${geo.country}` : "Unknown";
 
   // Log the login attempt
   const logLoginAttempt = async (status) => {
@@ -102,9 +105,9 @@ app.post("/login", (req, res) => {
     try {
       client = await pool.connect();
       await client.query(
-        `INSERT INTO login_logs (username, ip_address, user_agent, status)
-         VALUES ($1, $2, $3, $4)`,
-        [username, ip, userAgent, status]
+        `INSERT INTO login_logs (username, ip_address, user_agent, status, location)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [username, ip, userAgent, status, location]
       );
     } catch (err) {
       console.error("Error logging login attempt:", err);
@@ -184,7 +187,8 @@ const initializeDatabase = async () => {
         login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         ip_address VARCHAR(45),
         user_agent TEXT,
-        status VARCHAR(50)
+        status VARCHAR(50),
+        location VARCHAR(255)
       )
     `);
 
