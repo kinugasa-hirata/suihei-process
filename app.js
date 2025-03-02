@@ -9,6 +9,7 @@ const path = require("path");
 const fs = require("fs");
 const { Pool } = require("pg");
 const bodyParser = require("body-parser");
+const session = require("express-session");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -49,6 +50,43 @@ const upload = multer({
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
+});
+
+// Add session middleware
+app.use(
+  session({
+    secret: "your-secret-key",
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: process.env.NODE_ENV === "production" },
+  })
+);
+
+// Authentication middleware
+const requireLogin = (req, res, next) => {
+  if (req.session.loggedIn) {
+    next();
+  } else {
+    res.redirect("/login");
+  }
+};
+
+// Login routes
+app.get("/login", (req, res) => {
+  res.render("login", { error: null });
+});
+
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+
+  if (username === "hinkan" && /^\d{4}$/.test(password)) {
+    req.session.loggedIn = true;
+    res.redirect("/");
+  } else {
+    res.render("login", {
+      error: "ユーザー名またはパスワードが正しくありません",
+    });
+  }
 });
 
 // Create tables if they don't exist
@@ -103,7 +141,7 @@ const initializeDatabase = async () => {
 };
 
 // Home route
-app.get("/", async (req, res) => {
+app.get("/", requireLogin, async (req, res) => {
   let client;
   try {
     client = await pool.connect();
@@ -133,7 +171,7 @@ app.get("/", async (req, res) => {
 });
 
 // Updated upload route with overwrite option
-app.post("/upload", upload.array("files"), async (req, res) => {
+app.post("/upload", requireLogin, upload.array("files"), async (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).send("No files were uploaded.");
   }
@@ -450,7 +488,7 @@ app.post("/delete-file", async (req, res) => {
 
 // Updated Summary Route to handle selected files
 // Updated Summary Route with new cell coordinates
-app.get("/summary", async (req, res) => {
+app.get("/summary", requireLogin, async (req, res) => {
   let client;
   try {
     client = await pool.connect();
