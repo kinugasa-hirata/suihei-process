@@ -165,6 +165,35 @@
       }
 
       @media print {
+        /* Remove browser's default headers and footers */
+        @page {
+          size: A4 landscape;
+          margin: 10mm;
+        }
+
+        /* Hide browser's default header/footer */
+        html {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        /* Hide Data Summary and other unnecessary elements */
+        .container > h1,
+        .container > .nav-links,
+        .container > .file-filter-form,
+        .button-container,
+        .no-print {
+          display: none !important;
+        }
+
+        /* Remove URLs from printing */
+        a {
+          text-decoration: none !important;
+        }
+        a[href]:after {
+          content: none !important;
+        }
+
         /* Hide everything except what we need */
         .button-container,
         .no-print,
@@ -174,16 +203,13 @@
         }
 
         /* A4 Landscape setup */
-        @page {
-          size: A4 landscape;
-          margin: 10mm;
-        }
-
         body {
           width: 297mm; /* A4 width */
           height: 210mm; /* A4 height */
           margin: 0;
           padding: 0;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
 
         /* Compact the layout */
