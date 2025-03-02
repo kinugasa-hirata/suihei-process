@@ -53,102 +53,55 @@
   <body>
     <div class="container">
       <h1 class="mb-4">Data Summary</h1>
-
-      <div class="nav-links">
-        <a href="/" class="btn btn-primary">Home</a>
-        <a href="/summary" class="btn btn-info active">View Summary</a>
+      <div class="nav-links mb-4">
+        <a href="/" class="btn btn-primary">Back to Home</a>
       </div>
 
-      <!-- File range selection form -->
-      <div class="file-filter-form">
-        <h5>Filter Files</h5>
-        <form action="/summary" method="get">
-          <div class="form-range-group mb-2">
-            <div>
-              <label for="minFile" class="form-label">From File #</label>
-              <input
-                type="number"
-                class="form-control range-input"
-                id="minFile"
-                name="minFile"
-                value="<%= typeof minFile != 'undefined' ? minFile : '' %>"
-                placeholder="e.g., 240"
-              />
-            </div>
-            <div>
-              <label for="maxFile" class="form-label">To File #</label>
-              <input
-                type="number"
-                class="form-control range-input"
-                id="maxFile"
-                name="maxFile"
-                value="<%= typeof maxFile != 'undefined' ? maxFile : '' %>"
-                placeholder="e.g., 250"
-              />
-            </div>
-            <div>
-              <button type="submit" class="btn btn-primary">
-                Apply Filter
-              </button>
-              <a href="/summary" class="btn btn-outline-secondary ms-2"
-                >Reset</a
-              >
-            </div>
-          </div>
-          <div class="form-text">Enter file numbers to filter the report.</div>
-        </form>
-      </div>
-
-      <div class="summary-table">
-        <% if (typeof files != 'undefined' && files && files.length > 0) { %>
-        <h3>Highlighted Data Points</h3>
-        <p class="text-muted mb-3">
-          Data from specific coordinates in each file.
-        </p>
-
-        <div class="table-responsive">
-          <table class="table table-striped table-bordered">
-            <thead class="table-dark">
-              <tr>
-                <th>Filename</th>
-                <% var headers = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
-                'j', 'k', 'm', 'n']; %> <% headers.forEach(function(header) { %>
-                <th><%= header %></th>
-                <% }); %>
-                <th>Weight (g)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% files.forEach(function(file) { %>
-              <tr>
-                <td><strong><%= file.filename %></strong></td>
-                <% headers.forEach(function(header) { %>
-                <td class="highlight-cell">
-                  <%= (fileData && fileData[file.id] &&
-                  fileData[file.id][header]) ? fileData[file.id][header] : '-'
-                  %>
-                </td>
-                <% }); %>
-                <td>
-                  <% if (file.weight) { %> <%= (parseFloat(file.weight) *
-                  1000).toFixed(1) %> <% } else { %>
-                  <span class="text-muted">Not set</span>
-                  <% } %>
-                </td>
-              </tr>
+      <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert-danger"><%= error %></div>
+      <% } else if (files && files.length > 0) { %>
+      <!-- Summary table -->
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+          <thead>
+            <tr>
+              <th>Filename</th>
+              <% var headers = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
+              'j', 'k', 'm', 'n']; %> <% headers.forEach(function(header) { %>
+              <th><%= header %></th>
               <% }); %>
-            </tbody>
-          </table>
-        </div>
-
-        <% } else { %>
-        <div class="no-data">
-          <h3>No Data Available</h3>
-          <p class="text-muted">No files match your current filter criteria.</p>
-          <a href="/" class="btn btn-primary">Go to Upload Page</a>
-        </div>
-        <% } %>
+              <th>Weight (g)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% files.forEach(function(file) { %>
+            <tr>
+              <td><strong><%= file.filename %></strong></td>
+              <% headers.forEach(function(header) { %>
+              <td class="highlight-cell">
+                <%= (fileData && fileData[file.id] && fileData[file.id][header])
+                ? fileData[file.id][header] : '-' %>
+              </td>
+              <% }); %>
+              <td>
+                <% if (file.weight) { %> <%= (parseFloat(file.weight) *
+                1000).toFixed(1) %> <% } else { %>
+                <span class="text-muted">Not set</span>
+                <% } %>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
       </div>
+
+      <% } else { %>
+      <div class="no-data">
+        <h3>No Data Available</h3>
+        <p class="text-muted">No files match your current filter criteria.</p>
+        <a href="/" class="btn btn-primary">Go to Upload Page</a>
+      </div>
+      <% } %>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
