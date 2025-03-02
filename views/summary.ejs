@@ -467,16 +467,20 @@
               <% files.forEach(function(file) { %>
               <tr>
                 <td class="filename-cell" data-file-id="<%= file.id %>">
-                  <a
-                    href="/?view=<%= file.id %>"
-                    style="
-                      text-decoration: none;
-                      color: inherit;
-                      border-bottom: 1px dotted #666;
-                    "
-                  >
+                  <div style="display: flex; align-items: center; gap: 8px">
                     <strong><%= file.filename %></strong>
-                  </a>
+                    <small
+                      style="
+                        color: #666;
+                        cursor: pointer;
+                        font-size: 11px;
+                        text-decoration: underline;
+                      "
+                      onclick="window.location.href='/?view=<%= file.id %>'"
+                    >
+                      詳細
+                    </small>
+                  </div>
                 </td>
                 <% headers.forEach(function(header) { %>
                 <td class="highlight-cell data-cell">
