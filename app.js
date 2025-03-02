@@ -518,26 +518,26 @@ app.get("/summary", async (req, res) => {
     // Define the highlighted cells
     const cellCoordinates = [
       // First 4 numbers
-      { row: 2, col: 4, label: "①" },
-      { row: 19, col: 11, label: "②" },
-      { row: 14, col: 5, label: "③" },
-      { row: 10, col: 4, label: "④" },
+      { row: 2, col: 4, label: "A" },
+      { row: 19, col: 11, label: "B" },
+      { row: 14, col: 5, label: "C" },
+      { row: 10, col: 4, label: "D" },
 
       // Two blanks
-      { row: null, col: null, label: "⑤" },
-      { row: null, col: null, label: "⑥" },
+      { row: null, col: null, label: "E" },
+      { row: null, col: null, label: "F" },
 
-      // six more values (6,6,7,8,9,10)
-      { row: 19, col: 11, label: "⑥" },
-      { row: 19, col: 11, label: "⑥" },
-      { row: 20, col: 11, label: "⑦" },
-      { row: 21, col: 11, label: "⑧" },
-      { row: 22, col: 11, label: "⑨" },
-      { row: 23, col: 11, label: "⑩" },
+      // six more values (G,G,I,J,K,L)
+      { row: 19, col: 11, label: "G" },
+      { row: 19, col: 11, label: "H" },
+      { row: 20, col: 11, label: "I" },
+      { row: 21, col: 11, label: "J" },
+      { row: 22, col: 11, label: "K" },
+      { row: 23, col: 11, label: "L" },
 
       // Two final blanks
-      { row: null, col: null, label: "ａ〜e" },
-      { row: null, col: null, label: "外観" },
+      { row: null, col: null, label: "M" },
+      { row: null, col: null, label: "N" },
     ];
 
     // Create the fileData structure
