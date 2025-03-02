@@ -816,4 +816,9 @@ app.post("/update-weights", async (req, res) => {
   }
 });
 
+// Add new route for the game
+app.get("/invade", requireLogin, (req, res) => {
+  res.render("invade");
+});
+
 module.exports = app;
