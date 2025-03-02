@@ -89,6 +89,16 @@ app.post("/login", (req, res) => {
   }
 });
 
+// Logout route
+app.get("/logout", (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error("Error destroying session:", err);
+    }
+    res.redirect("/login");
+  });
+});
+
 // Create tables if they don't exist
 const initializeDatabase = async () => {
   let client;
