@@ -15,7 +15,7 @@
         font-family: Arial, sans-serif;
       }
       #gameCanvas {
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.8);
         margin-top: 20px;
       }
       .game-header {
@@ -28,18 +28,19 @@
       }
       .score {
         font-size: 24px;
+        color: rgba(255, 255, 255, 0.8);
       }
       .back-button {
         padding: 8px 16px;
         background: transparent;
-        color: white;
+        color: rgba(255, 255, 255, 0.8);
         text-decoration: none;
         border-radius: 4px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.8);
         transition: border-color 0.3s;
       }
       .back-button:hover {
-        border-color: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 1);
       }
     </style>
   </head>
@@ -292,9 +293,9 @@
         // Draw blocks
         blocks.forEach((block) => {
           if (block.visible) {
-            ctx.fillStyle = "#111111";
+            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
             ctx.fillRect(block.x, block.y, block.width, block.height);
-            ctx.fillStyle = "white";
+            ctx.fillStyle = "#000000";
             ctx.font = "16px Arial";
             ctx.textAlign = "center";
             ctx.fillText(
@@ -306,7 +307,7 @@
         });
 
         if (gameOver) {
-          ctx.fillStyle = "red";
+          ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
           ctx.font = "48px Arial";
           ctx.textAlign = "center";
           ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2);
