@@ -54,6 +54,40 @@
         </div>
         <button type="submit" class="btn btn-primary w-100">ログイン</button>
       </form>
+
+      <!-- Login Logs Section -->
+      <div class="mt-5">
+        <h5 class="text-center mb-3">ログイン履歴</h5>
+        <div class="logs-container" style="max-height: 200px; overflow-y: auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>日時</th>
+                <th>ユーザー</th>
+                <th>状態</th>
+                <th>IP</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (logs && logs.length > 0) { %> <% logs.forEach(function(log)
+              { %>
+              <tr
+                class="<%= log.status === 'success' ? 'table-success' : 'table-danger' %>"
+              >
+                <td><%= new Date(log.login_time).toLocaleString('ja-JP') %></td>
+                <td><%= log.username %></td>
+                <td><%= log.status === 'success' ? '成功' : '失敗' %></td>
+                <td><%= log.ip_address %></td>
+              </tr>
+              <% }); %> <% } else { %>
+              <tr>
+                <td colspan="4" class="text-center">ログはありません</td>
+              </tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </body>
 </html>

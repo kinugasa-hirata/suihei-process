@@ -72,17 +72,53 @@ const requireLogin = (req, res, next) => {
 };
 
 // Login routes
-app.get("/login", (req, res) => {
-  res.render("login", { error: null });
+app.get("/login", async (req, res) => {
+  let client;
+  try {
+    client = await pool.connect();
+    const result = await client.query(
+      `SELECT username, login_time, ip_address, status
+       FROM login_logs
+       ORDER BY login_time DESC
+       LIMIT 10`
+    );
+    res.render("login", { error: null, logs: result.rows });
+  } catch (err) {
+    console.error("Error fetching login logs:", err);
+    res.render("login", { error: null, logs: [] });
+  } finally {
+    if (client) client.release();
+  }
 });
 
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
+  const ip = req.ip || req.connection.remoteAddress;
+  const userAgent = req.headers["user-agent"];
+
+  // Log the login attempt
+  const logLoginAttempt = async (status) => {
+    let client;
+    try {
+      client = await pool.connect();
+      await client.query(
+        `INSERT INTO login_logs (username, ip_address, user_agent, status)
+         VALUES ($1, $2, $3, $4)`,
+        [username, ip, userAgent, status]
+      );
+    } catch (err) {
+      console.error("Error logging login attempt:", err);
+    } finally {
+      if (client) client.release();
+    }
+  };
 
   if (username === "hinkan" && /^\d{4}$/.test(password)) {
     req.session.loggedIn = true;
+    logLoginAttempt("success");
     res.redirect("/");
   } else {
+    logLoginAttempt("failed");
     res.render("login", {
       error: "ユーザー名またはパスワードが正しくありません",
     });
@@ -137,6 +173,18 @@ const initializeDatabase = async () => {
         file_id INTEGER REFERENCES files(id) ON DELETE CASCADE,
         weight DECIMAL(10, 1) NOT NULL,
         UNIQUE(file_id)
+      )
+    `);
+
+    // Create login_logs table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS login_logs (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) NOT NULL,
+        login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        status VARCHAR(50)
       )
     `);
 
