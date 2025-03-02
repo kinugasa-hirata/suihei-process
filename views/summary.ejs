@@ -217,13 +217,13 @@
               </div>
             </div>
 
-            <div class="note">
+            <div>
               <div>
                 当社検査における環境は室温20℃±5℃、湿度40%±25%で管理された部屋で実施しております。
               </div>
             </div>
 
-            <div class="note unit-note">
+            <div>
               <div>単位（ｍｍ）</div>
             </div>
           </div>
@@ -362,13 +362,11 @@
             <tbody>
               <% files.forEach(function(file) { %>
               <tr>
-                <td>
-                  <a href="/files/<%= file.id %>" target="_blank">
-                    <strong><%= file.filename %></strong>
-                  </a>
+                <td class="filename-cell" data-file-id="<%= file.id %>">
+                  <strong><%= file.filename %></strong>
                 </td>
                 <% headers.forEach(function(header) { %>
-                <td class="highlight-cell">
+                <td class="highlight-cell data-cell">
                   <%= (typeof fileData !== 'undefined' && fileData &&
                   fileData[file.id] && typeof fileData[file.id][header] !==
                   'undefined') ? fileData[file.id][header] : '-' %>
@@ -424,25 +422,59 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
     <script>
-      function toggleInspector() {
-        // Add your inspector toggle logic here
-      }
-
-      function importWeights() {
-        // Add your weight import logic here
-      }
-
-      function toggleLogs() {
-        const content = document.getElementById("logsContent");
-        const icon = document.querySelector(".toggle-icon");
-        content.classList.toggle("hidden");
-        icon.textContent = content.classList.contains("hidden") ? "▼" : "▲";
-      }
-
+      // Initialize Flatpickr
       flatpickr("#deliveryDatePicker", {
         dateFormat: "Y/m/d",
         locale: "ja",
         allowInput: true,
+      });
+
+      // Quick approve button logic
+      document
+        .getElementById("quickApproveButton")
+        .addEventListener("click", function () {
+          const rows = document.querySelectorAll("tbody tr");
+          rows.forEach((row) => {
+            const cells = row.querySelectorAll(".data-cell");
+            cells.forEach((cell) => {
+              if (cell.textContent.trim() === "-") {
+                cell.textContent = "合";
+              }
+            });
+          });
+        });
+
+      // Long press on filename logic
+      document.querySelectorAll(".filename-cell").forEach((cell) => {
+        let pressTimer;
+
+        cell.addEventListener("mousedown", function () {
+          const fileId = this.dataset.fileId;
+          pressTimer = setTimeout(() => {
+            window.location.href = `/?view=${fileId}`;
+          }, 2000); // 2 seconds
+        });
+
+        cell.addEventListener("mouseup", function () {
+          clearTimeout(pressTimer);
+        });
+
+        cell.addEventListener("mouseleave", function () {
+          clearTimeout(pressTimer);
+        });
+
+        // For touch devices
+        cell.addEventListener("touchstart", function (e) {
+          const fileId = this.dataset.fileId;
+          pressTimer = setTimeout(() => {
+            window.location.href = `/?view=${fileId}`;
+          }, 2000); // 2 seconds
+          e.preventDefault();
+        });
+
+        cell.addEventListener("touchend", function () {
+          clearTimeout(pressTimer);
+        });
       });
     </script>
   </body>

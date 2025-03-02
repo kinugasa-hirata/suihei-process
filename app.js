@@ -107,6 +107,7 @@ app.get("/", async (req, res) => {
   let client;
   try {
     client = await pool.connect();
+    const viewFileId = req.query.view;
     const result = await client.query(`
       SELECT f.id, f.filename, f.uploaded_at, fw.weight
       FROM files f
@@ -114,13 +115,17 @@ app.get("/", async (req, res) => {
       ORDER BY f.uploaded_at DESC
     `);
 
-    res.render("index", { files: result.rows, error: null });
+    res.render("index", {
+      files: result.rows,
+      error: null,
+      viewFileId: viewFileId,
+    });
   } catch (err) {
     console.error("Error in home route:", err);
-    // Send a more user-friendly error page
     res.status(500).render("index", {
       files: [],
       error: "Database connection error. Please try again later.",
+      viewFileId: null,
     });
   } finally {
     if (client) client.release();
@@ -611,7 +616,10 @@ app.get("/summary", async (req, res) => {
           } else if (colIdx === 5) {
             value = dataRow.z !== null ? Math.abs(parseFloat(dataRow.z)) : null;
           } else if (colIdx === 11) {
-            value = dataRow.tolerance !== null ? Math.abs(parseFloat(dataRow.tolerance)) : null;
+            value =
+              dataRow.tolerance !== null
+                ? Math.abs(parseFloat(dataRow.tolerance))
+                : null;
           } else {
             value = null;
           }
