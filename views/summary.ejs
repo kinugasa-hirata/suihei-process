@@ -107,10 +107,9 @@
           <thead>
             <tr>
               <th>Filename</th>
-              <% var headers = [ 'A', 'B', 'C', 'D', // First 4 numbers 'E',
-              'F', // Two blanks 'G', 'H', // Two G values 'I', 'J', 'K', 'L',
-              // Four more values 'M', 'N' // Two final blanks ]; %> <%
-              headers.forEach(function(header) { %>
+              <% var headers = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I',
+              'J', 'K', 'L', 'M', 'N']; %> <% headers.forEach(function(header) {
+              %>
               <th><%= header %></th>
               <% }); %>
               <th>質量 (g)</th>
