@@ -275,17 +275,15 @@
           <div class="file-content">
             <div class="file-number"><%= fileNumber %></div>
             <% if (file.weight) { %>
-            <div class="weight-display mb-2">
-              <%= (parseFloat(file.weight) * 1000).toFixed(1) %> g
-            </div>
+            <div class="weight-display mb-2"><%= file.weight %> g</div>
             <% } %>
             <div class="weight-form">
               <input
                 type="number"
                 class="weight-input"
                 data-file-id="<%= file.id %>"
-                step="1"
-                value="<%= file.weight ? (parseFloat(file.weight) * 1000).toFixed(1) : '' %>"
+                step="0.1"
+                value="<%= file.weight || '' %>"
                 placeholder="Weight (g)"
                 style="text-align: center"
               />
@@ -337,13 +335,16 @@
               return false;
             }
 
+            // Format weight to one decimal place
+            const formattedWeight = parseFloat(weight).toFixed(1);
+
             const response = await fetch("/update-weights", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                weights: [{ fileId, weight }],
+                weights: [{ fileId, weight: formattedWeight }],
               }),
             });
 
@@ -369,9 +370,9 @@
                   );
               }
 
-              weightDisplay.textContent = `${weight} g`;
+              weightDisplay.textContent = `${formattedWeight} g`;
               console.log(
-                `Weight saved successfully: ${weight}g for file ${fileId}`
+                `Weight saved successfully: ${formattedWeight}g for file ${fileId}`
               );
               return true;
             }

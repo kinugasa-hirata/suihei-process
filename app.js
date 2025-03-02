@@ -175,8 +175,14 @@ app.get("/", requireLogin, async (req, res) => {
       ORDER BY f.uploaded_at DESC
     `);
 
+    // Convert weights from kg to g for display
+    const files = result.rows.map((file) => ({
+      ...file,
+      weight: file.weight ? parseFloat(file.weight).toFixed(1) : null,
+    }));
+
     res.render("index", {
-      files: result.rows,
+      files: files,
       error: null,
       viewFileId: viewFileId,
     });
@@ -769,7 +775,7 @@ app.post("/update-weights", async (req, res) => {
   let client;
   try {
     const { weights } = req.body;
-    console.log("Received weights update request:", weights); // Debug log
+    console.log("Received weights update request:", weights);
 
     client = await pool.connect();
     await client.query("BEGIN");
@@ -779,12 +785,10 @@ app.post("/update-weights", async (req, res) => {
         throw new Error(`Invalid data: fileId=${fileId}, weight=${weight}`);
       }
 
-      // Weight is already in grams, convert to kg for storage
-      const weightInKg = parseFloat(weight) / 1000;
+      // Format weight to one decimal place
+      const formattedWeight = parseFloat(weight).toFixed(1);
 
-      console.log(
-        `Updating weight for file ${fileId}: ${weight}g (${weightInKg}kg)`
-      );
+      console.log(`Updating weight for file ${fileId}: ${formattedWeight}g`);
 
       await client.query(
         `
@@ -793,7 +797,7 @@ app.post("/update-weights", async (req, res) => {
         ON CONFLICT (file_id)
         DO UPDATE SET weight = $2
         `,
-        [fileId, weightInKg]
+        [fileId, formattedWeight]
       );
     }
 
