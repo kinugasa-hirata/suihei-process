@@ -527,13 +527,13 @@ app.get("/summary", async (req, res) => {
       { row: null, col: null, label: "⑤" },
       { row: null, col: null, label: "⑥" },
 
-      // Five more values (⑦-⑪)
+      // six more values (6,6,7,8,9,10)
+      { row: 19, col: 11, label: "⑥" },
       { row: 19, col: 11, label: "⑥" },
       { row: 20, col: 11, label: "⑦" },
       { row: 21, col: 11, label: "⑧" },
       { row: 22, col: 11, label: "⑨" },
       { row: 23, col: 11, label: "⑩" },
-      { row: 24, col: 11, label: "⑪" },
 
       // Two final blanks
       { row: null, col: null, label: "ａ〜e" },
