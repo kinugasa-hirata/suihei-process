@@ -66,9 +66,8 @@
           <thead>
             <tr>
               <th>Filename</th>
-              <% var headers = [ '①', '②', '③', '④', // First 4 numbers '⑤',
-              '⑥', // Two blanks '⑥', '⑦', '⑧', '⑨', '⑩', '⑪', // 6 values
-              'ａ〜e', '外観' // Two final blanks ]; %> <%
+              <% var headers = ['①', '②', '③', '④', '⑤', '⑥', '⑥', '⑦', '⑧',
+              '⑨', '⑩', '⑪', 'ａ〜e', '外観']; %> <%
               headers.forEach(function(header) { %>
               <th><%= header %></th>
               <% }); %>
