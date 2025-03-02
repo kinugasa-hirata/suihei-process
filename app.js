@@ -769,14 +769,22 @@ app.post("/update-weights", async (req, res) => {
   let client;
   try {
     const { weights } = req.body;
-    client = await pool.connect();
+    console.log("Received weights update request:", weights); // Debug log
 
-    // Start transaction
+    client = await pool.connect();
     await client.query("BEGIN");
 
     for (const { fileId, weight } of weights) {
+      if (!fileId || !weight || isNaN(weight)) {
+        throw new Error(`Invalid data: fileId=${fileId}, weight=${weight}`);
+      }
+
       // Weight is already in grams, convert to kg for storage
       const weightInKg = parseFloat(weight) / 1000;
+
+      console.log(
+        `Updating weight for file ${fileId}: ${weight}g (${weightInKg}kg)`
+      );
 
       await client.query(
         `
@@ -789,9 +797,8 @@ app.post("/update-weights", async (req, res) => {
       );
     }
 
-    // Commit transaction
     await client.query("COMMIT");
-
+    console.log("Weight update successful");
     res.json({ success: true });
   } catch (err) {
     if (client) await client.query("ROLLBACK");

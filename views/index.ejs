@@ -331,6 +331,11 @@
         // Add this function to handle weight saving
         async function saveWeight(fileId, weight) {
           try {
+            if (!weight || isNaN(weight)) {
+              console.error("Invalid weight value:", weight);
+              return false;
+            }
+
             const response = await fetch("/update-weights", {
               method: "POST",
               headers: {
@@ -340,6 +345,10 @@
                 weights: [{ fileId, weight }],
               }),
             });
+
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
 
             const result = await response.json();
             if (result.success) {
@@ -360,8 +369,10 @@
               }
 
               weightDisplay.textContent = `${weight} g`;
+              console.log(`Weight saved successfully: ${weight}g for file ${fileId}`);
               return true;
             }
+            console.error("Failed to save weight:", result);
             return false;
           } catch (error) {
             console.error("Error saving weight:", error);
@@ -369,19 +380,28 @@
           }
         }
 
-        // Add event listeners to weight inputs
+        // Update weight input event listeners
         document
           .querySelectorAll(".weight-input")
           .forEach((input, index, inputs) => {
-            input.addEventListener("keypress", async function (e) {
+            input.addEventListener("keydown", async function (e) {
               if (e.key === "Enter") {
                 e.preventDefault();
                 const weight = this.value;
                 const fileId = this.dataset.fileId;
 
-                if (weight) {
+                if (weight && !isNaN(weight)) {
                   const success = await saveWeight(fileId, weight);
                   if (success) {
+                    // Update the display immediately
+                    let weightDisplay = this.closest('.file-card').querySelector(".weight-display");
+                    if (!weightDisplay) {
+                      weightDisplay = document.createElement("div");
+                      weightDisplay.className = "weight-display mb-2";
+                      this.closest('.file-content').insertBefore(weightDisplay, this.closest('.weight-form'));
+                    }
+                    weightDisplay.textContent = `${weight} g`;
+
                     // Move to next input if available
                     const nextInput = inputs[index + 1];
                     if (nextInput) {
@@ -389,9 +409,20 @@
                     } else {
                       this.blur(); // Remove focus if it's the last input
                     }
+                  } else {
+                    alert("重量の保存に失敗しました。もう一度お試しください。");
                   }
                 }
-              }
+              });
+
+              // Add blur event to save when input loses focus
+              input.addEventListener("blur", async function() {
+                const weight = this.value;
+                const fileId = this.dataset.fileId;
+                if (weight && !isNaN(weight)) {
+                  await saveWeight(fileId, weight);
+                }
+              });
             });
           });
 
