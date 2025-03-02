@@ -66,13 +66,13 @@
           <thead>
             <tr>
               <th>Filename</th>
-              <% var headers = [ '①', '②', '③', '④', '⑤', // First 5 columns
-              '⑥', '⑥', '⑥', '⑦', // Three ⑥ columns and ⑦ '⑧', '⑨', '⑩', //
-              Next 3 columns 'ａ〜e', '外観', // Last 2 special columns '質量
-              (g)' // Weight column ]; %> <% headers.forEach(function(header) {
-              %>
+              <% var headers = [ '①', '②', '③', '④', // First 4 numbers '⑤',
+              '⑥', // Two blanks '⑥', '⑦', '⑧', '⑨', '⑩', '⑪', // 6 values
+              'ａ〜e', '外観' // Two final blanks ]; %> <%
+              headers.forEach(function(header) { %>
               <th><%= header %></th>
               <% }); %>
+              <th>質量 (g)</th>
             </tr>
           </thead>
           <tbody>
