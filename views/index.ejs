@@ -295,6 +295,136 @@
         let pressTimer;
         let isDragging = false;
 
+        // Add this function to handle weight saving
+        async function saveWeight(fileId, weight) {
+          try {
+            const response = await fetch("/update-weights", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                weights: [{ fileId, weight }],
+              }),
+            });
+
+            const result = await response.json();
+            if (result.success) {
+              const card = document.querySelector(
+                `.file-card[data-file-id="${fileId}"]`
+              );
+              let weightDisplay = card.querySelector(".weight-display");
+
+              if (!weightDisplay) {
+                weightDisplay = document.createElement("div");
+                weightDisplay.className = "weight-display mb-2";
+                card
+                  .querySelector(".file-content")
+                  .insertBefore(
+                    weightDisplay,
+                    card.querySelector(".weight-form")
+                  );
+              }
+
+              weightDisplay.textContent = `${weight} g`;
+              return true;
+            }
+            return false;
+          } catch (error) {
+            console.error("Error saving weight:", error);
+            return false;
+          }
+        }
+
+        // Add event listeners to weight inputs
+        document
+          .querySelectorAll(".weight-input")
+          .forEach((input, index, inputs) => {
+            input.addEventListener("keypress", async function (e) {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                const weight = this.value;
+                const fileId = this.dataset.fileId;
+
+                if (weight) {
+                  const success = await saveWeight(fileId, weight);
+                  if (success) {
+                    // Move to next input if available
+                    const nextInput = inputs[index + 1];
+                    if (nextInput) {
+                      nextInput.focus();
+                    } else {
+                      this.blur(); // Remove focus if it's the last input
+                    }
+                  }
+                }
+              }
+            });
+          });
+
+        // Fix Save All Weights functionality
+        const saveAllWeightsBtn = document.getElementById("saveAllWeightsBtn");
+
+        saveAllWeightsBtn.addEventListener("click", async function () {
+          const weightInputs = document.querySelectorAll(".weight-input");
+          const weights = [];
+
+          weightInputs.forEach((input) => {
+            const fileId = input.dataset.fileId;
+            const weight = input.value;
+            if (weight) {
+              weights.push({ fileId, weight });
+            }
+          });
+
+          if (weights.length === 0) {
+            alert("No weights to save!");
+            return;
+          }
+
+          try {
+            const response = await fetch("/update-weights", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ weights }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+              // Update all weight displays
+              weights.forEach(({ fileId, weight }) => {
+                const card = document.querySelector(
+                  `.file-card[data-file-id="${fileId}"]`
+                );
+                let weightDisplay = card.querySelector(".weight-display");
+
+                if (!weightDisplay) {
+                  weightDisplay = document.createElement("div");
+                  weightDisplay.className = "weight-display mb-2";
+                  card
+                    .querySelector(".file-content")
+                    .insertBefore(
+                      weightDisplay,
+                      card.querySelector(".weight-form")
+                    );
+                }
+
+                weightDisplay.textContent = `${weight} g`;
+              });
+
+              alert("All weights saved successfully!");
+            } else {
+              throw new Error("Failed to save weights");
+            }
+          } catch (error) {
+            console.error("Error saving weights:", error);
+            alert("Error saving weights. Please try again.");
+          }
+        });
+
         // Helper function to update the summary form with selected files
         function updateSummaryForm() {
           const viewSelectedBtn = document.getElementById("viewSelectedBtn");
@@ -398,3 +528,14 @@
               if (
                 confirm(
                   `Are you sure you want to delete file ${card.dataset.filename}?`
+                )
+              ) {
+                // Handle deletion
+              }
+            }
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
