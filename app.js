@@ -527,7 +527,7 @@ app.get("/summary", async (req, res) => {
       { row: null, col: null, label: "⑤" },
       { row: null, col: null, label: "⑥" },
 
-      // Six numerical values
+      // Six numerical values (⑥-⑪)
       { row: 19, col: 11, label: "⑥" },
       { row: 20, col: 11, label: "⑦" },
       { row: 21, col: 11, label: "⑧" },
