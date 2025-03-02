@@ -89,11 +89,76 @@
         margin: 15px 0;
         font-size: 0.9em;
         color: #666;
+        padding-left: 5px;
+      }
+
+      .note::before {
+        content: "※";
+        margin-right: 5px;
       }
 
       .unit-note {
         text-align: right;
         font-weight: bold;
+      }
+
+      .table thead td {
+        background-color: #f8f9fa;
+        font-weight: normal;
+        text-align: center;
+        vertical-align: middle;
+      }
+      .table thead td:first-child {
+        text-align: left;
+        font-weight: bold;
+      }
+      .smaller-text {
+        font-size: 0.9em;
+      }
+
+      .button-container {
+        margin: 20px 0;
+        padding: 10px 0;
+        border-top: 1px solid #eee;
+      }
+
+      .button-container button {
+        margin-right: 10px;
+      }
+
+      .logs-container {
+        margin-top: 20px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+
+      .logs-header {
+        padding: 10px;
+        background-color: #f8f9fa;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .logs-content {
+        padding: 15px;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .logs-content.hidden {
+        display: none;
+      }
+
+      .toggle-icon {
+        font-size: 12px;
+      }
+
+      @media print {
+        .no-print {
+          display: none;
+        }
       }
     </style>
   </head>
@@ -215,6 +280,116 @@
         <div class="table-responsive">
           <table class="table table-bordered table-hover">
             <thead>
+              <!-- Specification rows -->
+              <tr>
+                <td>図面寸法</td>
+                <td>8.2</td>
+                <td>37.5</td>
+                <td>15.9</td>
+                <td>24.1</td>
+                <td>Φ11.2</td>
+                <td>Φ3.2全貫通</td>
+                <td>Φ8.0</td>
+                <td>深さ5.0</td>
+                <td>P.C.D 30</td>
+                <td>Φ155.4</td>
+                <td>83.1</td>
+                <td>Φ122.3</td>
+                <td>嵌め合い</td>
+                <td>目視点検</td>
+                <td>（参考値）</td>
+              </tr>
+              <tr>
+                <td>寸法公差</td>
+                <td>±0.2</td>
+                <td>±0.3</td>
+                <td>±0.2</td>
+                <td>±0.2</td>
+                <td>＋0.2/0</td>
+                <td>±0.1</td>
+                <td>±0.2</td>
+                <td>±0.1</td>
+                <td>±0.2</td>
+                <td>±0.5</td>
+                <td>±0.3</td>
+                <td>±0.5</td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+              </tr>
+              <tr>
+                <td>上限値</td>
+                <td>8.4</td>
+                <td>37.8</td>
+                <td>16.1</td>
+                <td>24.3</td>
+                <td>11.4</td>
+                <td>3.3</td>
+                <td>8.2</td>
+                <td>5.1</td>
+                <td>30.2</td>
+                <td>155.9</td>
+                <td>83.4</td>
+                <td>122.8</td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+              </tr>
+              <tr>
+                <td>下限値</td>
+                <td>8.0</td>
+                <td>37.2</td>
+                <td>15.7</td>
+                <td>23.9</td>
+                <td>11.2</td>
+                <td>3.1</td>
+                <td>7.8</td>
+                <td>4.9</td>
+                <td>29.8</td>
+                <td>154.9</td>
+                <td>82.8</td>
+                <td>121.8</td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+              </tr>
+              <tr>
+                <td>測定器具</td>
+                <td>三次元測定器</td>
+                <td>三次元測定器</td>
+                <td>三次元測定器</td>
+                <td>三次元測定器</td>
+                <td>ピンゲージ</td>
+                <td>ピンゲージ</td>
+                <td>三次元測定器</td>
+                <td>三次元測定器</td>
+                <td>三次元測定器</td>
+                <td>三次元測定器</td>
+                <td>三次元測定器</td>
+                <td>三次元測定器</td>
+                <td>治具</td>
+                <td>目視</td>
+                <td>秤</td>
+              </tr>
+              <tr>
+                <td>記載事項</td>
+                <td>測定値</td>
+                <td>測定値</td>
+                <td>測定値</td>
+                <td>合否</td>
+                <td>合否</td>
+                <td>合否</td>
+                <td>測定値</td>
+                <td>測定値</td>
+                <td>測定値</td>
+                <td>測定値</td>
+                <td>測定値</td>
+                <td>測定値</td>
+                <td>合否</td>
+                <td>合否</td>
+                <td>測定値</td>
+              </tr>
+              <!-- Original header row -->
               <tr>
                 <th>Filename</th>
                 <% var headers = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I',
@@ -250,6 +425,53 @@
               <% }); %>
             </tbody>
           </table>
+          <div class="note" style="margin-top: 10px; text-align: left">
+            ＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。
+          </div>
+        </div>
+
+        <!-- Buttons and Logs Container -->
+        <div class="button-container" style="margin-top: 20px">
+          <a
+            href="/"
+            class="button"
+            style="
+              display: inline-block;
+              text-decoration: none;
+              background-color: #007bff;
+              color: white;
+              padding: 8px 12px;
+              border-radius: 4px;
+              margin-right: 5px;
+            "
+            >アップロードに戻る</a
+          >
+          <button onclick="window.print()" class="btn btn-secondary">
+            印刷
+          </button>
+          <button
+            id="inspectorButton"
+            onclick="toggleInspector()"
+            class="btn btn-primary"
+          >
+            検査
+          </button>
+          <button onclick="importWeights()" class="btn btn-info">
+            重量データ インポート
+          </button>
+          <button id="recordButton" class="record-button btn btn-success">
+            記録
+          </button>
+        </div>
+
+        <div id="inspectionLogsContainer" class="logs-container no-print">
+          <div class="logs-header" onclick="toggleLogs()">
+            <h3>検査記録履歴 <span id="logsCount"></span></h3>
+            <span class="toggle-icon">▼</span>
+          </div>
+          <div id="logsContent" class="logs-content hidden">
+            <!-- Logs will be dynamically inserted here -->
+          </div>
         </div>
 
         <% } else { %>
@@ -263,5 +485,21 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      function toggleInspector() {
+        // Add your inspector toggle logic here
+      }
+
+      function importWeights() {
+        // Add your weight import logic here
+      }
+
+      function toggleLogs() {
+        const content = document.getElementById("logsContent");
+        const icon = document.querySelector(".toggle-icon");
+        content.classList.toggle("hidden");
+        icon.textContent = content.classList.contains("hidden") ? "▼" : "▲";
+      }
+    </script>
   </body>
 </html>
