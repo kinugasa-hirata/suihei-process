@@ -16,10 +16,11 @@ const port = process.env.PORT || 3000;
 
 // Set up PostgreSQL connection
 const pool = new Pool({
-  connectionString: process.env.POSTGRES_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  connectionString: process.env.DATABASE_URL,
+  ssl:
+    process.env.NODE_ENV === "production"
+      ? { rejectUnauthorized: false }
+      : false,
 });
 
 // After creating the pool, add error handling
