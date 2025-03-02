@@ -118,6 +118,13 @@
         font-size: 0.9em;
       }
 
+      /* Hide the indicator row but keep it functional */
+      .table thead tr:last-child {
+        position: absolute;
+        visibility: hidden;
+        pointer-events: none;
+      }
+
       .button-container {
         margin: 20px 0;
         padding: 10px 0;
@@ -158,8 +165,74 @@
       }
 
       @media print {
-        .no-print {
+        /* Hide everything except what we need */
+        .button-container,
+        .no-print,
+        .nav-links,
+        .file-filter-form {
           display: none;
+        }
+
+        /* A4 Landscape setup */
+        @page {
+          size: A4 landscape;
+          margin: 10mm;
+        }
+
+        body {
+          width: 297mm; /* A4 width */
+          height: 210mm; /* A4 height */
+          margin: 0;
+          padding: 0;
+        }
+
+        /* Compact the layout */
+        .container {
+          width: 100%;
+          max-width: none;
+          margin: 0;
+          padding: 5mm;
+        }
+
+        /* Adjust table for printing */
+        .table {
+          font-size: 9pt;
+          margin: 0;
+        }
+
+        .table td,
+        .table th {
+          padding: 2px 4px;
+        }
+
+        /* Header adjustments */
+        h2 {
+          font-size: 14pt;
+          margin: 0 0 5mm 0;
+        }
+
+        .header-info {
+          margin: 2mm 0;
+          font-size: 10pt;
+        }
+
+        /* Environment note and unit */
+        .environment-note,
+        .unit-note {
+          font-size: 9pt;
+          margin: 2mm 0;
+        }
+
+        /* Bottom note */
+        .bottom-note {
+          font-size: 9pt;
+          margin-top: 3mm;
+        }
+
+        /* Hide all non-essential elements */
+        .content-section {
+          padding: 0;
+          box-shadow: none;
         }
       }
     </style>
@@ -217,13 +290,13 @@
               </div>
             </div>
 
-            <div>
+            <div class="environment-note">
               <div>
                 当社検査における環境は室温20℃±5℃、湿度40%±25%で管理された部屋で実施しております。
               </div>
             </div>
 
-            <div>
+            <div class="unit-note">
               <div>単位（ｍｍ）</div>
             </div>
           </div>
@@ -382,7 +455,7 @@
               <% }); %>
             </tbody>
           </table>
-          <div class="note" style="margin-top: 10px; text-align: left">
+          <div class="bottom-note" style="margin-top: 10px; text-align: left">
             ＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。
           </div>
         </div>
