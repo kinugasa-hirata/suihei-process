@@ -444,6 +444,7 @@ app.post("/delete-file", async (req, res) => {
 });
 
 // Updated Summary Route to handle selected files
+// Updated Summary Route - Replace this in app.js
 app.get("/summary", async (req, res) => {
   let client;
   try {
@@ -477,11 +478,24 @@ app.get("/summary", async (req, res) => {
             END ASC
         `;
         params = selectedFiles;
+      } else {
+        // Fallback if selectedFiles is empty after filtering
+        query = `
+          SELECT f.id, f.filename, fw.weight, f.uploaded_at
+          FROM files f
+          LEFT JOIN file_weights fw ON f.id = fw.file_id
+          ORDER BY 
+            CASE 
+              WHEN f.filename ~ '^[0-9]+' THEN 
+                CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
+              ELSE 0
+            END ASC
+          LIMIT 10
+        `;
+        params = [];
       }
-    }
-
-    // If no selected files, fall back to min/max range
-    if (!query) {
+    } else {
+      // If no selected files, fall back to min/max range
       const minFileNumber = req.query.minFile
         ? parseInt(req.query.minFile, 10)
         : 0;
@@ -515,6 +529,16 @@ app.get("/summary", async (req, res) => {
     const filesResult = await client.query(query, params);
     console.log("Found files:", filesResult.rows.length); // Debug log
 
+    if (filesResult.rows.length === 0) {
+      // No files found, render with empty data
+      return res.render("summary", {
+        files: [],
+        fileData: {},
+        minFile: req.query.minFile || "",
+        maxFile: req.query.maxFile || "",
+      });
+    }
+
     // Define the highlighted cells
     const cellCoordinates = [
       // First 4 numbers
@@ -527,13 +551,13 @@ app.get("/summary", async (req, res) => {
       { row: null, col: null, label: "E" },
       { row: null, col: null, label: "F" },
 
-      // six more values (G,G,I,J,K,L)
-      { row: 19, col: 11, label: "G" },
-      { row: 19, col: 11, label: "H" },
-      { row: 20, col: 11, label: "I" },
-      { row: 21, col: 11, label: "J" },
-      { row: 22, col: 11, label: "K" },
-      { row: 23, col: 11, label: "L" },
+      // six more values (G,H,I,J,K,L)
+      { row: 20, col: 11, label: "G" }, //
+      { row: 6, col: 4, label: "H" }, //
+      { row: 25, col: 11, label: "I" }, //
+      { row: 15, col: 11, label: "J" }, //
+      { row: 4, col: 4, label: "K" }, //
+      { row: 24, col: 11, label: "L" }, //
 
       // Two final blanks
       { row: null, col: null, label: "M" },
@@ -541,66 +565,76 @@ app.get("/summary", async (req, res) => {
     ];
 
     // Create the fileData structure
-    var fileData = {};
+    const fileData = {};
 
     // Process each file
-    for (var i = 0; i < filesResult.rows.length; i++) {
-      var file = filesResult.rows[i];
-      fileData[file.id] = {};
+    for (const file of filesResult.rows) {
+      const fileId = file.id;
+      fileData[fileId] = {};
 
       try {
         // Get all data for this file
         const dataResult = await client.query(
           `SELECT * FROM file_data WHERE file_id = $1 ORDER BY index, id`,
-          [file.id]
+          [fileId]
         );
 
         // Extract values for each coordinate
-        for (var j = 0; j < cellCoordinates.length; j++) {
-          var coord = cellCoordinates[j];
-          var label = coord.label;
+        for (const coord of cellCoordinates) {
+          const label = coord.label;
 
           // Handle empty coordinates
           if (coord.row === null || coord.col === null) {
-            fileData[file.id][label] = "-";
+            fileData[fileId][label] = "-";
             continue;
           }
 
-          var rowIdx = coord.row;
-          var colIdx = coord.col;
+          const rowIdx = coord.row;
+          const colIdx = coord.col;
 
           // Skip if row doesn't exist
           if (rowIdx >= dataResult.rows.length) {
-            fileData[file.id][label] = "N/A";
+            fileData[fileId][label] = "N/A";
             continue;
           }
 
           // Get the data row
-          var dataRow = dataResult.rows[rowIdx];
+          const dataRow = dataResult.rows[rowIdx];
+          if (!dataRow) {
+            fileData[fileId][label] = "N/A";
+            continue;
+          }
 
           // Extract the value based on the column index
-          var value;
+          let value;
           if (colIdx === 3) {
-            value = Math.abs(parseFloat(dataRow.x));
+            value = dataRow.x !== null ? Math.abs(parseFloat(dataRow.x)) : null;
           } else if (colIdx === 4) {
-            value = Math.abs(parseFloat(dataRow.y));
+            value = dataRow.y !== null ? Math.abs(parseFloat(dataRow.y)) : null;
           } else if (colIdx === 5) {
-            value = Math.abs(parseFloat(dataRow.z));
+            value = dataRow.z !== null ? Math.abs(parseFloat(dataRow.z)) : null;
           } else if (colIdx === 11) {
-            value = Math.abs(parseFloat(dataRow.tolerance));
+            value =
+              dataRow.tolerance !== null
+                ? Math.abs(parseFloat(dataRow.tolerance))
+                : null;
           } else {
             value = null;
           }
 
           // Format the value
           if (value !== null && !isNaN(value)) {
-            fileData[file.id][label] = value.toFixed(2);
+            fileData[fileId][label] = value.toFixed(2);
           } else {
-            fileData[file.id][label] = "N/A";
+            fileData[fileId][label] = "N/A";
           }
         }
       } catch (err) {
-        console.error(`Error processing file ${file.id}:`, err);
+        console.error(`Error processing file ${fileId}:`, err);
+        // Set all labels to N/A for this file
+        for (const coord of cellCoordinates) {
+          fileData[fileId][coord.label] = "Error";
+        }
       }
     }
 
@@ -615,6 +649,7 @@ app.get("/summary", async (req, res) => {
     console.error("Error fetching summary data:", err);
     res.status(500).render("summary", {
       files: [],
+      fileData: {},
       error: "Error fetching summary data: " + err.message,
     });
   } finally {

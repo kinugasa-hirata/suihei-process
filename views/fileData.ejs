@@ -232,8 +232,6 @@
 
     <!-- Table Cell Highlighting Script -->
     <script>
-      // Updated cell highlighting script based on your feedback
-      // Standardized cell highlighting script using file 250 as the base template
       document.addEventListener("DOMContentLoaded", function () {
         // Get table and check if it exists
         const table = document.getElementById("dataTable");
@@ -259,27 +257,23 @@
           ? fileInfoElement.querySelector("h2").textContent.trim()
           : "";
 
-        // The standard set of cells to highlight (using file 250 as the base template)
-        // You can manually adjust these coordinates for each file
+        // UPDATED coordinates - these should match the server-side cellCoordinates array
         const cellsToHighlight = [
           // First 4 numbers
           [2, 4], //A
           [19, 11], //B
           [14, 5], //C
           [10, 4], //D
-
           // Two blanks
           ["-", "-"], //E
           ["-", "-"], //F
-
-          // six more values (G,G,I,J,K,L)
+          // six more values (G,H,I,J,K,L)
           [20, 11], //G
           [6, 4], //H
           [25, 11], //I
           [15, 11], //J
           [4, 4], //K
           [24, 11], //L
-
           // Two final blanks
           ["-", "-"], //M
           ["-", "-"], //N
@@ -290,6 +284,9 @@
 
         // Apply highlighting to specified cells
         cellsToHighlight.forEach(([rowIndex, colIndex]) => {
+          // Skip placeholders
+          if (rowIndex === "-" || colIndex === "-") return;
+
           // Make sure row and column exist
           if (rowIndex < rows.length) {
             const row = rows[rowIndex];
