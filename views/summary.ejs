@@ -477,8 +477,7 @@
                 </td>
                 <% }); %>
                 <td>
-                  <% if (file.weight) { %> <%= (parseFloat(file.weight) *
-                  1000).toFixed(1) %> <% } else { %>
+                  <% if (file.weight) { %> <%= (parseFloat(file.weight)).toFixed(1) %> <% } else { %>
                   <span class="text-muted">Not set</span>
                   <% } %>
                 </td>
