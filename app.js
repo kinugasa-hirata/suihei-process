@@ -437,6 +437,7 @@ app.get("/files/:id", async (req, res) => {
     res.render("fileData", {
       file: fileWithWeight,
       data: dataResult.rows,
+      username: req.session.username,
     });
   } catch (err) {
     console.error("Error fetching file data:", err);
@@ -730,6 +731,7 @@ app.get("/summary", requireLogin, async (req, res) => {
       minFile: req.query.minFile || "",
       maxFile: req.query.maxFile || "",
       inspectorName: req.session.inspectorName,
+      username: req.session.username,
     });
   } catch (err) {
     console.error("Error fetching summary data:", err);
@@ -790,6 +792,14 @@ app.use((err, req, res, next) => {
 
 // Add new route to handle multiple weight updates
 app.post("/update-weights", async (req, res) => {
+  // Check if user is hinkan - prevent weight updates
+  if (req.session.username === "hinkan") {
+    return res.status(403).json({
+      success: false,
+      error: "権限がありません",
+    });
+  }
+
   let client;
   try {
     const { weights } = req.body;
@@ -838,6 +848,11 @@ app.post("/update-weights", async (req, res) => {
 app.post("/files/:id/update-weight", async (req, res) => {
   let client;
   try {
+    // Check if user is hinkan - prevent weight updates
+    if (req.session.username === "hinkan") {
+      return res.status(403).send("権限がありません");
+    }
+
     const fileId = req.params.id;
     let weight = req.body.weight;
 

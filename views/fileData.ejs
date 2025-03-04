@@ -76,6 +76,29 @@
               <span class="text-muted">Not set</span>
               <% } %>
             </p>
+
+            <% if (username !== 'hinkan') { %>
+            <form
+              action="/files/<%= file.id %>/update-weight"
+              method="post"
+              id="weightForm"
+            >
+              <div class="input-group" style="max-width: 300px">
+                <input type="hidden" name="fileId" value="<%= file.id %>" />
+                <input
+                  type="text"
+                  class="form-control text-end"
+                  name="weight"
+                  value="<%= file.weight !== null ? Number(file.weight).toFixed(1) : '' %>"
+                  placeholder="Enter weight (g)"
+                  inputmode="decimal"
+                />
+                <button type="submit" class="btn btn-primary">
+                  Update Weight
+                </button>
+              </div>
+            </form>
+            <% } %>
           </div>
         </div>
       </div>

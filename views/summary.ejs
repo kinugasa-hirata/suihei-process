@@ -478,9 +478,16 @@
                 <% }); %>
                 <td>
                   <% if (file.weight) { %> <%=
-                  (parseFloat(file.weight)).toFixed(1) %> <% } else { %>
+                  (parseFloat(file.weight)).toFixed(1) %> <% } else { %> <% if
+                  (username !== 'hinkan') { %>
+                  <span
+                    class="text-muted weight-editable"
+                    data-file-id="<%= file.id %>"
+                    >Not set</span
+                  >
+                  <% } else { %>
                   <span class="text-muted">Not set</span>
-                  <% } %>
+                  <% } %> <% } %>
                 </td>
               </tr>
               <% }); %>
