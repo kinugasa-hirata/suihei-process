@@ -1,0 +1,51 @@
+// Update weight input event listeners
+document
+  .querySelectorAll(".weight-input")
+  .forEach((input, index, inputs) => {
+    input.addEventListener("change", async function (e) {
+      let weight = this.value;
+      const fileId = this.dataset.fileId;
+
+      // Ensure weight is formatted to one decimal place
+      if (weight && !isNaN(weight)) {
+        if (!weight.includes('.')) {
+          weight += '.0'; // Append .0 if no decimal is present
+        }
+        const success = await saveWeight(fileId, weight);
+        if (success) {
+          // Update the display immediately
+          let weightDisplay =
+            this.closest(".file-card").querySelector(".weight-display");
+          if (!weightDisplay) {
+            weightDisplay = document.createElement("div");
+            weightDisplay.className = "weight-display mb-2";
+            this.closest(".file-content").insertBefore(
+              weightDisplay,
+              this.closest(".weight-form")
+            );
+          }
+          weightDisplay.textContent = `${weight} g`;
+        } else {
+          alert("重量の保存に失敗しました。もう一度お試しください。");
+        }
+      }
+    });
+
+    // Handle focus event to set cursor at the end
+    input.addEventListener("focus", function () {
+      this.setSelectionRange(this.value.length, this.value.length);
+    });
+
+    // Handle Enter key separately
+    input.addEventListener("keypress", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const nextInput = inputs[index + 1];
+        if (nextInput) {
+          nextInput.focus();
+        } else {
+          this.blur();
+        }
+      }
+    });
+  }); 
