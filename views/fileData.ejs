@@ -26,7 +26,6 @@
       .table-responsive {
         overflow-x: auto;
       }
-      /* Highlight style */
       .highlight {
         background-color: #fff3cd !important;
         border: 2px solid #fd7e14 !important;
@@ -71,14 +70,19 @@
           </div>
           <div class="col-md-6">
             <p>
-              <% if (typeof file.weight !== 'undefined' && file.weight !== null) { %>
+              <% if (typeof file.weight !== 'undefined' && file.weight !== null)
+              { %>
               <strong>Weight:</strong> <%= Number(file.weight).toFixed(1) %> g
-              <% } else { %>
-              <strong>Weight:</strong> <span class="text-muted">Not set</span>
+              <% } else { %> <strong>Weight:</strong>
+              <span class="text-muted">Not set</span>
               <% } %>
             </p>
 
-            <form action="/files/<%= file.id %>/update-weight" method="post" id="weightForm">
+            <form
+              action="/files/<%= file.id %>/update-weight"
+              method="post"
+              id="weightForm"
+            >
               <div class="input-group" style="max-width: 300px">
                 <input type="hidden" name="fileId" value="<%= file.id %>" />
                 <input
@@ -89,7 +93,9 @@
                   placeholder="Enter weight (g)"
                   inputmode="decimal"
                 />
-                <button type="submit" class="btn btn-primary">Update Weight</button>
+                <button type="submit" class="btn btn-primary">
+                  Update Weight
+                </button>
               </div>
             </form>
           </div>
@@ -100,7 +106,6 @@
       <% } %> <% if (typeof data !== 'undefined' && data && data.length > 0) {
       %>
       <h3>測定結果</h3>
-
       <div class="table-responsive">
         <table class="table table-striped table-bordered" id="dataTable">
           <thead class="table-dark">
@@ -128,159 +133,121 @@
                 <%= point.data_type %>
               </td>
               <td>
-                <% if(point.x !== null && point.x !== undefined) { %> <%= typeof
+                <% if(point.x !== null && point.x !== undefined) { %><%= typeof
                 point.x === 'number' ? point.x.toFixed(3) : ((point.x === 'NaN'
                 || point.x === 'NAN') ? 'NaN' : (parseFloat(point.x) ?
-                parseFloat(point.x).toFixed(3) : point.x)) %> <% } else { %> -
-                <% } %>
+                parseFloat(point.x).toFixed(3) : point.x)) %><% } else { %>-<% }
+                %>
               </td>
               <td>
-                <% if(point.y !== null && point.y !== undefined) { %> <%= typeof
+                <% if(point.y !== null && point.y !== undefined) { %><%= typeof
                 point.y === 'number' ? point.y.toFixed(3) : ((point.y === 'NaN'
                 || point.y === 'NAN') ? 'NaN' : (parseFloat(point.y) ?
-                parseFloat(point.y).toFixed(3) : point.y)) %> <% } else { %> -
-                <% } %>
+                parseFloat(point.y).toFixed(3) : point.y)) %><% } else { %>-<% }
+                %>
               </td>
               <td>
-                <% if(point.z !== null && point.z !== undefined) { %> <%= typeof
+                <% if(point.z !== null && point.z !== undefined) { %><%= typeof
                 point.z === 'number' ? point.z.toFixed(3) : ((point.z === 'NaN'
                 || point.z === 'NAN') ? 'NaN' : (parseFloat(point.z) ?
-                parseFloat(point.z).toFixed(3) : point.z)) %> <% } else { %> -
-                <% } %>
+                parseFloat(point.z).toFixed(3) : point.z)) %><% } else { %>-<% }
+                %>
               </td>
               <td>
-                <% if(point.rot_x !== null && point.rot_x !== undefined) { %>
-                <%= typeof point.rot_x === 'number' ? point.rot_x.toFixed(3) :
+                <% if(point.rot_x !== null && point.rot_x !== undefined) { %><%=
+                typeof point.rot_x === 'number' ? point.rot_x.toFixed(3) :
                 ((point.rot_x === 'NaN' || point.rot_x === 'NAN') ? 'NaN' :
                 (parseFloat(point.rot_x) ? parseFloat(point.rot_x).toFixed(3) :
-                point.rot_x)) %> <% } else { %> - <% } %>
+                point.rot_x)) %><% } else { %>-<% } %>
               </td>
               <td>
-                <% if(point.rot_y !== null && point.rot_y !== undefined) { %>
-                <%= typeof point.rot_y === 'number' ? point.rot_y.toFixed(3) :
+                <% if(point.rot_y !== null && point.rot_y !== undefined) { %><%=
+                typeof point.rot_y === 'number' ? point.rot_y.toFixed(3) :
                 ((point.rot_y === 'NaN' || point.rot_y === 'NAN') ? 'NaN' :
                 (parseFloat(point.rot_y) ? parseFloat(point.rot_y).toFixed(3) :
-                point.rot_y)) %> <% } else { %> - <% } %>
+                point.rot_y)) %><% } else { %>-<% } %>
               </td>
               <td>
-                <% if(point.rot_z !== null && point.rot_z !== undefined) { %>
-                <%= typeof point.rot_z === 'number' ? point.rot_z.toFixed(3) :
+                <% if(point.rot_z !== null && point.rot_z !== undefined) { %><%=
+                typeof point.rot_z === 'number' ? point.rot_z.toFixed(3) :
                 ((point.rot_z === 'NaN' || point.rot_z === 'NAN') ? 'NaN' :
                 (parseFloat(point.rot_z) ? parseFloat(point.rot_z).toFixed(3) :
-                point.rot_z)) %> <% } else { %> - <% } %>
+                point.rot_z)) %><% } else { %>-<% } %>
               </td>
               <td><%= point.note || '-' %></td>
               <td>
                 <% if(point.diameter !== null && point.diameter !== undefined) {
-                %> <%= typeof point.diameter === 'number' ?
+                %><%= typeof point.diameter === 'number' ?
                 point.diameter.toFixed(3) : ((point.diameter === 'NaN' ||
                 point.diameter === 'NAN') ? 'NaN' : (parseFloat(point.diameter)
-                ? parseFloat(point.diameter).toFixed(3) : point.diameter)) %> <%
-                } else { %> - <% } %>
+                ? parseFloat(point.diameter).toFixed(3) : point.diameter)) %><%
+                } else { %>-<% } %>
               </td>
               <td>
                 <% if(point.tolerance !== null && point.tolerance !== undefined)
-                { %> <%= typeof point.tolerance === 'number' ?
+                { %><%= typeof point.tolerance === 'number' ?
                 point.tolerance.toFixed(3) : ((point.tolerance === 'NaN' ||
                 point.tolerance === 'NAN') ? 'NaN' :
                 (parseFloat(point.tolerance) ?
-                parseFloat(point.tolerance).toFixed(3) : point.tolerance)) %> <%
-                } else { %> - <% } %>
+                parseFloat(point.tolerance).toFixed(3) : point.tolerance)) %><%
+                } else { %>-<% } %>
               </td>
             </tr>
             <% }); %>
           </tbody>
         </table>
       </div>
+      <% } %>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- Table Cell Highlighting Script -->
     <script>
       document.addEventListener("DOMContentLoaded", function () {
-        // Get table and check if it exists
-        const table = document.getElementById("dataTable");
-        if (!table) return;
-
-        // Get file ID and other identifiers from page
-        const fileInfoElement = document.querySelector(".file-info");
-        const fileIdElement = fileInfoElement
-          ? fileInfoElement.querySelector("p strong:first-child")
-          : null;
-        let fileId = "";
-
-        if (fileIdElement && fileIdElement.textContent.includes("File ID")) {
-          const fileIdText = fileIdElement.nextSibling
-            ? fileIdElement.nextSibling.textContent.trim()
-            : "";
-          fileId = fileIdText.replace(":", "").trim();
-        }
-
-        // Also check URL and heading
-        const fileUrl = window.location.href;
-        const fileHeading = fileInfoElement
-          ? fileInfoElement.querySelector("h2").textContent.trim()
-          : "";
-
-        // UPDATED coordinates - these should match the server-side cellCoordinates array
-        const cellsToHighlight = [
-          // First 4 numbers
-          [2, 4], //A
-          [19, 11], //B
-          [14, 5], //C
-          [10, 4], //D
-          // Two blanks
-          ["-", "-"], //E
-          ["-", "-"], //F
-          // six more values (G,H,I,J,K,L)
-          [20, 11], //G
-          [6, 4], //H
-          [25, 11], //I
-          [15, 11], //J
-          [4, 4], //K
-          [24, 11], //L
-          // Two final blanks
-          ["-", "-"], //M
-          ["-", "-"], //N
-        ];
-
-        // Get all rows in tbody
-        const rows = table.querySelectorAll("tbody tr");
-
-        // Apply highlighting to specified cells
-        cellsToHighlight.forEach(([rowIndex, colIndex]) => {
-          // Skip placeholders
-          if (rowIndex === "-" || colIndex === "-") return;
-
-          // Make sure row and column exist
-          if (rowIndex < rows.length) {
-            const row = rows[rowIndex];
-            if (colIndex < row.cells.length) {
-              row.cells[colIndex].classList.add("highlight");
-            }
-          }
-        });
-
-        // Log info for debugging (can be removed in production)
-        console.log("File ID:", fileId);
-        console.log("File URL:", fileUrl);
-        console.log("File heading:", fileHeading);
-        console.log("Number of rows:", rows.length);
-        console.log("Cells highlighted:", cellsToHighlight);
-      });
-    </script>
-
-    <script>
-      document.addEventListener("DOMContentLoaded", function() {
         const weightInput = document.querySelector('input[name="weight"]');
-        const weightForm = document.getElementById('weightForm');
+        const weightForm = document.getElementById("weightForm");
 
         if (weightInput && weightForm) {
-          weightInput.addEventListener("keydown", function(event) {
+          weightInput.addEventListener("keydown", function (event) {
             if (event.key === "Enter") {
               event.preventDefault();
               if (this.value) {
                 weightForm.submit();
+              }
+            }
+          });
+        }
+
+        // Table highlighting code
+        const table = document.getElementById("dataTable");
+        if (table) {
+          const cellsToHighlight = [
+            [2, 4],
+            [19, 11],
+            [14, 5],
+            [10, 4],
+            ["-", "-"],
+            ["-", "-"],
+            [20, 11],
+            [6, 4],
+            [25, 11],
+            [15, 11],
+            [4, 4],
+            [24, 11],
+            ["-", "-"],
+            ["-", "-"],
+          ];
+
+          const rows = table.querySelectorAll("tbody tr");
+          cellsToHighlight.forEach(([rowIndex, colIndex]) => {
+            if (
+              rowIndex !== "-" &&
+              colIndex !== "-" &&
+              rowIndex < rows.length
+            ) {
+              const row = rows[rowIndex];
+              if (colIndex < row.cells.length) {
+                row.cells[colIndex].classList.add("highlight");
               }
             }
           });
