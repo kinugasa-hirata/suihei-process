@@ -55,7 +55,6 @@
 
       <div class="nav-links">
         <a href="/" class="btn btn-primary">Home</a>
-        <a href="/summary" class="btn btn-info">View Summary</a>
       </div>
 
       <% if (typeof file !== 'undefined' && file) { %>
@@ -77,27 +76,6 @@
               <span class="text-muted">Not set</span>
               <% } %>
             </p>
-
-            <form
-              action="/files/<%= file.id %>/update-weight"
-              method="post"
-              id="weightForm"
-            >
-              <div class="input-group" style="max-width: 300px">
-                <input type="hidden" name="fileId" value="<%= file.id %>" />
-                <input
-                  type="text"
-                  class="form-control text-end"
-                  name="weight"
-                  value="<%= file.weight !== null ? Number(file.weight).toFixed(1) : '' %>"
-                  placeholder="Enter weight (g)"
-                  inputmode="decimal"
-                />
-                <button type="submit" class="btn btn-primary">
-                  Update Weight
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       </div>
