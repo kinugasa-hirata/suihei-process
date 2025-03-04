@@ -824,7 +824,7 @@ app.post("/files/:id/update-weight", async (req, res) => {
     const fileId = req.params.id;
     let weight = req.body.weight;
 
-    // Ensure weight is a number with one decimal place
+    // Convert to number and format to one decimal place
     weight = Number(weight).toFixed(1);
 
     client = await pool.connect();
@@ -836,11 +836,12 @@ app.post("/files/:id/update-weight", async (req, res) => {
       VALUES ($1, $2)
       ON CONFLICT (file_id) 
       DO UPDATE SET weight = $2
+      RETURNING weight
       `,
       [fileId, weight]
     );
 
-    // Redirect back to the file page
+    // Redirect back to the file page to show the updated value
     res.redirect(`/files/${fileId}`);
   } catch (error) {
     console.error("Error updating weight:", error);
