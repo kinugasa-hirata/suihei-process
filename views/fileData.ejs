@@ -74,14 +74,17 @@
             <p>
               <% if (typeof file.weight !== 'undefined' && file.weight !== null)
               { %>
-              <strong>Weight:</strong> <%=
-              parseFloat(file.weight).toFixed(file.weight.toString().includes('.')
-              ? 1 : 0) %> g <% } else { %> <strong>Weight:</strong>
+              <strong>Weight:</strong> <%= parseFloat(file.weight).toFixed(1) %>
+              g <% } else { %> <strong>Weight:</strong>
               <span class="text-muted">Not set</span>
               <% } %>
             </p>
 
-            <form action="/files/<%= file.id %>/update-weight" method="post">
+            <form
+              action="/files/<%= file.id %>/update-weight"
+              method="post"
+              id="weightForm"
+            >
               <div class="input-group" style="max-width: 300px">
                 <input type="hidden" name="fileId" value="<%= file.id %>" />
                 <input
@@ -89,8 +92,10 @@
                   class="form-control text-end"
                   name="weight"
                   step="0.1"
-                  value="<%= file.weight !== null ? parseFloat(file.weight).toFixed(file.weight.toString().includes('.') ? 1 : 0) : '' %>"
+                  value="<%= file.weight !== null ? parseFloat(file.weight).toFixed(1) : '' %>"
                   placeholder="Enter weight (g)"
+                  onchange="this.value = parseFloat(this.value).toFixed(1)"
+                  onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.form.submit(); }"
                 />
                 <button type="submit" class="btn btn-primary">
                   Update Weight
@@ -303,6 +308,35 @@
         console.log("File heading:", fileHeading);
         console.log("Number of rows:", rows.length);
         console.log("Cells highlighted:", cellsToHighlight);
+      });
+    </script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const weightInput = document.querySelector('input[name="weight"]');
+
+        // Format initial value
+        if (weightInput.value) {
+          weightInput.value = parseFloat(weightInput.value).toFixed(1);
+        }
+
+        // Format on blur (when leaving the input)
+        weightInput.addEventListener("blur", function () {
+          if (this.value) {
+            this.value = parseFloat(this.value).toFixed(1);
+          }
+        });
+
+        // Handle Enter key
+        weightInput.addEventListener("keydown", function (event) {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            if (this.value) {
+              this.value = parseFloat(this.value).toFixed(1);
+            }
+            this.form.submit();
+          }
+        });
       });
     </script>
   </body>
