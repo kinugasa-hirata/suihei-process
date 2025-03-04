@@ -269,5 +269,23 @@
         console.log("Cells highlighted:", cellsToHighlight);
       });
     </script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        const weightInput = document.querySelector('input[name="weight"]');
+        const weightForm = document.getElementById('weightForm');
+
+        if (weightInput && weightForm) {
+          weightInput.addEventListener("keydown", function(event) {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              if (this.value) {
+                weightForm.submit();
+              }
+            }
+          });
+        }
+      });
+    </script>
   </body>
 </html>
