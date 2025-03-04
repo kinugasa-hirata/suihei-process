@@ -280,7 +280,7 @@
                 <strong>仕様書番号:</strong> KDMP-0434
                 <strong>担当者:</strong>
                 <span class="editable" contenteditable="true" id="inspector"
-                  >苗村</span
+                  ><%= inspectorName %></span
                 >
               </div>
             </div>
@@ -477,7 +477,8 @@
                 </td>
                 <% }); %>
                 <td>
-                  <% if (file.weight) { %> <%= (parseFloat(file.weight)).toFixed(1) %> <% } else { %>
+                  <% if (file.weight) { %> <%=
+                  (parseFloat(file.weight)).toFixed(1) %> <% } else { %>
                   <span class="text-muted">Not set</span>
                   <% } %>
                 </td>

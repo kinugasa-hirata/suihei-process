@@ -79,8 +79,24 @@ app.get("/login", (req, res) => {
 
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
-  if (username === "hinkan" && /^\d{4}$/.test(password)) {
+  const validUsernames = ["hinkan", "naemura", "iwatsuki"];
+
+  if (validUsernames.includes(username) && /^\d{4}$/.test(password)) {
     req.session.loggedIn = true;
+    req.session.username = username; // Store username in session
+
+    // Set inspector name based on username
+    switch (username) {
+      case "naemura":
+        req.session.inspectorName = "苗村";
+        break;
+      case "iwatsuki":
+        req.session.inspectorName = "岩月";
+        break;
+      default:
+        req.session.inspectorName = "検査員";
+    }
+
     res.redirect("/");
   } else {
     res.render("login", {
@@ -713,6 +729,7 @@ app.get("/summary", requireLogin, async (req, res) => {
       fileData: fileData,
       minFile: req.query.minFile || "",
       maxFile: req.query.maxFile || "",
+      inspectorName: req.session.inspectorName,
     });
   } catch (err) {
     console.error("Error fetching summary data:", err);
