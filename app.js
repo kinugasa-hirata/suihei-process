@@ -822,18 +822,21 @@ app.post("/files/:id/update-weight", async (req, res) => {
   let client;
   try {
     const fileId = req.params.id;
-    const weight = req.body.weight;
+    let weight = req.body.weight;
+
+    // Ensure weight is a number with one decimal place
+    weight = Number(weight).toFixed(1);
 
     client = await pool.connect();
 
-    // Update the weight in file_weights table using upsert
+    // Update the weight in file_weights table
     await client.query(
       `
       INSERT INTO file_weights (file_id, weight)
       VALUES ($1, $2)
       ON CONFLICT (file_id) 
       DO UPDATE SET weight = $2
-    `,
+      `,
       [fileId, weight]
     );
 

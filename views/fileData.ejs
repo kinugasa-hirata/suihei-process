@@ -74,8 +74,8 @@
             <p>
               <% if (typeof file.weight !== 'undefined' && file.weight !== null)
               { %>
-              <strong>Weight:</strong> <%= parseFloat(file.weight).toFixed(1) %>
-              g <% } else { %> <strong>Weight:</strong>
+              <strong>Weight:</strong> <%= Number(file.weight).toFixed(1) %> g
+              <% } else { %> <strong>Weight:</strong>
               <span class="text-muted">Not set</span>
               <% } %>
             </p>
@@ -88,20 +88,60 @@
               <div class="input-group" style="max-width: 300px">
                 <input type="hidden" name="fileId" value="<%= file.id %>" />
                 <input
-                  type="number"
+                  type="text"
                   class="form-control text-end"
                   name="weight"
-                  step="0.1"
-                  value="<%= file.weight !== null ? parseFloat(file.weight).toFixed(1) : '' %>"
+                  value="<%= file.weight !== null ? Number(file.weight).toFixed(1) : '' %>"
                   placeholder="Enter weight (g)"
-                  onchange="this.value = parseFloat(this.value).toFixed(1)"
-                  onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.form.submit(); }"
+                  inputmode="decimal"
                 />
                 <button type="submit" class="btn btn-primary">
                   Update Weight
                 </button>
               </div>
             </form>
+
+            <script>
+              document.addEventListener("DOMContentLoaded", function () {
+                const weightInput = document.querySelector(
+                  'input[name="weight"]'
+                );
+
+                function formatWeight(value) {
+                  if (!value) return "";
+                  const num = Number(value.replace(/[^\d.-]/g, ""));
+                  return isNaN(num) ? "" : num.toFixed(1);
+                }
+
+                // Format on input change
+                weightInput.addEventListener("input", function () {
+                  const cursorPos = this.selectionStart;
+                  const oldLength = this.value.length;
+                  this.value = formatWeight(this.value) || "";
+
+                  // Restore cursor position
+                  if (this.value.length !== oldLength) {
+                    this.setSelectionRange(cursorPos, cursorPos);
+                  }
+                });
+
+                // Handle Enter key
+                weightInput.addEventListener("keydown", function (event) {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    if (this.value) {
+                      this.value = formatWeight(this.value);
+                      this.form.submit();
+                    }
+                  }
+                });
+
+                // Format on blur
+                weightInput.addEventListener("blur", function () {
+                  this.value = formatWeight(this.value);
+                });
+              });
+            </script>
           </div>
         </div>
       </div>
@@ -308,35 +348,6 @@
         console.log("File heading:", fileHeading);
         console.log("Number of rows:", rows.length);
         console.log("Cells highlighted:", cellsToHighlight);
-      });
-    </script>
-
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        const weightInput = document.querySelector('input[name="weight"]');
-
-        // Format initial value
-        if (weightInput.value) {
-          weightInput.value = parseFloat(weightInput.value).toFixed(1);
-        }
-
-        // Format on blur (when leaving the input)
-        weightInput.addEventListener("blur", function () {
-          if (this.value) {
-            this.value = parseFloat(this.value).toFixed(1);
-          }
-        });
-
-        // Handle Enter key
-        weightInput.addEventListener("keydown", function (event) {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            if (this.value) {
-              this.value = parseFloat(this.value).toFixed(1);
-            }
-            this.form.submit();
-          }
-        });
       });
     </script>
   </body>
