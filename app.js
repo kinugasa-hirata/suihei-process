@@ -817,4 +817,24 @@ app.post("/update-weights", async (req, res) => {
   }
 });
 
+// Update weight route
+app.post("/files/:id/update-weight", async (req, res) => {
+  try {
+    const fileId = req.params.id;
+    const weight = req.body.weight;
+
+    // Update the weight in your database
+    await pool.query("UPDATE files SET weight = $1 WHERE id = $2", [
+      weight,
+      fileId,
+    ]);
+
+    // Redirect back to the file page
+    res.redirect(`/files/${fileId}`);
+  } catch (error) {
+    console.error("Error updating weight:", error);
+    res.status(500).send("Error updating weight");
+  }
+});
+
 module.exports = app;

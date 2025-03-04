@@ -81,14 +81,14 @@
               <% } %>
             </p>
 
-            <form action="/update-weight" method="post">
+            <form action="/files/<%= file.id %>/update-weight" method="post">
               <div class="input-group" style="max-width: 300px">
                 <input type="hidden" name="fileId" value="<%= file.id %>" />
                 <input
                   type="number"
                   class="form-control text-end"
                   name="weight"
-                  step="0.1"
+                  step="any"
                   value="<%= file.weight !== null ? file.weight : '' %>"
                   placeholder="Enter weight (g)"
                 />
