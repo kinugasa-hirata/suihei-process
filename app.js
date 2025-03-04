@@ -819,21 +819,33 @@ app.post("/update-weights", async (req, res) => {
 
 // Update weight route
 app.post("/files/:id/update-weight", async (req, res) => {
+  let client;
   try {
     const fileId = req.params.id;
     const weight = req.body.weight;
 
-    // Update the weight in your database
-    await pool.query("UPDATE files SET weight = $1 WHERE id = $2", [
-      weight,
-      fileId,
-    ]);
+    client = await pool.connect();
+
+    // Update the weight in file_weights table using upsert
+    await client.query(
+      `
+      INSERT INTO file_weights (file_id, weight)
+      VALUES ($1, $2)
+      ON CONFLICT (file_id) 
+      DO UPDATE SET weight = $2
+    `,
+      [fileId, weight]
+    );
 
     // Redirect back to the file page
     res.redirect(`/files/${fileId}`);
   } catch (error) {
     console.error("Error updating weight:", error);
     res.status(500).send("Error updating weight");
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 

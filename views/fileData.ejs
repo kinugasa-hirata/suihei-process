@@ -74,7 +74,7 @@
             <p>
               <% if (typeof file.weight !== 'undefined' && file.weight !== null)
               { %>
-              <strong>Weight:</strong> <%= file.weight ?
+              <strong>Weight:</strong> <%=
               parseFloat(file.weight).toFixed(file.weight.toString().includes('.')
               ? 1 : 0) %> g <% } else { %> <strong>Weight:</strong>
               <span class="text-muted">Not set</span>
@@ -88,8 +88,8 @@
                   type="number"
                   class="form-control text-end"
                   name="weight"
-                  step="any"
-                  value="<%= file.weight !== null ? file.weight : '' %>"
+                  step="0.1"
+                  value="<%= file.weight !== null ? parseFloat(file.weight).toFixed(file.weight.toString().includes('.') ? 1 : 0) : '' %>"
                   placeholder="Enter weight (g)"
                 />
                 <button type="submit" class="btn btn-primary">
