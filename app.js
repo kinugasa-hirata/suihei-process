@@ -643,7 +643,7 @@ app.get("/summary", requireLogin, async (req, res) => {
       { row: 6, col: 4, label: "H" },
       { row: 25, col: 11, label: "I" },
       { row: 15, col: 11, label: "J" },
-      { row: 4, col: 4, label: "K" },
+      { row: 5, col: 4, label: "K" },
       { row: 24, col: 11, label: "L" },
       // Two final blanks
       { row: null, col: null, label: "M" },
@@ -691,9 +691,12 @@ app.get("/summary", requireLogin, async (req, res) => {
             continue;
           }
 
-          // Extract the value based on the column index
+          // Extract the value based on the column index and label
           let value;
-          if (colIdx === 3) {
+          if (label === "K") {
+            // Special handling for K (position [5, 4])
+            value = dataRow.y !== null ? parseFloat(dataRow.y) : null; // Remove Math.abs() to keep negative values
+          } else if (colIdx === 3) {
             value = dataRow.x !== null ? Math.abs(parseFloat(dataRow.x)) : null;
           } else if (colIdx === 4) {
             value = dataRow.y !== null ? Math.abs(parseFloat(dataRow.y)) : null;
