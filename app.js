@@ -638,8 +638,12 @@ app.get("/summary", requireLogin, async (req, res) => {
       // Two blanks
       { row: null, col: null, label: "E" },
       { row: null, col: null, label: "F" },
-      // six more values (G,H,I,J,K,L)
-      { row: 20, col: 11, label: "G" },
+      // G values - now checking four locations
+      { row: 20, col: 11, label: "G1" },
+      { row: 21, col: 11, label: "G2" },
+      { row: 22, col: 11, label: "G3" },
+      { row: 23, col: 11, label: "G4" },
+      // remaining values
       { row: 6, col: 4, label: "H" },
       { row: 25, col: 11, label: "I" },
       { row: 15, col: 11, label: "J" },
@@ -649,6 +653,35 @@ app.get("/summary", requireLogin, async (req, res) => {
       { row: null, col: null, label: "M" },
       { row: null, col: null, label: "N" },
     ];
+
+    // Update validation ranges to handle G1-G4
+    const validationRanges = {
+      A: { min: 8.0, max: 8.4 }, // 8.2 ±0.2
+      B: { min: 37.2, max: 37.8 }, // 37.5 ±0.3
+      C: { min: 15.7, max: 16.1 }, // 15.9 ±0.2
+      D: { min: 23.9, max: 24.3 }, // 24.1 ±0.2
+      E: { min: 11.2, max: 11.4 }, // Φ11.2 +0.2/0
+      F: { min: 3.1, max: 3.3 }, // Φ3.2 ±0.1
+      G1: { min: 7.8, max: 8.2 }, // Φ8.0 ±0.2
+      G2: { min: 7.8, max: 8.2 }, // Φ8.0 ±0.2
+      G3: { min: 7.8, max: 8.2 }, // Φ8.0 ±0.2
+      G4: { min: 7.8, max: 8.2 }, // Φ8.0 ±0.2
+      H: { min: 4.9, max: 5.1 }, // 5.0 ±0.1
+      I: { min: 29.8, max: 30.2 }, // 30 ±0.2
+      J: { min: 154.9, max: 155.9 }, // Φ155.4 ±0.5
+      K: { min: 82.8, max: 83.4 }, // 83.1 ±0.3
+      L: { min: 121.8, max: 122.8 }, // Φ122.3 ±0.5
+    };
+
+    // Add this function to check if a value is within range
+    function isValueValid(label, value) {
+      if (!validationRanges[label]) return true; // No validation range defined
+      if (value === null || value === undefined || isNaN(value)) return false;
+
+      const range = validationRanges[label];
+      const numValue = parseFloat(value);
+      return numValue >= range.min && numValue <= range.max;
+    }
 
     // Create the fileData structure
     const fileData = {};
@@ -691,7 +724,7 @@ app.get("/summary", requireLogin, async (req, res) => {
             continue;
           }
 
-          // Extract the value based on the column index and label
+          // Extract and format the value
           let value;
           if (colIdx === 3) {
             value = dataRow.x !== null ? Math.abs(parseFloat(dataRow.x)) : null;
@@ -701,16 +734,24 @@ app.get("/summary", requireLogin, async (req, res) => {
             value = dataRow.z !== null ? Math.abs(parseFloat(dataRow.z)) : null;
           } else if (colIdx === 11) {
             value =
-              dataRow.tolerance !== null ? parseFloat(dataRow.tolerance) : null; // Remove Math.abs() for tolerance values
+              dataRow.tolerance !== null ? parseFloat(dataRow.tolerance) : null;
           } else {
             value = null;
           }
 
-          // Format the value
+          // Format and validate the value
           if (value !== null && !isNaN(value)) {
-            fileData[fileId][label] = value.toFixed(2);
+            const formattedValue = value.toFixed(2);
+            // Add validation status to the data
+            fileData[fileId][label] = {
+              value: formattedValue,
+              isValid: isValueValid(label, value),
+            };
           } else {
-            fileData[fileId][label] = "N/A";
+            fileData[fileId][label] = {
+              value: "N/A",
+              isValid: false,
+            };
           }
         }
       } catch (err) {

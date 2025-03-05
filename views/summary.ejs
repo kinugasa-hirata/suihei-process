@@ -474,10 +474,10 @@
               <!-- Original header row -->
               <tr>
                 <th>Filename</th>
-                <% var headers = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I',
-                'J', 'K', 'L', 'M', 'N']; %> <% headers.forEach(function(header)
-                { %>
-                <th><%= header %></th>
+                <% var headers = ['A', 'B', 'C', 'D', 'E', 'F', 'G1', 'G2',
+                'G3', 'G4', 'H', 'I', 'J', 'K', 'L', 'M', 'N']; %> <%
+                headers.forEach(function(header) { %>
+                <th><%= header.replace(/[1-4]$/, '') %></th>
                 <% }); %>
                 <th>質量 (g)</th>
               </tr>
@@ -489,10 +489,10 @@
                   <strong><%= file.filename %></strong>
                 </td>
                 <% headers.forEach(function(header) { %>
-                <td class="highlight-cell data-cell">
-                  <%= (typeof fileData !== 'undefined' && fileData &&
-                  fileData[file.id] && typeof fileData[file.id][header] !==
-                  'undefined') ? fileData[file.id][header] : '-' %>
+                <td
+                  class="<%= fileData[file.id][header].isValid ? '' : 'invalid-value' %> highlight-cell data-cell"
+                >
+                  <%= fileData[file.id][header].value %>
                 </td>
                 <% }); %>
                 <td>
