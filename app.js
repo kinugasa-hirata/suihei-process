@@ -693,10 +693,7 @@ app.get("/summary", requireLogin, async (req, res) => {
 
           // Extract the value based on the column index and label
           let value;
-          if (label === "K") {
-            // Special handling for K (position [5, 4])
-            value = dataRow.y !== null ? parseFloat(dataRow.y) : null; // Remove Math.abs() to keep negative values
-          } else if (colIdx === 3) {
+          if (colIdx === 3) {
             value = dataRow.x !== null ? Math.abs(parseFloat(dataRow.x)) : null;
           } else if (colIdx === 4) {
             value = dataRow.y !== null ? Math.abs(parseFloat(dataRow.y)) : null;
@@ -704,9 +701,7 @@ app.get("/summary", requireLogin, async (req, res) => {
             value = dataRow.z !== null ? Math.abs(parseFloat(dataRow.z)) : null;
           } else if (colIdx === 11) {
             value =
-              dataRow.tolerance !== null
-                ? Math.abs(parseFloat(dataRow.tolerance))
-                : null;
+              dataRow.tolerance !== null ? parseFloat(dataRow.tolerance) : null; // Remove Math.abs() for tolerance values
           } else {
             value = null;
           }
