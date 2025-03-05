@@ -287,6 +287,24 @@
           box-shadow: none;
         }
       }
+
+      .invalid-value {
+        color: white !important;
+        font-weight: bold;
+        background-color: #dc3545 !important; /* Solid red background */
+        position: relative;
+      }
+
+      .invalid-value::after {
+        content: "範囲外"; /* "Out of range" in Japanese */
+        position: absolute;
+        top: -15px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 10px;
+        color: #dc3545;
+        white-space: nowrap;
+      }
     </style>
   </head>
   <body>

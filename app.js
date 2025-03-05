@@ -636,10 +636,10 @@ app.get("/summary", requireLogin, async (req, res) => {
 
     // Update validation ranges to handle G1-G4
     const validationRanges = {
-      A: { min: 8.0, max: 8.4 }, // 8.2 ±0.2
-      B: { min: 37.2, max: 37.8 }, // 37.5 ±0.3
-      C: { min: 15.7, max: 16.1 }, // 15.9 ±0.2
-      D: { min: 23.9, max: 24.3 }, // 24.1 ±0.2
+      A: { min: 8.0, max: 8.4 }, // 8.21 is within range
+      B: { min: 37.2, max: 37.8 }, // 37.98 is OUT of range!
+      C: { min: 15.7, max: 16.1 }, // 15.91 is within range
+      D: { min: 23.9, max: 24.3 }, // 24.09 is within range
       E: { min: 11.2, max: 11.4 }, // Φ11.2 +0.2/0
       F: { min: 3.1, max: 3.3 }, // Φ3.2 ±0.1
       G1: { min: 7.8, max: 8.2 }, // Φ8.0 ±0.2
@@ -648,9 +648,9 @@ app.get("/summary", requireLogin, async (req, res) => {
       G4: { min: 7.8, max: 8.2 }, // Φ8.0 ±0.2
       H: { min: 4.9, max: 5.1 }, // 5.0 ±0.1
       I: { min: 29.8, max: 30.2 }, // 30 ±0.2
-      J: { min: 154.9, max: 155.9 }, // Φ155.4 ±0.5
-      K: { min: 82.8, max: 83.4 }, // 83.1 ±0.3
-      L: { min: 121.8, max: 122.8 }, // Φ122.3 ±0.5
+      J: { min: 154.9, max: 155.9 }, // 125.89 is OUT of range!
+      K: { min: 82.8, max: 83.4 }, // 83.23 is within range
+      L: { min: 121.8, max: 122.8 }, // 122.35 is within range
     };
 
     // Add this function to check if a value is within range
