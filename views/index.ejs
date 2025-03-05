@@ -270,47 +270,12 @@
         >
           <div class="delete-overlay">Release to Delete</div>
           <div class="file-content">
-            <div class="file-number"><%= fileNumber %></div>
-            <% if (file.weight) { %>
-            <div class="weight-display mb-2"><%= file.weight %> g</div>
-            <% } %>
-            <div class="weight-form">
-              <input
-                type="number"
-                class="weight-input"
-                data-file-id="<%= file.id %>"
-                step="0.1"
-                value="<%= file.weight || '' %>"
-                placeholder="Weight (g)"
-                style="text-align: center"
-              />
-            </div>
-            <div class="view-data-link mt-2">
-              <a
-                href="/files/<%= file.id %>"
-                class="btn btn-sm btn-outline-secondary"
-                style="padding: 4px; font-size: 0.8rem; border-radius: 50%"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  fill="currentColor"
-                  class="bi bi-search"
-                  viewBox="0 0 16 16"
-                >
-                  <path
-                    d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"
-                  />
-                </svg>
+            <div class="file-number"><%= file.filename %></div>
+            <div class="mb-2">
+              <a href="/fileData/<%= file.id %>" class="text-decoration-none">
+                詳細を見る
               </a>
             </div>
-            <button
-              class="btn btn-danger delete-file-btn"
-              data-file-id="<%= file.id %>"
-            >
-              削除
-            </button>
           </div>
         </div>
         <% }); %>
@@ -584,7 +549,7 @@
             }
           });
 
-          // Handle long press
+          // Handle long press for deletion
           card.addEventListener("mousedown", function (e) {
             if (e.target.closest("form")) return;
 
@@ -601,14 +566,20 @@
           card.addEventListener("mouseup", function () {
             clearTimeout(pressTimer);
             if (card.classList.contains("deleting")) {
+              card.classList.remove("deleting");
               if (
                 confirm(
-                  `Are you sure you want to delete file ${card.dataset.filename}?`
+                  `本当にファイル ${card.dataset.filename} を削除しますか？`
                 )
               ) {
-                // Handle deletion
+                deleteFile(card.dataset.fileId, card);
               }
             }
+          });
+
+          card.addEventListener("mouseleave", function () {
+            clearTimeout(pressTimer);
+            card.classList.remove("deleting");
           });
         });
 
@@ -645,18 +616,6 @@
             alert("ファイルの削除中にエラーが発生しました");
           }
         }
-
-        // Add click handler to delete buttons
-        document.addEventListener("DOMContentLoaded", function () {
-          document.querySelectorAll(".delete-file-btn").forEach((button) => {
-            button.addEventListener("click", function (e) {
-              e.preventDefault();
-              const fileId = this.dataset.fileId;
-              const card = this.closest(".file-card");
-              deleteFile(fileId, card);
-            });
-          });
-        });
       });
     </script>
   </body>
