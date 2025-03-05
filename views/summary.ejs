@@ -474,10 +474,12 @@
               <!-- Original header row -->
               <tr>
                 <th>Filename</th>
-                <% var headers = ['A', 'B', 'C', 'D', 'E', 'F', 'G1', 'G2',
-                'G3', 'G4', 'H', 'I', 'J', 'K', 'L', 'M', 'N']; %> <%
-                headers.forEach(function(header) { %>
-                <th><%= header.replace(/[1-4]$/, '') %></th>
+                <% var displayHeaders = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+                'I', 'J', 'K', 'L', 'M', 'N']; %> <% var internalHeaders = ['A',
+                'B', 'C', 'D', 'E', 'F', 'G1', 'G2', 'G3', 'G4', 'H', 'I', 'J',
+                'K', 'L', 'M', 'N']; %> <%
+                displayHeaders.forEach(function(header) { %>
+                <th><%= header %></th>
                 <% }); %>
                 <th>質量 (g)</th>
               </tr>
@@ -488,13 +490,20 @@
                 <td class="filename-cell" data-file-id="<%= file.id %>">
                   <strong><%= file.filename %></strong>
                 </td>
-                <% headers.forEach(function(header) { %>
+                <% displayHeaders.forEach(function(header) { %> <% if (header
+                === 'G') { %>
+                <td
+                  class="<%= fileData[file.id]['G1'].isValid && fileData[file.id]['G2'].isValid && fileData[file.id]['G3'].isValid && fileData[file.id]['G4'].isValid ? '' : 'invalid-value' %> highlight-cell data-cell"
+                >
+                  <%= fileData[file.id]['G1'].value %>
+                </td>
+                <% } else { %>
                 <td
                   class="<%= fileData[file.id][header].isValid ? '' : 'invalid-value' %> highlight-cell data-cell"
                 >
                   <%= fileData[file.id][header].value %>
                 </td>
-                <% }); %>
+                <% } %> <% }); %>
                 <td>
                   <% if (file.weight) { %> <%=
                   (parseFloat(file.weight)).toFixed(1) %> <% } else { %> <% if
