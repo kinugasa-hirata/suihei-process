@@ -16,7 +16,7 @@
     <style>
       .container {
         max-width: 1200px;
-        margin-top: 2rem;
+        margin-top: 0;
       }
       .summary-table {
         margin-top: 2rem;
@@ -52,13 +52,14 @@
       .range-input {
         width: 120px;
       }
-      .main-container {
+      /* .main-container {
         padding: 20px;
-      }
+      } */
 
       .content-section {
-        background-color: white;
-        padding: 20px;
+        background-color: #e6f3ff;
+        padding: 1rem;
+        margin: 0;
       }
 
       .header-info {
@@ -263,6 +264,7 @@
         /* Hide all non-essential elements */
         .content-section {
           padding: 0;
+          background-color: white;
           box-shadow: none;
         }
       }
@@ -270,66 +272,64 @@
   </head>
   <body>
     <div class="container">
-      <div class="main-container">
-        <div class="content-section">
-          <div class="container">
-            <h2>水平ノズル全数検査成績書</h2>
-            <div class="header-info">
-              <div>
-                <strong>品名:</strong> 水平ノズル
-                <strong>仕様書番号:</strong> KDMP-0434
-                <strong>担当者:</strong>
-                <span class="editable" contenteditable="true" id="inspector"
-                  ><%= inspectorName %></span
-                >
-              </div>
+      <div class="content-section">
+        <div class="container">
+          <h2>水平ノズル全数検査成績書</h2>
+          <div class="header-info">
+            <div>
+              <strong>品名:</strong> 水平ノズル
+              <strong>仕様書番号:</strong> KDMP-0434
+              <strong>担当者:</strong>
+              <span class="editable" contenteditable="true" id="inspector"
+                ><%= inspectorName %></span
+              >
             </div>
-            <div class="header-info">
-              <div style="white-space: nowrap">
-                <strong>図番:</strong> P2MM302000 <strong>数量:</strong
-                ><span id="fileCount"><%= files ? files.length : 0 %></span>個
-                <strong>検査方法:</strong> 全数検査 <strong>検査日:</strong> <%=
-                new Date().toLocaleDateString('ja-JP', { year: 'numeric', month:
-                '2-digit', day: '2-digit' }).replace(/\//g, '/') %>
-                <strong>納期:</strong>
-                <input
-                  type="text"
-                  id="deliveryDatePicker"
-                  class="date-input flatpickr"
-                  placeholder="YYYY/MM/DD"
-                />
-              </div>
-              <div class="company-info">㈱平田商店</div>
+          </div>
+          <div class="header-info">
+            <div style="white-space: nowrap">
+              <strong>図番:</strong> P2MM302000 <strong>数量:</strong
+              ><span id="fileCount"><%= files ? files.length : 0 %></span>個
+              <strong>検査方法:</strong> 全数検査 <strong>検査日:</strong> <%=
+              new Date().toLocaleDateString('ja-JP', { year: 'numeric', month:
+              '2-digit', day: '2-digit' }).replace(/\//g, '/') %>
+              <strong>納期:</strong>
+              <input
+                type="text"
+                id="deliveryDatePicker"
+                class="date-input flatpickr"
+                placeholder="YYYY/MM/DD"
+              />
             </div>
-            <div class="header-info">
-              <div style="margin-left: auto">
-                <button
-                  id="quickApproveButton"
-                  style="
-                    width: 48px;
-                    height: 48px;
-                    border-radius: 50%;
-                    background-color: white;
-                    color: white;
-                    border: none;
-                    font-weight: bold;
-                    cursor: pointer;
-                    box-shadow: 0 2px 4px white;
-                  "
-                  title="一括承認"
-                ></button>
-              </div>
+            <div class="company-info">㈱平田商店</div>
+          </div>
+          <div class="header-info">
+            <div style="margin-left: auto">
+              <button
+                id="quickApproveButton"
+                style="
+                  width: 48px;
+                  height: 48px;
+                  border-radius: 50%;
+                  background-color: white;
+                  color: white;
+                  border: none;
+                  font-weight: bold;
+                  cursor: pointer;
+                  box-shadow: 0 2px 4px white;
+                "
+                title="一括承認"
+              ></button>
             </div>
+          </div>
 
-            <div class="environment-note">
-              <div>
-                当社検査における環境は室温20℃±5℃、湿度40%±25%で管理された部屋で実施しております。
-              </div>
+          <div class="environment-note">
+            <div>
+              当社検査における環境は室温20℃±5℃、湿度40%±25%で管理された部屋で実施しております。
             </div>
+          </div>
 
-            <div class="unit-note">
-              <div>単位（ｍｍ）</div>
-            </div>
+          <div class="unit-note">
+            <div>単位（ｍｍ）</div>
           </div>
         </div>
       </div>
