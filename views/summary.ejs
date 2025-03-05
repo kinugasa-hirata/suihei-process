@@ -105,16 +105,29 @@
         font-weight: bold;
       }
 
+      /* Update table header styles */
       .table thead td {
-        background-color: #f8f9fa;
+        background-color: white; /* Changed from #f8f9fa to white */
         font-weight: normal;
         text-align: center;
         vertical-align: middle;
+        border: 1px solid #dee2e6; /* Keep the border visible */
       }
+
       .table thead td:first-child {
         text-align: left;
         font-weight: bold;
+        background-color: white; /* Ensure first cell is also white */
       }
+
+      .table {
+        background-color: white;
+      }
+
+      .table-bordered {
+        border-color: #dee2e6;
+      }
+
       .smaller-text {
         font-size: 0.9em;
       }
