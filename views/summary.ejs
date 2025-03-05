@@ -292,6 +292,27 @@
         color: #dc3545 !important; /* Red color */
         font-weight: bold;
       }
+
+      /* Add styles for G-value indicators */
+      .g-value-cell {
+        position: relative;
+      }
+
+      .hidden-g-warning {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background-color: #dc3545;
+        color: white;
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: help;
+      }
     </style>
   </head>
   <body>
@@ -498,9 +519,23 @@
                 <% displayHeaders.forEach(function(header) { %> <% if (header
                 === 'G') { %>
                 <td
-                  class="<%= fileData[file.id]['G1'].value !== '-' && (!fileData[file.id]['G1'].isValid || !fileData[file.id]['G2'].isValid || !fileData[file.id]['G3'].isValid || !fileData[file.id]['G4'].isValid) ? 'invalid-value' : '' %> highlight-cell data-cell"
+                  class="<%= fileData[file.id]['G1'].value !== '-' && (!fileData[file.id]['G1'].isValid || !fileData[file.id]['G2'].isValid || !fileData[file.id]['G3'].isValid || !fileData[file.id]['G4'].isValid) ? 'invalid-value' : '' %> highlight-cell data-cell g-value-cell"
+                  title="G1: <%= fileData[file.id]['G1'].value %>&#13;
+                         G2: <%= fileData[file.id]['G2'].value %>&#13;
+                         G3: <%= fileData[file.id]['G3'].value %>&#13;
+                         G4: <%= fileData[file.id]['G4'].value %>"
                 >
-                  <%= fileData[file.id]['G1'].value %>
+                  <%= fileData[file.id]['G1'].value %> <% const invalidCount =
+                  ['G2', 'G3', 'G4'].filter(g => fileData[file.id][g].value !==
+                  '-' && !fileData[file.id][g].isValid ).length; if
+                  (invalidCount > 0) { %>
+                  <span
+                    class="hidden-g-warning"
+                    title="他の <%= invalidCount %> 箇所の G 値が範囲外です"
+                  >
+                    <%= invalidCount %>
+                  </span>
+                  <% } %>
                 </td>
                 <% } else { %>
                 <td
