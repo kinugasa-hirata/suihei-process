@@ -480,53 +480,33 @@ app.post("/update-weight", async (req, res) => {
 });
 
 // Delete file route
-app.post("/delete-file", async (req, res) => {
+app.post("/delete-file", requireLogin, async (req, res) => {
   let client;
   try {
     const { fileId } = req.body;
-
-    if (!fileId) {
-      return res.status(400).send("File ID is required");
-    }
-
     client = await pool.connect();
 
-    // Start a transaction for data consistency
+    // Start transaction
     await client.query("BEGIN");
 
-    // Get file info before deletion for the confirmation message
-    const fileResult = await client.query(
-      "SELECT filename FROM files WHERE id = $1",
-      [fileId]
-    );
-
-    if (fileResult.rows.length === 0) {
-      await client.query("ROLLBACK");
-      return res.status(404).send("File not found");
-    }
-
-    const fileName = fileResult.rows[0].filename;
-
-    // Delete file weights (if any)
-    await client.query("DELETE FROM file_weights WHERE file_id = $1", [fileId]);
-
-    // Delete file data
+    // Delete file data first (due to foreign key constraint)
     await client.query("DELETE FROM file_data WHERE file_id = $1", [fileId]);
 
-    // Delete file record
+    // Delete file weight
+    await client.query("DELETE FROM file_weights WHERE file_id = $1", [fileId]);
+
+    // Delete the file record
     await client.query("DELETE FROM files WHERE id = $1", [fileId]);
 
-    // Commit the transaction
+    // Commit transaction
     await client.query("COMMIT");
 
-    // Redirect back to home page with success message
-    res.redirect("/?message=File '" + fileName + "' has been deleted");
+    // Change this to return JSON instead of redirect
+    res.json({ success: true });
   } catch (err) {
-    if (client) {
-      await client.query("ROLLBACK");
-    }
+    if (client) await client.query("ROLLBACK");
     console.error("Error deleting file:", err);
-    res.status(500).send("Error deleting file: " + err.message);
+    res.status(500).json({ success: false, error: err.message });
   } finally {
     if (client) client.release();
   }

@@ -584,7 +584,7 @@
 
             pressTimer = setTimeout(() => {
               card.classList.add("deleting");
-            }, 2000);
+            }, 2000); // 2 second long press
           });
 
           card.addEventListener("mousemove", function () {
@@ -601,7 +601,41 @@
                   `本当にファイル ${card.dataset.filename} を削除しますか？`
                 )
               ) {
-                deleteFile(card.dataset.fileId, card);
+                fetch("/delete-file", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ fileId: card.dataset.fileId }),
+                })
+                  .then((response) => {
+                    if (!response.ok) {
+                      throw new Error("Network response was not ok");
+                    }
+                    return response.json();
+                  })
+                  .then((result) => {
+                    if (result.success) {
+                      // Remove the card from UI
+                      card.remove();
+                      // Optional: Show success message
+                      const notification = document.createElement("div");
+                      notification.className =
+                        "alert alert-success position-fixed top-0 start-50 translate-middle-x mt-3";
+                      notification.style.zIndex = "1050";
+                      notification.textContent = "ファイルを削除しました";
+                      document.body.appendChild(notification);
+                      setTimeout(() => notification.remove(), 3000);
+                    } else {
+                      throw new Error(result.error || "削除に失敗しました");
+                    }
+                  })
+                  .catch((error) => {
+                    console.error("Error:", error);
+                    alert(
+                      "ファイルの削除中にエラーが発生しました: " + error.message
+                    );
+                  });
               }
             }
           });
@@ -614,36 +648,6 @@
 
         function viewFileData(fileId) {
           window.location.href = `/fileData/${fileId}`;
-        }
-
-        async function deleteFile(fileId, cardElement) {
-          if (!confirm("本当にこのファイルを削除しますか？")) {
-            return;
-          }
-
-          try {
-            const response = await fetch(`/files/${fileId}`, {
-              method: "DELETE",
-              headers: {
-                "Content-Type": "application/json",
-              },
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-              // Remove the card from the UI
-              cardElement.remove();
-            } else {
-              alert(
-                "ファイルの削除に失敗しました: " +
-                  (result.error || "不明なエラー")
-              );
-            }
-          } catch (error) {
-            console.error("Error deleting file:", error);
-            alert("ファイルの削除中にエラーが発生しました");
-          }
         }
       });
     </script>
