@@ -305,6 +305,12 @@
                 </svg>
               </a>
             </div>
+            <button
+              class="btn btn-danger delete-file-btn"
+              data-file-id="<%= file.id %>"
+            >
+              削除
+            </button>
           </div>
         </div>
         <% }); %>
@@ -609,6 +615,48 @@
         function viewFileData(fileId) {
           window.location.href = `/fileData/${fileId}`;
         }
+
+        async function deleteFile(fileId, cardElement) {
+          if (!confirm("本当にこのファイルを削除しますか？")) {
+            return;
+          }
+
+          try {
+            const response = await fetch(`/files/${fileId}`, {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+              // Remove the card from the UI
+              cardElement.remove();
+            } else {
+              alert(
+                "ファイルの削除に失敗しました: " +
+                  (result.error || "不明なエラー")
+              );
+            }
+          } catch (error) {
+            console.error("Error deleting file:", error);
+            alert("ファイルの削除中にエラーが発生しました");
+          }
+        }
+
+        // Add click handler to delete buttons
+        document.addEventListener("DOMContentLoaded", function () {
+          document.querySelectorAll(".delete-file-btn").forEach((button) => {
+            button.addEventListener("click", function (e) {
+              e.preventDefault();
+              const fileId = this.dataset.fileId;
+              const card = this.closest(".file-card");
+              deleteFile(fileId, card);
+            });
+          });
+        });
       });
     </script>
   </body>
