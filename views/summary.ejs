@@ -102,23 +102,32 @@
         font-weight: bold;
       }
 
-      /* Update table header styles */
+      /* Table styles */
+      .table {
+        background-color: white;
+      }
+
+      .table td {
+        text-align: center; /* Center align all table cells */
+        vertical-align: middle;
+      }
+
       .table thead td {
-        background-color: white; /* Changed from #f8f9fa to white */
+        background-color: white;
         font-weight: normal;
         text-align: center;
         vertical-align: middle;
-        border: 1px solid #dee2e6; /* Keep the border visible */
+        border: 1px solid #dee2e6;
       }
 
-      .table thead td:first-child {
-        text-align: left;
+      .table tbody td {
+        text-align: center; /* Ensure body cells are also centered */
+      }
+
+      /* Keep filename cell styles if needed */
+      .filename-cell {
+        text-align: center;
         font-weight: bold;
-        background-color: white; /* Ensure first cell is also white */
-      }
-
-      .table {
-        background-color: white;
       }
 
       .table-bordered {
@@ -556,7 +565,7 @@
         .addEventListener("click", function () {
           const rows = document.querySelectorAll("tbody tr");
           rows.forEach((row) => {
-            const cells = row.querySelectorAll("");
+            const cells = row.querySelectorAll(".data-cell");
             cells.forEach((cell) => {
               if (cell.textContent.trim() === "-") {
                 cell.textContent = "合";
