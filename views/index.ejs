@@ -270,10 +270,39 @@
         >
           <div class="delete-overlay">Release to Delete</div>
           <div class="file-content">
-            <div class="file-number"><%= file.filename %></div>
-            <div class="mb-2">
-              <a href="/fileData/<%= file.id %>" class="text-decoration-none">
-                詳細を見る
+            <div class="file-number"><%= fileNumber %></div>
+            <% if (file.weight) { %>
+            <div class="weight-display mb-2"><%= file.weight %> g</div>
+            <% } %>
+            <div class="weight-form">
+              <input
+                type="number"
+                class="weight-input"
+                data-file-id="<%= file.id %>"
+                step="0.1"
+                value="<%= file.weight || '' %>"
+                placeholder="Weight (g)"
+                style="text-align: center"
+              />
+            </div>
+            <div class="view-data-link mt-2">
+              <a
+                href="/files/<%= file.id %>"
+                class="btn btn-sm btn-outline-secondary"
+                style="padding: 4px; font-size: 0.8rem; border-radius: 50%"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  fill="currentColor"
+                  class="bi bi-search"
+                  viewBox="0 0 16 16"
+                >
+                  <path
+                    d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"
+                  />
+                </svg>
               </a>
             </div>
           </div>

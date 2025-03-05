@@ -924,39 +924,4 @@ app.post("/files/:id/update-weight", async (req, res) => {
   }
 });
 
-// Add DELETE endpoint for files
-app.delete("/files/:id", requireLogin, async (req, res) => {
-  let client;
-  try {
-    const fileId = req.params.id;
-    client = await pool.connect();
-
-    // Start transaction
-    await client.query("BEGIN");
-
-    // Delete file data first (due to foreign key constraint)
-    await client.query("DELETE FROM file_data WHERE file_id = $1", [fileId]);
-
-    // Delete file weight
-    await client.query("DELETE FROM file_weights WHERE file_id = $1", [fileId]);
-
-    // Delete the file record
-    await client.query("DELETE FROM files WHERE id = $1", [fileId]);
-
-    // Commit transaction
-    await client.query("COMMIT");
-
-    res.json({ success: true });
-  } catch (err) {
-    if (client) await client.query("ROLLBACK");
-    console.error("Error deleting file:", err);
-    res.status(500).json({
-      success: false,
-      error: "Error deleting file: " + err.message,
-    });
-  } finally {
-    if (client) client.release();
-  }
-});
-
 module.exports = app;
