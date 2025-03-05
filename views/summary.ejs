@@ -52,9 +52,6 @@
       .range-input {
         width: 120px;
       }
-      /* .main-container {
-        padding: 20px;
-      } */
 
       .content-section {
         background-color: white;
@@ -559,7 +556,7 @@
         .addEventListener("click", function () {
           const rows = document.querySelectorAll("tbody tr");
           rows.forEach((row) => {
-            const cells = row.querySelectorAll(".data-cell");
+            const cells = row.querySelectorAll("");
             cells.forEach((cell) => {
               if (cell.textContent.trim() === "-") {
                 cell.textContent = "合";
