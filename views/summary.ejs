@@ -289,21 +289,8 @@
       }
 
       .invalid-value {
-        color: white !important;
+        color: #dc3545 !important; /* Red color */
         font-weight: bold;
-        background-color: #dc3545 !important; /* Solid red background */
-        position: relative;
-      }
-
-      .invalid-value::after {
-        content: "範囲外"; /* "Out of range" in Japanese */
-        position: absolute;
-        top: -15px;
-        left: 50%;
-        transform: translateX(-50%);
-        font-size: 10px;
-        color: #dc3545;
-        white-space: nowrap;
       }
     </style>
   </head>
@@ -511,13 +498,13 @@
                 <% displayHeaders.forEach(function(header) { %> <% if (header
                 === 'G') { %>
                 <td
-                  class="<%= fileData[file.id]['G1'].isValid && fileData[file.id]['G2'].isValid && fileData[file.id]['G3'].isValid && fileData[file.id]['G4'].isValid ? '' : 'invalid-value' %> highlight-cell data-cell"
+                  class="<%= fileData[file.id]['G1'].value !== '-' && (!fileData[file.id]['G1'].isValid || !fileData[file.id]['G2'].isValid || !fileData[file.id]['G3'].isValid || !fileData[file.id]['G4'].isValid) ? 'invalid-value' : '' %> highlight-cell data-cell"
                 >
                   <%= fileData[file.id]['G1'].value %>
                 </td>
                 <% } else { %>
                 <td
-                  class="<%= fileData[file.id][header].isValid ? '' : 'invalid-value' %> highlight-cell data-cell"
+                  class="<%= fileData[file.id][header].value !== '-' && !fileData[file.id][header].isValid ? 'invalid-value' : '' %> highlight-cell data-cell"
                 >
                   <%= fileData[file.id][header].value %>
                 </td>
