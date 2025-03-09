@@ -1,4 +1,4 @@
-<!-- Fixed views/summary.ejs -->
+<!-- Enhanced summary.ejs with PDF Export -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -16,6 +16,9 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
     />
+    <!-- Add jsPDF for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
       .container {
         max-width: 1200px;
@@ -187,74 +190,22 @@
         font-size: 12px;
       }
 
+      /* PDF container for better control during exports */
+      #pdf-container {
+        width: 297mm; /* A4 landscape width */
+        height: 210mm; /* A4 landscape height */
+        margin: 0 auto;
+        background-color: white;
+        overflow: hidden;
+      }
+
       @media print {
         /* Page setup with margin for content */
         @page {
           size: A4 landscape;
           margin: 10mm;
-          @bottom-right {
-            content: counter(page);
-          }
         }
 
-        /* Hide the specific elements you mentioned */
-        .header-info,
-        .environment-note,
-        .unit-note,
-        .bottom-note {
-          display: none !important;
-        }
-
-        /* Print color adjustments */
-        html,
-        body {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-          margin: 0;
-          padding: 0;
-        }
-
-        /* Hide DOM elements */
-        head,
-        title,
-        meta {
-          display: none !important;
-        }
-
-        /* Hide UI elements */
-        h1,
-        .nav-links,
-        .file-filter-form,
-        .button-container,
-        .no-print,
-        .page-header {
-          display: none !important;
-        }
-
-        /* Hide Data Summary and heading elements */
-        body > .container > h1,
-        body > .container > div:first-of-type > h1,
-        body > .container > .content-section:first-child > .container > h1,
-        body > .container > div:first-of-type > div:contains("Data Summary") {
-          display: none !important;
-        }
-
-        /* Remove URL display in printed page */
-        a,
-        a[href]:after,
-        a[href]:before {
-          content: none !important;
-          display: none !important;
-        }
-
-        /* Additional URL hiding */
-        [href*="vercel.app"],
-        [href*="suihei-process"],
-        .url-display {
-          display: none !important;
-        }
-
-        /* A4 Landscape setup */
         body {
           width: 297mm; /* A4 width */
           height: 210mm; /* A4 height */
@@ -264,7 +215,12 @@
           print-color-adjust: exact;
         }
 
-        /* Compact the layout */
+        /* Hide non-printable elements */
+        .no-print {
+          display: none !important;
+        }
+
+        /* Reset container styling for print */
         .container {
           width: 100%;
           max-width: none;
@@ -276,11 +232,14 @@
         .table {
           font-size: 9pt;
           margin: 0;
+          border-collapse: collapse;
+          width: 100%;
         }
 
         .table td,
         .table th {
           padding: 2px 4px;
+          border: 1px solid #000;
         }
 
         /* Header adjustments */
@@ -289,7 +248,12 @@
           margin: 0 0 5mm 0;
         }
 
-        /* Hide all non-essential elements */
+        /* Force show background colors and images in print */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+
         .content-section {
           padding: 0;
           background-color: white;
@@ -300,283 +264,285 @@
   </head>
   <body>
     <div class="container">
-      <div class="content-section">
+      <div id="pdf-container">
+        <div class="content-section">
+          <div class="container">
+            <h2>水平ノズル全数検査成績書</h2>
+            <div class="header-info">
+              <div>
+                <strong>品名:</strong> 水平ノズル
+                <strong>仕様書番号:</strong> KDMP-0434
+                <strong>担当者:</strong>
+                <span class="editable" contenteditable="true" id="inspector"
+                  ><%= inspectorName %></span
+                >
+              </div>
+            </div>
+            <div class="header-info">
+              <div style="white-space: nowrap">
+                <strong>図番:</strong> P2MM302000 <strong>数量:</strong
+                ><span id="fileCount"><%= files ? files.length : 0 %></span>個
+                <strong>検査方法:</strong> 全数検査 <strong>検査日:</strong> <%=
+                new Date().toLocaleDateString('ja-JP', { year: 'numeric', month:
+                '2-digit', day: '2-digit' }).replace(/\//g, '/') %>
+                <strong>納期:</strong>
+                <input
+                  type="text"
+                  id="deliveryDatePicker"
+                  class="date-input flatpickr"
+                  placeholder="YYYY/MM/DD"
+                />
+              </div>
+              <div class="company-info">㈱平田商店</div>
+            </div>
+            <div class="header-info">
+              <div style="margin-left: auto">
+                <button
+                  id="quickApproveButton"
+                  style="
+                    width: 48px;
+                    height: 48px;
+                    border-radius: 50%;
+                    background-color: white;
+                    color: white;
+                    border: none;
+                    font-weight: bold;
+                    cursor: pointer;
+                    box-shadow: 0 2px 4px white;
+                  "
+                  title="一括承認"
+                ></button>
+              </div>
+            </div>
+
+            <div class="environment-note">
+              <div>
+                当社検査における環境は室温20℃±5℃、湿度40%±25%で管理された部屋で実施しております。
+              </div>
+            </div>
+
+            <div class="unit-note">
+              <div>単位（ｍｍ）</div>
+            </div>
+          </div>
+        </div>
+
         <div class="container">
-          <h2>水平ノズル全数検査成績書</h2>
-          <div class="header-info">
-            <div>
-              <strong>品名:</strong> 水平ノズル
-              <strong>仕様書番号:</strong> KDMP-0434
-              <strong>担当者:</strong>
-              <span class="editable" contenteditable="true" id="inspector"
-                ><%= inspectorName %></span
-              >
+          <% if (typeof error !== 'undefined' && error) { %>
+          <div class="alert alert-danger"><%= error %></div>
+          <% } %> <% if (typeof files !== 'undefined' && files && files.length >
+          0) { %>
+          <!-- Summary table -->
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+              <thead>
+                <!-- Specification rows -->
+                <tr>
+                  <td>図面寸法</td>
+                  <td>8.2</td>
+                  <td>37.5</td>
+                  <td>15.9</td>
+                  <td>24.1</td>
+                  <td>Φ11.2</td>
+                  <td>Φ3.2全貫通</td>
+                  <td>Φ8.0</td>
+                  <td>深さ5.0</td>
+                  <td>P.C.D 30</td>
+                  <td>Φ155.4</td>
+                  <td>83.1</td>
+                  <td>Φ122.3</td>
+                  <td>嵌め合い</td>
+                  <td>目視点検</td>
+                  <td>（参考値）</td>
+                </tr>
+                <tr>
+                  <td>寸法公差</td>
+                  <td>±0.2</td>
+                  <td>±0.3</td>
+                  <td>±0.2</td>
+                  <td>±0.2</td>
+                  <td>＋0.2/0</td>
+                  <td>±0.1</td>
+                  <td>±0.2</td>
+                  <td>±0.1</td>
+                  <td>±0.2</td>
+                  <td>±0.5</td>
+                  <td>±0.3</td>
+                  <td>±0.5</td>
+                  <td>-</td>
+                  <td>-</td>
+                  <td>-</td>
+                </tr>
+                <tr>
+                  <td>上限値</td>
+                  <td>8.4</td>
+                  <td>37.8</td>
+                  <td>16.1</td>
+                  <td>24.3</td>
+                  <td>11.4</td>
+                  <td>3.3</td>
+                  <td>8.2</td>
+                  <td>5.1</td>
+                  <td>30.2</td>
+                  <td>155.9</td>
+                  <td>83.4</td>
+                  <td>122.8</td>
+                  <td>-</td>
+                  <td>-</td>
+                  <td>-</td>
+                </tr>
+                <tr>
+                  <td>下限値</td>
+                  <td>8.0</td>
+                  <td>37.2</td>
+                  <td>15.7</td>
+                  <td>23.9</td>
+                  <td>11.2</td>
+                  <td>3.1</td>
+                  <td>7.8</td>
+                  <td>4.9</td>
+                  <td>29.8</td>
+                  <td>154.9</td>
+                  <td>82.8</td>
+                  <td>121.8</td>
+                  <td>-</td>
+                  <td>-</td>
+                  <td>-</td>
+                </tr>
+                <tr>
+                  <td>測定器具</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>ピンゲージ</td>
+                  <td>ピンゲージ</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>治具</td>
+                  <td>目視</td>
+                  <td>秤</td>
+                </tr>
+                <tr>
+                  <td>記載事項</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>合否</td>
+                  <td>合否</td>
+                  <td>合否</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>合否</td>
+                  <td>合否</td>
+                  <td>測定値</td>
+                </tr>
+                <!-- Original header row -->
+                <tr>
+                  <th>Filename</th>
+                  <% var displayHeaders = ['A', 'B', 'C', 'D', 'E', 'F', 'G',
+                  'H', 'I', 'J', 'K', 'L', 'M', 'N']; %> <% var internalHeaders
+                  = ['A', 'B', 'C', 'D', 'E', 'F', 'G1', 'G2', 'G3', 'G4', 'H',
+                  'I', 'J', 'K', 'L', 'M', 'N']; %> <%
+                  displayHeaders.forEach(function(header) { %>
+                  <th><%= header %></th>
+                  <% }); %>
+                  <th>質量 (g)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% files.forEach(function(file) { %>
+                <tr>
+                  <td class="filename-cell" data-file-id="<%= file.id %>">
+                    <strong><%= file.filename %></strong>
+                  </td>
+                  <% displayHeaders.forEach(function(header) { %> <% if (header
+                  === 'G') { %>
+                  <td
+                    class="<%= fileData[file.id]['G1'].value !== '-' && (!fileData[file.id]['G1'].isValid || !fileData[file.id]['G2'].isValid || !fileData[file.id]['G3'].isValid || !fileData[file.id]['G4'].isValid) ? 'invalid-value' : '' %> highlight-cell data-cell g-value-cell"
+                    title="G1: <%= fileData[file.id]['G1'].value %>&#13;
+                           G2: <%= fileData[file.id]['G2'].value %>&#13;
+                           G3: <%= fileData[file.id]['G3'].value %>&#13;
+                           G4: <%= fileData[file.id]['G4'].value %>"
+                  >
+                    <%= fileData[file.id]['G1'].value %> <% const invalidCount =
+                    ['G2', 'G3', 'G4'].filter(g => fileData[file.id][g].value
+                    !== '-' && !fileData[file.id][g].isValid ).length; if
+                    (invalidCount > 0) { %>
+                    <span
+                      class="hidden-g-warning"
+                      title="他の <%= invalidCount %> 箇所の G 値が範囲外です"
+                    >
+                      <%= invalidCount %>
+                    </span>
+                    <% } %>
+                  </td>
+                  <% } else { %>
+                  <td
+                    class="<%= fileData[file.id][header].value !== '-' && !fileData[file.id][header].isValid ? 'invalid-value' : '' %> highlight-cell data-cell"
+                  >
+                    <%= fileData[file.id][header].value %>
+                  </td>
+                  <% } %> <% }); %>
+                  <td>
+                    <% if (file.weight) { %> <%=
+                    (parseFloat(file.weight)).toFixed(1) %> <% } else { %> <% if
+                    (username !== 'hinkan') { %>
+                    <span
+                      class="text-muted weight-editable"
+                      data-file-id="<%= file.id %>"
+                      >Not set</span
+                    >
+                    <% } else { %>
+                    <span class="text-muted">Not set</span>
+                    <% } %> <% } %>
+                  </td>
+                </tr>
+                <% }); %>
+              </tbody>
+            </table>
+            <div class="bottom-note" style="margin-top: 10px; text-align: left">
+              ＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。
             </div>
           </div>
-          <div class="header-info">
-            <div style="white-space: nowrap">
-              <strong>図番:</strong> P2MM302000 <strong>数量:</strong
-              ><span id="fileCount"><%= files ? files.length : 0 %></span>個
-              <strong>検査方法:</strong> 全数検査 <strong>検査日:</strong> <%=
-              new Date().toLocaleDateString('ja-JP', { year: 'numeric', month:
-              '2-digit', day: '2-digit' }).replace(/\//g, '/') %>
-              <strong>納期:</strong>
-              <input
-                type="text"
-                id="deliveryDatePicker"
-                class="date-input flatpickr"
-                placeholder="YYYY/MM/DD"
-              />
-            </div>
-            <div class="company-info">㈱平田商店</div>
+          <% } else { %>
+          <div class="no-data">
+            <h3>No Data Available</h3>
+            <p class="text-muted">
+              No files match your current filter criteria.
+            </p>
+            <a href="/" class="btn btn-primary">Go to Upload Page</a>
           </div>
-          <div class="header-info">
-            <div style="margin-left: auto">
-              <button
-                id="quickApproveButton"
-                style="
-                  width: 48px;
-                  height: 48px;
-                  border-radius: 50%;
-                  background-color: white;
-                  color: white;
-                  border: none;
-                  font-weight: bold;
-                  cursor: pointer;
-                  box-shadow: 0 2px 4px white;
-                "
-                title="一括承認"
-              ></button>
-            </div>
-          </div>
-
-          <div class="environment-note">
-            <div>
-              当社検査における環境は室温20℃±5℃、湿度40%±25%で管理された部屋で実施しております。
-            </div>
-          </div>
-
-          <div class="unit-note">
-            <div>単位（ｍｍ）</div>
-          </div>
+          <% } %>
         </div>
       </div>
 
-      <div class="container">
-        <% if (typeof error !== 'undefined' && error) { %>
-        <div class="alert alert-danger"><%= error %></div>
-        <% } %> <% if (typeof files !== 'undefined' && files && files.length >
-        0) { %>
-        <!-- Summary table -->
-        <div class="table-responsive">
-          <table class="table table-bordered table-hover">
-            <thead>
-              <!-- Specification rows -->
-              <tr>
-                <td>図面寸法</td>
-                <td>8.2</td>
-                <td>37.5</td>
-                <td>15.9</td>
-                <td>24.1</td>
-                <td>Φ11.2</td>
-                <td>Φ3.2全貫通</td>
-                <td>Φ8.0</td>
-                <td>深さ5.0</td>
-                <td>P.C.D 30</td>
-                <td>Φ155.4</td>
-                <td>83.1</td>
-                <td>Φ122.3</td>
-                <td>嵌め合い</td>
-                <td>目視点検</td>
-                <td>（参考値）</td>
-              </tr>
-              <tr>
-                <td>寸法公差</td>
-                <td>±0.2</td>
-                <td>±0.3</td>
-                <td>±0.2</td>
-                <td>±0.2</td>
-                <td>＋0.2/0</td>
-                <td>±0.1</td>
-                <td>±0.2</td>
-                <td>±0.1</td>
-                <td>±0.2</td>
-                <td>±0.5</td>
-                <td>±0.3</td>
-                <td>±0.5</td>
-                <td>-</td>
-                <td>-</td>
-                <td>-</td>
-              </tr>
-              <tr>
-                <td>上限値</td>
-                <td>8.4</td>
-                <td>37.8</td>
-                <td>16.1</td>
-                <td>24.3</td>
-                <td>11.4</td>
-                <td>3.3</td>
-                <td>8.2</td>
-                <td>5.1</td>
-                <td>30.2</td>
-                <td>155.9</td>
-                <td>83.4</td>
-                <td>122.8</td>
-                <td>-</td>
-                <td>-</td>
-                <td>-</td>
-              </tr>
-              <tr>
-                <td>下限値</td>
-                <td>8.0</td>
-                <td>37.2</td>
-                <td>15.7</td>
-                <td>23.9</td>
-                <td>11.2</td>
-                <td>3.1</td>
-                <td>7.8</td>
-                <td>4.9</td>
-                <td>29.8</td>
-                <td>154.9</td>
-                <td>82.8</td>
-                <td>121.8</td>
-                <td>-</td>
-                <td>-</td>
-                <td>-</td>
-              </tr>
-              <tr>
-                <td>測定器具</td>
-                <td>三次元測定器</td>
-                <td>三次元測定器</td>
-                <td>三次元測定器</td>
-                <td>三次元測定器</td>
-                <td>ピンゲージ</td>
-                <td>ピンゲージ</td>
-                <td>三次元測定器</td>
-                <td>三次元測定器</td>
-                <td>三次元測定器</td>
-                <td>三次元測定器</td>
-                <td>三次元測定器</td>
-                <td>三次元測定器</td>
-                <td>治具</td>
-                <td>目視</td>
-                <td>秤</td>
-              </tr>
-              <tr>
-                <td>記載事項</td>
-                <td>測定値</td>
-                <td>測定値</td>
-                <td>測定値</td>
-                <td>合否</td>
-                <td>合否</td>
-                <td>合否</td>
-                <td>測定値</td>
-                <td>測定値</td>
-                <td>測定値</td>
-                <td>測定値</td>
-                <td>測定値</td>
-                <td>測定値</td>
-                <td>合否</td>
-                <td>合否</td>
-                <td>測定値</td>
-              </tr>
-              <!-- Original header row -->
-              <tr>
-                <th>Filename</th>
-                <% var displayHeaders = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
-                'I', 'J', 'K', 'L', 'M', 'N']; %> <% var internalHeaders = ['A',
-                'B', 'C', 'D', 'E', 'F', 'G1', 'G2', 'G3', 'G4', 'H', 'I', 'J',
-                'K', 'L', 'M', 'N']; %> <%
-                displayHeaders.forEach(function(header) { %>
-                <th><%= header %></th>
-                <% }); %>
-                <th>質量 (g)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% files.forEach(function(file) { %>
-              <tr>
-                <td class="filename-cell" data-file-id="<%= file.id %>">
-                  <strong><%= file.filename %></strong>
-                </td>
-                <% displayHeaders.forEach(function(header) { %> <% if (header
-                === 'G') { %>
-                <td
-                  class="<%= fileData[file.id]['G1'].value !== '-' && (!fileData[file.id]['G1'].isValid || !fileData[file.id]['G2'].isValid || !fileData[file.id]['G3'].isValid || !fileData[file.id]['G4'].isValid) ? 'invalid-value' : '' %> highlight-cell data-cell g-value-cell"
-                  title="G1: <%= fileData[file.id]['G1'].value %>&#13;
-                         G2: <%= fileData[file.id]['G2'].value %>&#13;
-                         G3: <%= fileData[file.id]['G3'].value %>&#13;
-                         G4: <%= fileData[file.id]['G4'].value %>"
-                >
-                  <%= fileData[file.id]['G1'].value %> <% const invalidCount =
-                  ['G2', 'G3', 'G4'].filter(g => fileData[file.id][g].value !==
-                  '-' && !fileData[file.id][g].isValid ).length; if
-                  (invalidCount > 0) { %>
-                  <span
-                    class="hidden-g-warning"
-                    title="他の <%= invalidCount %> 箇所の G 値が範囲外です"
-                  >
-                    <%= invalidCount %>
-                  </span>
-                  <% } %>
-                </td>
-                <% } else { %>
-                <td
-                  class="<%= fileData[file.id][header].value !== '-' && !fileData[file.id][header].isValid ? 'invalid-value' : '' %> highlight-cell data-cell"
-                >
-                  <%= fileData[file.id][header].value %>
-                </td>
-                <% } %> <% }); %>
-                <td>
-                  <% if (file.weight) { %> <%=
-                  (parseFloat(file.weight)).toFixed(1) %> <% } else { %> <% if
-                  (username !== 'hinkan') { %>
-                  <span
-                    class="text-muted weight-editable"
-                    data-file-id="<%= file.id %>"
-                    >Not set</span
-                  >
-                  <% } else { %>
-                  <span class="text-muted">Not set</span>
-                  <% } %> <% } %>
-                </td>
-              </tr>
-              <% }); %>
-            </tbody>
-          </table>
-          <div class="bottom-note" style="margin-top: 10px; text-align: left">
-            ＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。
-          </div>
-        </div>
-
-        <!-- Buttons and Logs Container -->
-        <div class="button-container" style="margin-top: 20px">
-          <a
-            href="/"
-            class="button"
-            style="
-              display: inline-block;
-              text-decoration: none;
-              background-color: #007bff;
-              color: white;
-              padding: 8px 12px;
-              border-radius: 4px;
-              margin-right: 5px;
-            "
-            >アップロードに戻る</a
-          >
-          <button onclick="window.print()" class="btn btn-secondary">
-            印刷
-          </button>
-        </div>
-
-        <% } else { %>
-        <div class="no-data">
-          <h3>No Data Available</h3>
-          <p class="text-muted">No files match your current filter criteria.</p>
-          <a href="/" class="btn btn-primary">Go to Upload Page</a>
-        </div>
-        <% } %>
+      <!-- Buttons and Logs Container - These will be hidden when printing -->
+      <div class="button-container no-print" style="margin-top: 20px">
+        <a
+          href="/"
+          class="button"
+          style="
+            display: inline-block;
+            text-decoration: none;
+            background-color: #007bff;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-right: 5px;
+          "
+          >アップロードに戻る</a
+        >
+        <button onclick="window.print()" class="btn btn-secondary">印刷</button>
+        <button onclick="exportToPDF()" class="btn btn-primary">PDF出力</button>
       </div>
     </div>
 
@@ -585,11 +551,11 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
     <script>
       // Initialize Flatpickr
-      // flatpickr("#deliveryDatePicker", {
-      //   dateFormat: "Y/m/d",
-      //   locale: "ja",
-      //   allowInput: true,
-      // });
+      flatpickr("#deliveryDatePicker", {
+        dateFormat: "Y/m/d",
+        locale: "ja",
+        allowInput: true,
+      });
 
       // Quick approve button logic
       document
@@ -612,6 +578,102 @@
             });
           });
         });
+
+      // PDF Export Function
+      function exportToPDF() {
+        // Get the delivery date from the date picker
+        let deliveryDate = document.getElementById("deliveryDatePicker").value;
+        let dateStr;
+
+        if (deliveryDate) {
+          // Parse the selected date (format YYYY/MM/DD)
+          const parts = deliveryDate.split("/");
+          if (parts.length === 3) {
+            dateStr = parts[0] + parts[1] + parts[2]; // Convert to YYYYMMDD format
+          } else {
+            // Fallback to today's date if format is incorrect
+            const today = new Date();
+            dateStr =
+              today.getFullYear() +
+              String(today.getMonth() + 1).padStart(2, "0") +
+              String(today.getDate()).padStart(2, "0");
+          }
+        } else {
+          // If no date selected, use today's date
+          const today = new Date();
+          dateStr =
+            today.getFullYear() +
+            String(today.getMonth() + 1).padStart(2, "0") +
+            String(today.getDate()).padStart(2, "0");
+        }
+
+        // Generate filename: 水平ノズル検査_YYYYMMDD
+        const filename = `水平ノズル検査_${dateStr}`;
+
+        // Show loading indicator
+        const loadingEl = document.createElement("div");
+        loadingEl.style.position = "fixed";
+        loadingEl.style.top = "0";
+        loadingEl.style.left = "0";
+        loadingEl.style.width = "100%";
+        loadingEl.style.height = "100%";
+        loadingEl.style.backgroundColor = "rgba(255,255,255,0.8)";
+        loadingEl.style.display = "flex";
+        loadingEl.style.justifyContent = "center";
+        loadingEl.style.alignItems = "center";
+        loadingEl.style.zIndex = "9999";
+        loadingEl.innerHTML =
+          '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
+        document.body.appendChild(loadingEl);
+
+        // Get the content to convert
+        const content = document.getElementById("pdf-container");
+
+        // Define PDF options - A4 landscape
+        const pdfOptions = {
+          orientation: "landscape",
+          unit: "mm",
+          format: "a4",
+          compress: true,
+        };
+
+        // Initialize jsPDF
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF(pdfOptions);
+
+        // Use html2canvas to render the content
+        html2canvas(content, {
+          scale: 2, // Higher scale for better quality
+          useCORS: true,
+          logging: false,
+          backgroundColor: "#ffffff",
+        })
+          .then((canvas) => {
+            // Calculate the width and height to maintain aspect ratio
+            const imgData = canvas.toDataURL("image/png");
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+
+            // Calculate ratio to fit content properly
+            const ratio = canvas.width / canvas.height;
+            const imgWidth = pageWidth;
+            const imgHeight = imgWidth / ratio;
+
+            // Add image to PDF
+            pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+
+            // Save PDF with the browser's save dialog
+            pdf.save(`${filename}.pdf`);
+
+            // Remove loading indicator
+            document.body.removeChild(loadingEl);
+          })
+          .catch((error) => {
+            console.error("PDF generation error:", error);
+            alert("PDFの生成中にエラーが発生しました。");
+            document.body.removeChild(loadingEl);
+          });
+      }
     </script>
   </body>
 </html>
