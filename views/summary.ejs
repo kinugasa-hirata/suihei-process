@@ -194,32 +194,6 @@
           }
         }
 
-        /* White overlay for browser header */
-        body::before {
-          content: "";
-          display: block;
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 30mm; /* Increased height to fully cover browser headers */
-          background: white;
-          z-index: 10000; /* Higher z-index to ensure it's on top */
-        }
-
-        /* White overlay for browser footer */
-        body::after {
-          content: "";
-          display: block;
-          position: fixed;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          height: 30mm; /* Increased height to fully cover browser footers */
-          background: white;
-          z-index: 10000; /* Higher z-index to ensure it's on top */
-        }
-
         /* Print color adjustments */
         html,
         body {
