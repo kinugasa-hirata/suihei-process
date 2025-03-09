@@ -619,7 +619,10 @@
               "td:nth-child(5), td:nth-child(6), td:nth-child(14), td:nth-child(15)"
             );
             cells.forEach((cell) => {
-              if (cell.textContent.trim() === "-") {
+              if (
+                cell.textContent.trim() === "-" ||
+                cell.textContent.trim() === ""
+              ) {
                 cell.textContent = "合";
               }
             });
