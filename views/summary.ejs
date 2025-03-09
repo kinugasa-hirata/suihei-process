@@ -185,44 +185,133 @@
       }
 
       @media print {
-        /* Your existing print CSS... */
-
-        /* Hide the buttons */
-        .button-container,
-  a[href="/"],
-  button[onclick="window.print()"],
-  .btn,
-  a.btn,
-  button.btn,
-  .btn-primary,
-  .btn-secondary,
-  a.button,
-  /* Japanese text in button */
-  a:contains("アップロードに戻る"),
-  /* Print button */
-  button:contains("印刷") {
-          display: none !important;
-          visibility: hidden !important;
+        /* Remove ALL headers and footers except page number */
+        @page {
+          size: A4 landscape;
+          margin: 10mm;
+          @bottom-right {
+            content: counter(page);
+          }
         }
 
-        /* Hide the gray line (likely a border or hr element) */
-        hr,
-        .divider,
-        .separator,
-        .line,
-        .border-top,
-        .border-bottom {
-          display: none !important;
-          visibility: hidden !important;
+        html,
+        body {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          margin: 0;
+          padding: 0;
         }
 
-        /* Target the specific container of these buttons */
-        .bottom-buttons,
-        .action-buttons,
-        .button-container,
-        .container > div:last-child,
-        .container > :last-child {
+        /* Hide ALL browser elements except page number */
+        head,
+        title,
+        meta {
           display: none !important;
+        }
+
+        /* Hide Data Summary and other unnecessary elements */
+        h1,
+        .nav-links,
+        .file-filter-form,
+        .button-container,
+        .no-print,
+        .page-header {
+          display: none !important;
+        }
+
+        /* Hide Data Summary and date at top */
+        body > .container > h1,
+        body > .container > div:first-of-type > h1,
+        body > .container > .content-section:first-child > .container > h1,
+        body > .container > div:first-of-type > div:contains("Data Summary") {
+          display: none !important;
+        }
+
+        /* Hide URL at bottom */
+        body::after {
+          content: "";
+          display: block;
+          height: 15mm;
+          background-color: white;
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          z-index: 9999;
+        }
+
+        Remove URLs from printing a,
+        a[href]:after,
+        a[href]:before {
+          content: none !important;
+          display: none !important;
+        }
+
+        /* Additional URL hiding */
+        [href*="vercel.app"],
+        [href*="suihei-process"],
+        .url-display {
+          display: none !important;
+        }
+
+        /* A4 Landscape setup */
+        body {
+          width: 297mm; /* A4 width */
+          height: 210mm; /* A4 height */
+          margin: 0;
+          padding: 0;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        /* Compact the layout */
+        .container {
+          width: 100%;
+          max-width: none;
+          margin: 0;
+          padding: 5mm;
+        }
+
+        /* Adjust table for printing */
+        .table {
+          font-size: 9pt;
+          margin: 0;
+        }
+
+        .table td,
+        .table th {
+          padding: 2px 4px;
+        }
+
+        /* Header adjustments */
+        h2 {
+          font-size: 14pt;
+          margin: 0 0 5mm 0;
+        }
+
+        .header-info {
+          margin: 2mm 0;
+          font-size: 10pt;
+        }
+
+        /* Environment note and unit */
+        .environment-note,
+        .unit-note {
+          font-size: 9pt;
+          margin: 2mm 0;
+        }
+
+        /* Bottom note */
+        .bottom-note {
+          font-size: 9pt;
+          margin-top: 3mm;
+        }
+
+        /* Hide all non-essential elements */
+        .content-section {
+          padding: 0;
+          background-color: white;
+          box-shadow: none;
         }
       }
 
