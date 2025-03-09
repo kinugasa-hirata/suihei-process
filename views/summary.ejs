@@ -185,7 +185,7 @@
       }
 
       @media print {
-        /* Remove ALL headers and footers except page number */
+        /* Page setup with margin for content but hiding browser elements */
         @page {
           size: A4 landscape;
           margin: 10mm;
@@ -194,6 +194,33 @@
           }
         }
 
+        /* White overlay for browser header */
+        body::before {
+          content: "";
+          display: block;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 30mm; /* Increased height to fully cover browser headers */
+          background: white;
+          z-index: 10000; /* Higher z-index to ensure it's on top */
+        }
+
+        /* White overlay for browser footer */
+        body::after {
+          content: "";
+          display: block;
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 30mm; /* Increased height to fully cover browser footers */
+          background: white;
+          z-index: 10000; /* Higher z-index to ensure it's on top */
+        }
+
+        /* Print color adjustments */
         html,
         body {
           -webkit-print-color-adjust: exact !important;
@@ -202,14 +229,14 @@
           padding: 0;
         }
 
-        /* Hide ALL browser elements except page number */
+        /* Hide DOM elements */
         head,
         title,
         meta {
           display: none !important;
         }
 
-        /* Hide Data Summary and other unnecessary elements */
+        /* Hide UI elements */
         h1,
         .nav-links,
         .file-filter-form,
@@ -219,28 +246,16 @@
           display: none !important;
         }
 
-        /* Hide Data Summary and date at top */
+        /* Hide Data Summary and heading elements */
         body > .container > h1,
         body > .container > div:first-of-type > h1,
         body > .container > .content-section:first-child > .container > h1,
-        body > .container > div:first-of-type > div:contains("") {
+        body > .container > div:first-of-type > div:contains("Data Summary") {
           display: none !important;
         }
 
-        /* Hide URL at bottom */
-        body::after {
-          content: "";
-          display: block;
-          height: 15mm;
-          background-color: white;
-          position: fixed;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          z-index: 9999;
-        }
-
-        Remove URLs from printing a,
+        /* Remove URL display in printed page */
+        a,
         a[href]:after,
         a[href]:before {
           content: none !important;
@@ -262,6 +277,7 @@
           padding: 0;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
+          position: relative; /* Added for positioning overlays */
         }
 
         /* Compact the layout */
@@ -313,32 +329,11 @@
           background-color: white;
           box-shadow: none;
         }
-      }
 
-      .invalid-value {
-        color: #dc3545 !important; /* Red color */
-        font-weight: bold;
-      }
-
-      /* Add styles for G-value indicators */
-      .g-value-cell {
-        position: relative;
-      }
-
-      .hidden-g-warning {
-        position: absolute;
-        top: -8px;
-        right: -8px;
-        background-color: #dc3545;
-        color: white;
-        border-radius: 50%;
-        width: 16px;
-        height: 16px;
-        font-size: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: help;
+        /* Move page content down slightly to avoid being hidden by top overlay */
+        .content-section:first-child {
+          margin-top: 5mm !important;
+        }
       }
     </style>
   </head>
