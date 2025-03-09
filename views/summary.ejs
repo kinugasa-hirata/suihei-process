@@ -623,6 +623,7 @@
                 cell.textContent.trim() === "-" ||
                 cell.textContent.trim() === ""
               ) {
+                cell.classList.remove("invalid-value");
                 cell.textContent = "合";
               }
             });
