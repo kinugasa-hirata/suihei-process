@@ -219,11 +219,38 @@
           display: none !important;
         }
 
-        /* Remove URLs from printing */
-        a,
+        /* Hide Data Summary and date at top */
+        body > .container > h1,
+        body > .container > div:first-of-type > h1,
+        body > .container > .content-section:first-child > .container > h1,
+        body > .container > div:first-of-type > div:contains("Data Summary") {
+          display: none !important;
+        }
+
+        /* Hide URL at bottom */
+        body::after {
+          content: "";
+          display: block;
+          height: 15mm;
+          background-color: white;
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          z-index: 9999;
+        }
+
+        Remove URLs from printing a,
         a[href]:after,
         a[href]:before {
           content: none !important;
+          display: none !important;
+        }
+
+        /* Additional URL hiding */
+        [href*="vercel.app"],
+        [href*="suihei-process"],
+        .url-display {
           display: none !important;
         }
 
