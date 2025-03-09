@@ -626,8 +626,14 @@
           '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
         document.body.appendChild(loadingEl);
 
-        // Get the content to convert
+        // Get the content element to convert
         const content = document.getElementById("pdf-container");
+
+        // Temporarily hide any "no-print" elements to ensure they don't appear in the PDF
+        const noPrintElements = content.querySelectorAll(".no-print");
+        noPrintElements.forEach((el) => {
+          el.style.display = "none";
+        });
 
         // Define PDF options - A4 landscape
         const pdfOptions = {
@@ -641,38 +647,229 @@
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF(pdfOptions);
 
-        // Use html2canvas to render the content
-        html2canvas(content, {
-          scale: 2, // Higher scale for better quality
-          useCORS: true,
-          logging: false,
-          backgroundColor: "#ffffff",
-        })
-          .then((canvas) => {
-            // Calculate the width and height to maintain aspect ratio
-            const imgData = canvas.toDataURL("image/png");
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
+        // Function to handle multi-page generation
+        function generatePDF() {
+          // Get table element which might be long
+          const tableElement = content.querySelector(".table-responsive table");
+          const headerElement = content.querySelector(".content-section");
+          const footerElement = content.querySelector(".bottom-note");
 
-            // Calculate ratio to fit content properly
-            const ratio = canvas.width / canvas.height;
-            const imgWidth = pageWidth;
-            const imgHeight = imgWidth / ratio;
+          // If no table found, fall back to capturing the entire content
+          if (!tableElement) {
+            html2canvas(content, {
+              scale: 2,
+              useCORS: true,
+              logging: false,
+              backgroundColor: "#ffffff",
+            })
+              .then((canvas) => {
+                const imgData = canvas.toDataURL("image/png");
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const ratio = canvas.width / canvas.height;
+                const imgWidth = pageWidth;
+                const imgHeight = imgWidth / ratio;
 
-            // Add image to PDF
-            pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+                pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+                pdf.save(`${filename}.pdf`);
 
-            // Save PDF with the browser's save dialog
-            pdf.save(`${filename}.pdf`);
+                // Restore display of no-print elements
+                noPrintElements.forEach((el) => {
+                  el.style.display = "";
+                });
 
-            // Remove loading indicator
-            document.body.removeChild(loadingEl);
+                document.body.removeChild(loadingEl);
+              })
+              .catch(handleError);
+            return;
+          }
+
+          // First, render the header
+          html2canvas(headerElement, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: "#ffffff",
           })
-          .catch((error) => {
-            console.error("PDF generation error:", error);
-            alert("PDFの生成中にエラーが発生しました。");
-            document.body.removeChild(loadingEl);
+            .then((headerCanvas) => {
+              const headerImgData = headerCanvas.toDataURL("image/png");
+              const pageWidth = pdf.internal.pageSize.getWidth();
+              const pageHeight = pdf.internal.pageSize.getHeight();
+              const headerRatio = headerCanvas.width / headerCanvas.height;
+              const headerImgWidth = pageWidth;
+              const headerImgHeight = headerImgWidth / headerRatio;
+
+              // Add header to first page
+              pdf.addImage(
+                headerImgData,
+                "PNG",
+                0,
+                0,
+                headerImgWidth,
+                headerImgHeight
+              );
+              let yOffset = headerImgHeight;
+
+              // Get table rows for pagination
+              const rows = Array.from(
+                tableElement.querySelectorAll("tbody tr")
+              );
+              const headerRows = Array.from(
+                tableElement.querySelectorAll("thead tr")
+              );
+
+              // Create a temporary table for rendering
+              const tempTable = document.createElement("table");
+              tempTable.className = "table table-bordered table-hover";
+              tempTable.style.width = "100%";
+
+              // Add table header
+              const thead = document.createElement("thead");
+              headerRows.forEach((row) => {
+                thead.appendChild(row.cloneNode(true));
+              });
+              tempTable.appendChild(thead);
+
+              // Create tbody for content
+              const tbody = document.createElement("tbody");
+              tempTable.appendChild(tbody);
+
+              // Maximum rows per page (adjust as needed)
+              const maxRowsPerPage = 20;
+              let currentPage = 1;
+
+              // Process rows in batches
+              function processRowBatch(startIndex) {
+                // Clear previous rows
+                tbody.innerHTML = "";
+
+                // Add rows for current page
+                const endIndex = Math.min(
+                  startIndex + maxRowsPerPage,
+                  rows.length
+                );
+                for (let i = startIndex; i < endIndex; i++) {
+                  tbody.appendChild(rows[i].cloneNode(true));
+                }
+
+                // Create a temporary container
+                const tempContainer = document.createElement("div");
+                tempContainer.appendChild(tempTable);
+                document.body.appendChild(tempContainer);
+                tempContainer.style.position = "absolute";
+                tempContainer.style.left = "-9999px";
+
+                // Render the table chunk
+                html2canvas(tempContainer, {
+                  scale: 2,
+                  useCORS: true,
+                  backgroundColor: "#ffffff",
+                })
+                  .then((tableCanvas) => {
+                    // Remove temp container
+                    document.body.removeChild(tempContainer);
+
+                    const tableImgData = tableCanvas.toDataURL("image/png");
+                    const tableRatio = tableCanvas.width / tableCanvas.height;
+                    const tableImgWidth = pageWidth;
+                    const tableImgHeight = tableImgWidth / tableRatio;
+
+                    // If not the first page, add a new page
+                    if (currentPage > 1) {
+                      pdf.addPage();
+                      // Add header to new page
+                      pdf.addImage(
+                        headerImgData,
+                        "PNG",
+                        0,
+                        0,
+                        headerImgWidth,
+                        headerImgHeight
+                      );
+                      yOffset = headerImgHeight;
+                    }
+
+                    // Add table chunk to current page
+                    pdf.addImage(
+                      tableImgData,
+                      "PNG",
+                      0,
+                      yOffset,
+                      tableImgWidth,
+                      tableImgHeight
+                    );
+
+                    // Move to next batch or finish
+                    if (endIndex < rows.length) {
+                      currentPage++;
+                      processRowBatch(endIndex);
+                    } else {
+                      // Add footer to the last page if needed
+                      if (footerElement) {
+                        html2canvas(footerElement, {
+                          scale: 2,
+                          useCORS: true,
+                          backgroundColor: "#ffffff",
+                        })
+                          .then((footerCanvas) => {
+                            const footerImgData =
+                              footerCanvas.toDataURL("image/png");
+                            const footerRatio =
+                              footerCanvas.width / footerCanvas.height;
+                            const footerImgWidth = pageWidth;
+                            const footerImgHeight =
+                              footerImgWidth / footerRatio;
+
+                            pdf.addImage(
+                              footerImgData,
+                              "PNG",
+                              0,
+                              yOffset + tableImgHeight,
+                              footerImgWidth,
+                              footerImgHeight
+                            );
+                            finalizePDF();
+                          })
+                          .catch(handleError);
+                      } else {
+                        finalizePDF();
+                      }
+                    }
+                  })
+                  .catch(handleError);
+              }
+
+              // Start processing with the first batch
+              processRowBatch(0);
+
+              function finalizePDF() {
+                // Save PDF
+                pdf.save(`${filename}.pdf`);
+
+                // Restore display of no-print elements
+                noPrintElements.forEach((el) => {
+                  el.style.display = "";
+                });
+
+                // Remove loading indicator
+                document.body.removeChild(loadingEl);
+              }
+            })
+            .catch(handleError);
+        }
+
+        function handleError(error) {
+          console.error("PDF generation error:", error);
+          alert("PDFの生成中にエラーが発生しました。");
+
+          // Restore display of no-print elements
+          noPrintElements.forEach((el) => {
+            el.style.display = "";
           });
+
+          document.body.removeChild(loadingEl);
+        }
+
+        // Start PDF generation
+        generatePDF();
       }
     </script>
   </body>
