@@ -626,11 +626,14 @@
         });
 
       // PDF Export Function
-      // Replace the existing exportToPDF function in views/summary.ejs with this improved version
-
       async function exportToPDF() {
         // Get the delivery date from the date picker
         let deliveryDate = document.getElementById('deliveryDatePicker').value;
+        if (!deliveryDate) {
+          alert('納期を入力してください。');
+          return;
+        }
+        
         let dateStr = formatDateForFilename(deliveryDate);
         const filename = `水平ノズル検査_${dateStr}`;
       
@@ -642,19 +645,29 @@
           // Initialize jsPDF with portrait orientation
           const { jsPDF } = window.jspdf;
           const pdf = new jsPDF({
-            orientation: 'portrait', // Changed to portrait
+            orientation: 'portrait',
             unit: 'mm',
             format: 'a4',
             compress: true
           });
-      
-          // Get necessary elements
+          
+          // Check if content is available
           const contentElement = document.getElementById('pdf-container');
+          if (!contentElement) {
+            throw new Error('PDFコンテンツが見つかりません。');
+          }
+
           const tableElement = document.querySelector('.table-responsive table');
-          const tableHead = tableElement.querySelector('thead').cloneNode(true);
+          if (!tableElement) {
+            throw new Error('テーブルが見つかりません。');
+          }
+
           const tableBody = tableElement.querySelector('tbody');
           const tableRows = Array.from(tableBody.querySelectorAll('tr'));
-          
+          if (tableRows.length === 0) {
+            throw new Error('テーブルにデータがありません。');
+          }
+
           // Calculate how many rows can fit per page
           // For A4 portrait, we estimate about 25 rows per page (after accounting for header)
           const ROWS_PER_PAGE = 25;
@@ -808,36 +821,6 @@
       }
       
       // Create a loading indicator while generating PDF
-      function createLoadingIndicator() {
-        const loadingEl = document.createElement('div');
-        loadingEl.style.position = 'fixed';
-        loadingEl.style.top = '0';
-        loadingEl.style.left = '0';
-        loadingEl.style.width = '100%';
-        loadingEl.style.height = '100%';
-        loadingEl.style.backgroundColor = 'rgba(255,255,255,0.8)';
-        loadingEl.style.display = 'flex';
-        loadingEl.style.justifyContent = 'center';
-        loadingEl.style.alignItems = 'center';
-        loadingEl.style.zIndex = '9999';
-        loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
-        return loadingEl;
-      }
-
-      // Helper functions
-      function formatDateForFilename(dateStr) {
-        if (dateStr) {
-          const parts = dateStr.split('/');
-          if (parts.length === 3) {
-            return parts[0] + parts[1].padStart(2, '0') + parts[2].padStart(2, '0');
-          }
-        }
-        const today = new Date();
-        return today.getFullYear() +
-               String(today.getMonth() + 1).padStart(2, '0') +
-               String(today.getDate()).padStart(2, '0');
-      }
-
       function createLoadingIndicator() {
         const loadingEl = document.createElement('div');
         loadingEl.style.position = 'fixed';
