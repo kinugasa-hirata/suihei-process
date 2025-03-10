@@ -638,7 +638,7 @@
         }
       });
 
-      // Simplified PDF Export Function
+      // Improved PDF Export Function - optimized for better formatting
       function exportToPDF() {
         // Create and show loading indicator
         const loadingEl = document.createElement("div");
@@ -677,113 +677,235 @@
             format: "a4",
           });
 
-          // Get the content to capture
-          const pdfContent = document.getElementById("pdf-container");
+          // Split content into header and table to handle them separately
+          const headerSection = document.querySelector(".content-section");
+          const tableSection = document.querySelector(".table-responsive");
 
-          // Simplify content for better capture
-          const originalTransforms = [];
-          document.querySelectorAll("thead tr").forEach((row) => {
-            originalTransforms.push(row.style.transform);
-            row.style.transform = "none";
-          });
+          // Get table rows to calculate if we need pagination
+          const tableRows = document.querySelectorAll("tbody tr");
+          const rowCount = tableRows.length;
 
-          // Use html2canvas with better settings for reliable capture
-          html2canvas(pdfContent, {
-            scale: 1.5, // Higher scale for better quality
+          // First, capture the header section
+          html2canvas(headerSection, {
+            scale: 2,
             useCORS: true,
             allowTaint: true,
             backgroundColor: "#ffffff",
             logging: false,
-            scrollX: 0,
-            scrollY: 0,
-            windowWidth: document.documentElement.offsetWidth,
-            windowHeight: document.documentElement.offsetHeight,
           })
-            .then((canvas) => {
-              // Get PDF dimensions
+            .then((headerCanvas) => {
+              // Calculate dimensions for header
               const pageWidth = pdf.internal.pageSize.getWidth();
               const pageHeight = pdf.internal.pageSize.getHeight();
 
-              // Convert canvas to image
-              const imgData = canvas.toDataURL("image/png");
+              const headerImgData = headerCanvas.toDataURL("image/png");
+              const headerImgWidth = pageWidth - 20; // 10mm margin on each side
+              const headerImgHeight =
+                (headerCanvas.height * headerImgWidth) / headerCanvas.width;
 
-              // Calculate dimensions for the image
-              const imgWidth = pageWidth - 20; // 10mm margin on each side
-              const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-              // Handle pagination for large content
-              let heightLeft = imgHeight;
-              let position = 0;
-              let pageCount = 1;
-
-              // Add first page
+              // Add header to PDF
               pdf.addImage(
-                imgData,
+                headerImgData,
                 "PNG",
                 10,
                 10,
-                imgWidth,
-                Math.min(imgHeight, pageHeight - 20)
+                headerImgWidth,
+                headerImgHeight
               );
-              heightLeft -= pageHeight - 20;
-              position += pageHeight - 20;
 
-              // Add more pages if needed
-              while (heightLeft > 0) {
-                pdf.addPage();
-                pageCount++;
-                pdf.addImage(
-                  imgData,
-                  "PNG",
-                  10,
-                  -(position - 10),
-                  imgWidth,
-                  imgHeight
-                );
-                heightLeft -= pageHeight - 20;
-                position += pageHeight - 20;
-              }
+              // Now capture the table
+              // First optimize table for capture
+              const tableStyleBackup = tableSection.style.cssText;
+              tableSection.style.width = "1100px"; // Set fixed width for better capture
+              tableSection.style.maxWidth = "1100px";
+              tableSection.style.overflow = "visible";
 
-              // Save the PDF
-              try {
-                pdf.save(filename + ".pdf");
-              } catch (saveError) {
-                console.error("Error saving PDF:", saveError);
-                alert(
-                  "PDFの保存中にエラーが発生しました: " +
-                    (saveError.message || saveError)
-                );
-              }
+              // Apply consistent sizing to table cells
+              document
+                .querySelectorAll(".table td, .table th")
+                .forEach((cell) => {
+                  cell.style.padding = "2px 5px";
+                  cell.style.minWidth = "auto";
+                  cell.style.fontSize = "11px";
+                });
 
-              // Restore original display
-              noPrintElements.forEach((el) => {
-                el.style.display = "";
-              });
+              // Determine if we need a single or multi-page approach
+              const singlePageMode = rowCount <= 25; // Use single page for up to 25 rows
 
-              // Restore original transforms
-              document.querySelectorAll("thead tr").forEach((row, index) => {
-                if (index < originalTransforms.length) {
-                  row.style.transform = originalTransforms[index];
+              if (singlePageMode) {
+                // Single page approach - capture whole table at once
+                html2canvas(tableSection, {
+                  scale: 2,
+                  useCORS: true,
+                  allowTaint: true,
+                  backgroundColor: "#ffffff",
+                  logging: false,
+                })
+                  .then((tableCanvas) => {
+                    const tableImgData = tableCanvas.toDataURL("image/png");
+                    const tableImgWidth = pageWidth - 20;
+                    const tableImgHeight =
+                      (tableCanvas.height * tableImgWidth) / tableCanvas.width;
+
+                    // Add table below header with some spacing
+                    pdf.addImage(
+                      tableImgData,
+                      "PNG",
+                      10,
+                      headerImgHeight + 15,
+                      tableImgWidth,
+                      tableImgHeight
+                    );
+
+                    // Add footer note
+                    const footerNote =
+                      "＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。";
+                    pdf.setFontSize(10);
+                    pdf.text(
+                      footerNote,
+                      10,
+                      headerImgHeight + tableImgHeight + 20
+                    );
+
+                    // Save PDF
+                    pdf.save(filename + ".pdf");
+
+                    // Restore original styles
+                    tableSection.style.cssText = tableStyleBackup;
+                    noPrintElements.forEach((el) => {
+                      el.style.display = "";
+                    });
+                    document.body.removeChild(loadingEl);
+                  })
+                  .catch((err) => {
+                    handleCanvasError(err);
+                  });
+              } else {
+                // Multi-page approach
+                // Count rows and determine splits
+                const rowsPerPage = 20;
+                const totalPages = Math.ceil(rowCount / rowsPerPage);
+
+                // Create clone of table header for reference
+                const headerRow = document
+                  .querySelector("thead")
+                  .cloneNode(true);
+
+                // Process each page
+                processTablePages(0);
+
+                function processTablePages(pageIndex) {
+                  if (pageIndex >= totalPages) {
+                    // All pages processed
+                    tableSection.style.cssText = tableStyleBackup;
+                    noPrintElements.forEach((el) => {
+                      el.style.display = "";
+                    });
+                    document.body.removeChild(loadingEl);
+                    pdf.save(filename + ".pdf");
+                    return;
+                  }
+
+                  // Create a temporary table for just this page's rows
+                  const tempTable = document.createElement("table");
+                  tempTable.className = "table table-bordered table-hover";
+                  tempTable.appendChild(headerRow.cloneNode(true));
+
+                  const tbody = document.createElement("tbody");
+
+                  // Calculate start and end indices for this page
+                  const startIdx = pageIndex * rowsPerPage;
+                  const endIdx = Math.min(startIdx + rowsPerPage, rowCount);
+
+                  // Add rows for this page
+                  for (let i = startIdx; i < endIdx; i++) {
+                    if (tableRows[i]) {
+                      tbody.appendChild(tableRows[i].cloneNode(true));
+                    }
+                  }
+
+                  tempTable.appendChild(tbody);
+
+                  // Create container for temporary table
+                  const tempContainer = document.createElement("div");
+                  tempContainer.style.position = "absolute";
+                  tempContainer.style.left = "-9999px";
+                  tempContainer.style.width = "1100px";
+                  tempContainer.style.backgroundColor = "#ffffff";
+                  tempContainer.appendChild(tempTable);
+                  document.body.appendChild(tempContainer);
+
+                  // Capture this page's table
+                  html2canvas(tempContainer, {
+                    scale: 2,
+                    backgroundColor: "#ffffff",
+                    logging: false,
+                  })
+                    .then((tableCanvas) => {
+                      // If not the first page, add a new page
+                      if (pageIndex > 0) {
+                        pdf.addPage();
+                      }
+
+                      // Calculate dimensions
+                      const tableImgData = tableCanvas.toDataURL("image/png");
+                      const tableImgWidth = pageWidth - 20;
+                      const tableImgHeight =
+                        (tableCanvas.height * tableImgWidth) /
+                        tableCanvas.width;
+
+                      // Position on first or subsequent page
+                      const yPos = pageIndex === 0 ? headerImgHeight + 15 : 10;
+
+                      // Add table to PDF
+                      pdf.addImage(
+                        tableImgData,
+                        "PNG",
+                        10,
+                        yPos,
+                        tableImgWidth,
+                        tableImgHeight
+                      );
+
+                      // Add footer note on last page
+                      if (pageIndex === totalPages - 1) {
+                        const footerNote =
+                          "＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。";
+                        pdf.setFontSize(10);
+                        pdf.text(footerNote, 10, yPos + tableImgHeight + 10);
+                      }
+
+                      // Remove temp container
+                      document.body.removeChild(tempContainer);
+
+                      // Process next page
+                      processTablePages(pageIndex + 1);
+                    })
+                    .catch((err) => {
+                      document.body.removeChild(tempContainer);
+                      handleCanvasError(err);
+                    });
                 }
-              });
-
-              // Remove loading indicator
-              document.body.removeChild(loadingEl);
+              }
             })
             .catch((err) => {
-              // Handle html2canvas errors
-              console.error("Canvas rendering error:", err);
-              alert(
-                "PDFの生成中にエラーが発生しました: " +
-                  (err.message || "画像の取得に失敗しました")
-              );
-
-              // Restore original display
-              noPrintElements.forEach((el) => {
-                el.style.display = "";
-              });
-              document.body.removeChild(loadingEl);
+              handleCanvasError(err);
             });
+
+          // Error handler function
+          function handleCanvasError(err) {
+            console.error("Canvas rendering error:", err);
+            alert(
+              "PDFの生成中にエラーが発生しました: " +
+                (err.message || "画像の取得に失敗しました")
+            );
+
+            // Restore original display
+            noPrintElements.forEach((el) => {
+              el.style.display = "";
+            });
+            document.body.removeChild(loadingEl);
+          }
         } catch (err) {
           // Handle initialization errors
           console.error("PDF initialization error:", err);
