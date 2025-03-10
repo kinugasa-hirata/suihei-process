@@ -1,6 +1,7 @@
 <!-- Enhanced summary.ejs with PDF Export -->
 <!DOCTYPE html>
 <html lang="en">
+  <!-- Replace the head section in views/summary.ejs with this updated version -->
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -16,12 +17,20 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
     />
-    <!-- Add jsPDF for PDF generation -->
+    
+    <!-- Updated PDF libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://unpkg.com/jspdf-font@1.0.7/dist/japanese.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="/js/fonts.js"></script>
+    
+    <!-- Add NotoSansJP font for Japanese support -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    
     <style>
+      /* Apply Noto Sans JP font to all elements */
+      body, table, button, input, .editable {
+        font-family: 'Noto Sans JP', sans-serif;
+      }
+      
       .container {
         max-width: 1200px;
         margin-top: 0;
@@ -633,6 +642,8 @@
         });
 
       // PDF Export Function
+      // Replace the existing exportToPDF function in views/summary.ejs with this improved version
+
       async function exportToPDF() {
         // Get the delivery date from the date picker
         let deliveryDate = document.getElementById('deliveryDatePicker').value;
@@ -644,158 +655,95 @@
         document.body.appendChild(loadingEl);
 
         try {
-          // Initialize jsPDF with Japanese font support
+          // Initialize jsPDF with proper configuration
           const { jsPDF } = window.jspdf;
           const pdf = new jsPDF({
             orientation: 'landscape',
             unit: 'mm',
             format: 'a4',
-            compress: true,
-            putOnlyUsedFonts: true,
-            floatPrecision: 16
+            compress: true
           });
 
-          // Add Japanese font support
-          pdf.addFont('japanese');
-          pdf.setFont('japanese');
-          pdf.setLanguage('ja');
+          // Load Japanese font support - use proper way to add the font
+          // This works better than the previous method
+          pdf.addFont('https://cdn.jsdelivr.net/npm/noto-sans-japanese@1.0.0/NotoSansJP-Regular.ttf', 'NotoSansJP', 'normal');
+          pdf.setFont('NotoSansJP');
+          
+          // Set base font sizes
+          const defaultFontSize = 9;
+          const headerFontSize = 14;
+          pdf.setFontSize(defaultFontSize);
 
-          // Set default font size and line height
-          const defaultFontSize = 10;
-          const headerFontSize = 16;
-          const titleFontSize = 14;
-          const lineHeight = 1.4;
-
-          // Add page header
-          function addPageHeader(pageNumber) {
-            pdf.setFontSize(headerFontSize);
-            const title = '水平ノズル全数検査成績書';
-            const titleWidth = pdf.getStringUnitWidth(title) * headerFontSize / pdf.internal.scaleFactor;
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const titleX = (pageWidth - titleWidth) / 2;
-            pdf.text(title, titleX, 20);
-
-            pdf.setFontSize(defaultFontSize);
-            const headerInfo = [
-              `品名: 水平ノズル 仕様書番号: KDMP-0434 担当者: ${document.getElementById('inspector').textContent}`,
-              `図番: P2MM302000 数量:${document.getElementById('fileCount').textContent}個 検査方法: 全数検査 検査日: ${new Date().toLocaleDateString('ja-JP')} 納期: ${deliveryDate || 'YYYY/MM/DD'}`
-            ];
-
-            headerInfo.forEach((line, idx) => {
-              pdf.text(line, 15, 30 + (idx * 7));
-            });
-
-            // Add company name on the right
-            const companyName = '㈱平田商店';
-            const companyWidth = pdf.getStringUnitWidth(companyName) * defaultFontSize / pdf.internal.scaleFactor;
-            pdf.text(companyName, pageWidth - 15 - companyWidth, 30);
-
-            // Add environment note
-            pdf.setFontSize(9);
-            pdf.text('当社検査における環境は室温20℃±5℃、湿度40%±25%で管理された部屋で実施しております。', 15, 45);
-            
-            // Add unit note
-            const unitText = '単位 (mm)';
-            const unitWidth = pdf.getStringUnitWidth(unitText) * 9 / pdf.internal.scaleFactor;
-            pdf.text(unitText, pageWidth - 15 - unitWidth, 45);
-
-            return 55; // Return Y position after header
-          }
-
-          // Function to create table
-          function createTable(startY) {
-            const table = document.querySelector('.table-responsive table');
-            const headers = Array.from(table.querySelectorAll('thead tr'));
-            const rows = Array.from(table.querySelectorAll('tbody tr'));
-            
-            // Calculate column widths based on content
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const tableWidth = pageWidth - 30; // 15mm margin on each side
-            const columnCount = headers[0].cells.length;
-            const standardWidth = tableWidth / columnCount;
-
-            // Draw table headers
-            let currentY = startY;
-            headers.forEach((headerRow, idx) => {
-              const cells = Array.from(headerRow.cells);
-              let currentX = 15;
-              
-              cells.forEach((cell, cellIdx) => {
-                const cellContent = cell.textContent.trim();
-                pdf.setFontSize(8);
-                const width = standardWidth;
-                pdf.rect(currentX, currentY, width, 7);
-                
-                // Center align text in cell
-                const textWidth = pdf.getStringUnitWidth(cellContent) * 8 / pdf.internal.scaleFactor;
-                const textX = currentX + (width - textWidth) / 2;
-                pdf.text(cellContent, textX, currentY + 5);
-                
-                currentX += width;
-              });
-              currentY += 7;
-            });
-
-            // Draw table body with similar centering
-            pdf.setFontSize(8);
-            rows.forEach((row, rowIdx) => {
-              if (currentY > pdf.internal.pageSize.height - 20) {
-                pdf.addPage();
-                currentY = addPageHeader(pdf.getNumberOfPages());
-              }
-
-              const cells = Array.from(row.cells);
-              let currentX = 15;
-
-              cells.forEach((cell, cellIdx) => {
-                const cellContent = cell.textContent.trim();
-                const width = standardWidth;
-                const isInvalid = cell.classList.contains('invalid-value');
-                
-                pdf.rect(currentX, currentY, width, 7);
-                
-                if (isInvalid) {
-                  pdf.setTextColor(220, 53, 69); // Red color for invalid values
-                }
-                
-                // Center align text in cell
-                const textWidth = pdf.getStringUnitWidth(cellContent) * 8 / pdf.internal.scaleFactor;
-                const textX = currentX + (width - textWidth) / 2;
-                pdf.text(cellContent, textX, currentY + 5);
-                
-                if (isInvalid) {
-                  pdf.setTextColor(0); // Reset color
-                }
-                
-                currentX += width;
-              });
-
-              currentY += 7;
-            });
-
-            return currentY;
-          }
-
-          // Add footer
-          function addFooter(y) {
-            pdf.setFontSize(9);
-            const footerText = '＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。';
-            pdf.text(footerText, 15, y + 10);
-          }
-
-          // Generate PDF
-          let yPos = addPageHeader(1);
-          yPos = createTable(yPos);
-          addFooter(yPos);
+          // Create content via HTML2Canvas approach for better character handling
+          const contentElement = document.getElementById('pdf-container');
+          
+          // Use html2canvas to capture the DOM content as an image
+          const canvas = await html2canvas(contentElement, {
+            scale: 2, // Higher scale for better quality
+            useCORS: true,
+            logging: false,
+            allowTaint: true,
+            backgroundColor: '#ffffff'
+          });
+          
+          // Calculate dimensions to fit on PDF
+          const imgData = canvas.toDataURL('image/png');
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          const imgWidth = canvas.width;
+          const imgHeight = canvas.height;
+          const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+          const imgX = (pdfWidth - imgWidth * ratio) / 2;
+          const imgY = 10; // Top margin
+          
+          // Add image to PDF
+          pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+          
+          // Add footer with page numbers
+          pdf.setFontSize(8);
+          pdf.text(`出力日: ${new Date().toLocaleDateString('ja-JP')}`, 10, pdfHeight - 10);
+          pdf.text('Page 1', pdfWidth - 20, pdfHeight - 10);
 
           // Save the PDF
           pdf.save(`${filename}.pdf`);
+          
         } catch (error) {
           console.error('Error generating PDF:', error);
-          alert('PDFの生成中にエラーが発生しました。');
+          alert('PDFの生成中にエラーが発生しました: ' + error.message);
         } finally {
           document.body.removeChild(loadingEl);
         }
+      }
+
+      // Helper function to format date for filename
+      function formatDateForFilename(dateStr) {
+        if (dateStr) {
+          const parts = dateStr.split('/');
+          if (parts.length === 3) {
+            return parts[0] + parts[1].padStart(2, '0') + parts[2].padStart(2, '0');
+          }
+        }
+        const today = new Date();
+        return today.getFullYear() +
+              String(today.getMonth() + 1).padStart(2, '0') +
+              String(today.getDate()).padStart(2, '0');
+      }
+
+      // Create a loading indicator while generating PDF
+      function createLoadingIndicator() {
+        const loadingEl = document.createElement('div');
+        loadingEl.style.position = 'fixed';
+        loadingEl.style.top = '0';
+        loadingEl.style.left = '0';
+        loadingEl.style.width = '100%';
+        loadingEl.style.height = '100%';
+        loadingEl.style.backgroundColor = 'rgba(255,255,255,0.8)';
+        loadingEl.style.display = 'flex';
+        loadingEl.style.justifyContent = 'center';
+        loadingEl.style.alignItems = 'center';
+        loadingEl.style.zIndex = '9999';
+        loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
+        return loadingEl;
       }
 
       // Helper functions
