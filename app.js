@@ -903,5 +903,150 @@ app.post("/files/:id/update-weight", async (req, res) => {
     }
   }
 });
+// Export weights as JSON
+app.get("/export-weights", async (req, res) => {
+  let client;
+  try {
+    client = await pool.connect();
+    
+    // Get all files with their weights
+    const result = await client.query(`
+      SELECT f.filename, fw.weight
+      FROM files f
+      LEFT JOIN file_weights fw ON f.id = fw.file_id
+      ORDER BY 
+        CASE 
+          WHEN f.filename ~ '^[0-9]+' THEN 
+            CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
+          ELSE 0
+        END ASC
+    `);
+    
+    // Process the results to match the required format
+    const weightData = result.rows.map(row => {
+      // Extract file number if present
+      let fileName = row.filename;
+      const match = row.filename.match(/^(\d+)/);
+      if (match) {
+        fileName = match[1];
+      }
+      
+      return {
+        fileName: fileName,
+        weight: row.weight ? parseFloat(row.weight).toFixed(1) : null
+      };
+    });
+    
+    // Filter out entries with null weights
+    const filteredData = weightData.filter(item => item.weight !== null);
+    
+    res.json(filteredData);
+  } catch (err) {
+    console.error("Error exporting weights:", err);
+    res.status(500).json({ 
+      success: false, 
+      error: "Error exporting weights: " + err.message 
+    });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+// Add this route to app.js, near the other routes before the module.exports line
+
+// Import weights from JSON
+app.post("/import-weights", async (req, res) => {
+  // Check if user is hinkan - prevent weight updates
+  if (req.session.username === "hinkan") {
+    return res.status(403).json({
+      success: false,
+      error: "権限がありません",
+    });
+  }
+
+  let client;
+  try {
+    const { weightData } = req.body;
+    
+    if (!Array.isArray(weightData) || weightData.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Invalid data format" 
+      });
+    }
+    
+    client = await pool.connect();
+    await client.query("BEGIN");
+    
+    let updatedCount = 0;
+    let skippedCount = 0;
+    let notFoundCount = 0;
+    
+    for (const item of weightData) {
+      if (!item.fileName || !item.weight || isNaN(parseFloat(item.weight))) {
+        continue;
+      }
+      
+      // First, find the file by matching the filename pattern
+      const fileNamePattern = `^${item.fileName}`;
+      const fileResult = await client.query(
+        `SELECT id FROM files WHERE filename ~ $1 LIMIT 1`,
+        [fileNamePattern]
+      );
+      
+      if (fileResult.rows.length === 0) {
+        notFoundCount++;
+        continue;
+      }
+      
+      const fileId = fileResult.rows[0].id;
+      
+      // Check if weight already exists
+      const weightResult = await client.query(
+        `SELECT weight FROM file_weights WHERE file_id = $1`,
+        [fileId]
+      );
+      
+      const weight = parseFloat(item.weight).toFixed(1);
+      
+      if (weightResult.rows.length > 0) {
+        // Weight exists, check if it's the same
+        const existingWeight = parseFloat(weightResult.rows[0].weight).toFixed(1);
+        if (existingWeight === weight) {
+          skippedCount++;
+          continue;
+        }
+      }
+      
+      // Insert or update weight
+      await client.query(
+        `INSERT INTO file_weights (file_id, weight)
+         VALUES ($1, $2)
+         ON CONFLICT (file_id) 
+         DO UPDATE SET weight = $2`,
+        [fileId, weight]
+      );
+      
+      updatedCount++;
+    }
+    
+    await client.query("COMMIT");
+    
+    res.json({
+      success: true,
+      message: `${updatedCount} weights updated, ${skippedCount} skipped (unchanged), ${notFoundCount} files not found.`
+    });
+    
+  } catch (err) {
+    if (client) await client.query("ROLLBACK");
+    console.error("Error importing weights:", err);
+    res.status(500).json({
+      success: false,
+      error: "Error importing weights: " + err.message
+    });
+  } finally {
+    if (client) client.release();
+  }
+});
 
 module.exports = app;
