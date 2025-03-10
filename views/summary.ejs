@@ -1,4 +1,4 @@
-<!-- Enhanced summary.ejs with PDF Export -->
+<!-- Enhanced summary.ejs with reliable PDF Export -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -230,6 +230,28 @@
         background-color: white;
         overflow: visible; /* Changed from hidden to allow scrolling */
         padding: 0 20px; /* Add some horizontal padding */
+      }
+
+      /* Loading indicator */
+      .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+      }
+
+      .loading-message {
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        text-align: center;
       }
 
       @media print {
@@ -611,263 +633,164 @@
         var pdfButton = document.querySelector(".button-pdf");
         if (pdfButton) {
           pdfButton.addEventListener("click", function () {
-            generatePDF();
+            exportToPDF();
           });
         }
       });
 
-      // PDF Export Function that captures all content
+      // Simplified PDF Export Function
       function exportToPDF() {
-        // Show loading indicator
+        // Create and show loading indicator
         const loadingEl = document.createElement("div");
-        loadingEl.style.position = "fixed";
-        loadingEl.style.top = "0";
-        loadingEl.style.left = "0";
-        loadingEl.style.width = "100%";
-        loadingEl.style.height = "100%";
-        loadingEl.style.backgroundColor = "rgba(255,255,255,0.8)";
-        loadingEl.style.display = "flex";
-        loadingEl.style.justifyContent = "center";
-        loadingEl.style.alignItems = "center";
-        loadingEl.style.zIndex = "9999";
+        loadingEl.className = "loading-overlay";
         loadingEl.innerHTML =
-          '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
+          '<div class="loading-message">PDFを生成中です。お待ちください...</div>';
         document.body.appendChild(loadingEl);
 
         try {
-          // Get date for filename
-          const today = new Date();
-          const dateStr =
-            today.getFullYear() +
-            String(today.getMonth() + 1).padStart(2, "0") +
-            String(today.getDate()).padStart(2, "0");
-
-          // Create filename
-          const filename = "水平ノズル検査_" + dateStr;
-
-          // Hide buttons and UI elements that shouldn't appear in PDF
+          // Hide buttons for capture
           const noPrintElements = document.querySelectorAll(".no-print");
           noPrintElements.forEach((el) => {
             el.style.display = "none";
           });
 
-          // Store original body overflow style to restore later
-          const originalOverflow = document.body.style.overflow;
-          document.body.style.overflow = "visible"; // Ensure all content is visible
+          // Current date for filename
+          const today = new Date();
+          const dateStr =
+            today.getFullYear() +
+            String(today.getMonth() + 1).padStart(2, "0") +
+            String(today.getDate()).padStart(2, "0");
+          const filename = "水平ノズル検査_" + dateStr;
 
           // Initialize jsPDF
           const { jsPDF } = window.jspdf;
-          const pdf = new jsPDF("landscape", "mm", "a4");
 
-          // Get PDF dimensions
-          const pageWidth = pdf.internal.pageSize.getWidth();
-          const pageHeight = pdf.internal.pageSize.getHeight();
+          // Check if jsPDF is available
+          if (!jsPDF) {
+            throw new Error("jsPDF library not loaded properly");
+          }
 
-          // Get all the necessary elements
-          const header = document.querySelector(".content-section");
-          const table = document.querySelector(".table-responsive table");
+          // Create the PDF in landscape A4 format
+          const pdf = new jsPDF({
+            orientation: "landscape",
+            unit: "mm",
+            format: "a4",
+          });
 
-          // First, capture the header
-          html2canvas(header, {
-            scale: 2,
+          // Get the content to capture
+          const pdfContent = document.getElementById("pdf-container");
+
+          // Simplify content for better capture
+          const originalTransforms = [];
+          document.querySelectorAll("thead tr").forEach((row) => {
+            originalTransforms.push(row.style.transform);
+            row.style.transform = "none";
+          });
+
+          // Use html2canvas with better settings for reliable capture
+          html2canvas(pdfContent, {
+            scale: 1.5, // Higher scale for better quality
             useCORS: true,
             allowTaint: true,
             backgroundColor: "#ffffff",
             logging: false,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: document.documentElement.offsetWidth,
+            windowHeight: document.documentElement.offsetHeight,
           })
-            .then((headerCanvas) => {
-              // Calculate dimensions for header
-              const headerImgData = headerCanvas.toDataURL("image/png");
-              const headerImgWidth = pageWidth - 20; // 10mm margin on each side
-              const headerImgHeight =
-                (headerCanvas.height * headerImgWidth) / headerCanvas.width;
+            .then((canvas) => {
+              // Get PDF dimensions
+              const pageWidth = pdf.internal.pageSize.getWidth();
+              const pageHeight = pdf.internal.pageSize.getHeight();
 
-              // Add header to PDF
+              // Convert canvas to image
+              const imgData = canvas.toDataURL("image/png");
+
+              // Calculate dimensions for the image
+              const imgWidth = pageWidth - 20; // 10mm margin on each side
+              const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+              // Handle pagination for large content
+              let heightLeft = imgHeight;
+              let position = 0;
+              let pageCount = 1;
+
+              // Add first page
               pdf.addImage(
-                headerImgData,
+                imgData,
                 "PNG",
                 10,
                 10,
-                headerImgWidth,
-                headerImgHeight
+                imgWidth,
+                Math.min(imgHeight, pageHeight - 20)
+              );
+              heightLeft -= pageHeight - 20;
+              position += pageHeight - 20;
+
+              // Add more pages if needed
+              while (heightLeft > 0) {
+                pdf.addPage();
+                pageCount++;
+                pdf.addImage(
+                  imgData,
+                  "PNG",
+                  10,
+                  -(position - 10),
+                  imgWidth,
+                  imgHeight
+                );
+                heightLeft -= pageHeight - 20;
+                position += pageHeight - 20;
+              }
+
+              // Save the PDF
+              try {
+                pdf.save(filename + ".pdf");
+              } catch (saveError) {
+                console.error("Error saving PDF:", saveError);
+                alert(
+                  "PDFの保存中にエラーが発生しました: " +
+                    (saveError.message || saveError)
+                );
+              }
+
+              // Restore original display
+              noPrintElements.forEach((el) => {
+                el.style.display = "";
+              });
+
+              // Restore original transforms
+              document.querySelectorAll("thead tr").forEach((row, index) => {
+                if (index < originalTransforms.length) {
+                  row.style.transform = originalTransforms[index];
+                }
+              });
+
+              // Remove loading indicator
+              document.body.removeChild(loadingEl);
+            })
+            .catch((err) => {
+              // Handle html2canvas errors
+              console.error("Canvas rendering error:", err);
+              alert(
+                "PDFの生成中にエラーが発生しました: " +
+                  (err.message || "画像の取得に失敗しました")
               );
 
-              // Next, capture the table - this is where we need to handle pagination
-              const rows = Array.from(table.querySelectorAll("tbody tr"));
-              const headerRows = Array.from(table.querySelectorAll("thead tr"));
-
-              // Create a clone of the table with just the header
-              const headerTable = document.createElement("table");
-              headerTable.className = table.className;
-              headerTable.style.width = table.style.width;
-
-              const thead = document.createElement("thead");
-              headerRows.forEach((row) => {
-                thead.appendChild(row.cloneNode(true));
+              // Restore original display
+              noPrintElements.forEach((el) => {
+                el.style.display = "";
               });
-              headerTable.appendChild(thead);
-
-              // Render the header rows
-              html2canvas(headerTable, {
-                scale: 2,
-                useCORS: true,
-                allowTaint: true,
-                backgroundColor: "#ffffff",
-                logging: false,
-              })
-                .then((tableHeaderCanvas) => {
-                  // Calculate dimensions for table header
-                  const tableHeaderImgData =
-                    tableHeaderCanvas.toDataURL("image/png");
-                  const tableHeaderImgWidth = pageWidth - 20;
-                  const tableHeaderImgHeight =
-                    (tableHeaderCanvas.height * tableHeaderImgWidth) /
-                    tableHeaderCanvas.width;
-
-                  // Add table header to PDF, positioned below the document header
-                  const tableHeaderY = 10 + headerImgHeight + 5; // 5mm spacing
-                  pdf.addImage(
-                    tableHeaderImgData,
-                    "PNG",
-                    10,
-                    tableHeaderY,
-                    tableHeaderImgWidth,
-                    tableHeaderImgHeight
-                  );
-
-                  // Now handle the table rows with pagination
-                  // Create chunks of rows for pagination (e.g., 15 rows per page)
-                  const rowsPerPage = 15;
-                  const rowGroups = [];
-
-                  for (let i = 0; i < rows.length; i += rowsPerPage) {
-                    rowGroups.push(rows.slice(i, i + rowsPerPage));
-                  }
-
-                  // Process each group of rows
-                  const processRowGroup = (groupIndex) => {
-                    if (groupIndex >= rowGroups.length) {
-                      // All groups processed, finalize the PDF
-                      pdf.save(filename + ".pdf");
-
-                      // Restore UI state
-                      document.body.style.overflow = originalOverflow;
-                      noPrintElements.forEach((el) => {
-                        el.style.display = "";
-                      });
-                      document.body.removeChild(loadingEl);
-                      return;
-                    }
-
-                    // If not the first page, add a new page and repeat the headers
-                    if (groupIndex > 0) {
-                      pdf.addPage();
-                      pdf.addImage(
-                        headerImgData,
-                        "PNG",
-                        10,
-                        10,
-                        headerImgWidth,
-                        headerImgHeight
-                      );
-                      pdf.addImage(
-                        tableHeaderImgData,
-                        "PNG",
-                        10,
-                        tableHeaderY,
-                        tableHeaderImgWidth,
-                        tableHeaderImgHeight
-                      );
-                    }
-
-                    // Create a temporary table for this group of rows
-                    const tempTable = document.createElement("table");
-                    tempTable.className = table.className;
-                    tempTable.style.width = table.style.width;
-
-                    const tbody = document.createElement("tbody");
-                    rowGroups[groupIndex].forEach((row) => {
-                      tbody.appendChild(row.cloneNode(true));
-                    });
-                    tempTable.appendChild(tbody);
-
-                    // Append to DOM temporarily for rendering
-                    const tempContainer = document.createElement("div");
-                    tempContainer.appendChild(tempTable);
-                    tempContainer.style.position = "absolute";
-                    tempContainer.style.left = "-9999px";
-                    document.body.appendChild(tempContainer);
-
-                    // Render this group of rows
-                    html2canvas(tempTable, {
-                      scale: 2,
-                      useCORS: true,
-                      allowTaint: true,
-                      backgroundColor: "#ffffff",
-                      logging: false,
-                    })
-                      .then((rowsCanvas) => {
-                        // Remove the temporary container
-                        document.body.removeChild(tempContainer);
-
-                        // Calculate dimensions for rows
-                        const rowsImgData = rowsCanvas.toDataURL("image/png");
-                        const rowsImgWidth = pageWidth - 20;
-                        const rowsImgHeight =
-                          (rowsCanvas.height * rowsImgWidth) / rowsCanvas.width;
-
-                        // Calculate position for rows (below the table header)
-                        const rowsY = tableHeaderY + tableHeaderImgHeight + 2; // 2mm spacing
-
-                        // Add rows to PDF
-                        pdf.addImage(
-                          rowsImgData,
-                          "PNG",
-                          10,
-                          rowsY,
-                          rowsImgWidth,
-                          rowsImgHeight
-                        );
-
-                        // Add footer note on the last page
-                        if (groupIndex === rowGroups.length - 1) {
-                          const footerNote =
-                            "＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。";
-                          pdf.setFontSize(10);
-                          pdf.text(footerNote, 10, rowsY + rowsImgHeight + 10);
-                        }
-
-                        // Process the next group
-                        processRowGroup(groupIndex + 1);
-                      })
-                      .catch((error) => {
-                        console.error("Error rendering table rows:", error);
-                        handleError(error);
-                      });
-                  };
-
-                  // Start processing row groups
-                  processRowGroup(0);
-                })
-                .catch((error) => {
-                  console.error("Error rendering table header:", error);
-                  handleError(error);
-                });
-            })
-            .catch((error) => {
-              console.error("Error rendering header:", error);
-              handleError(error);
+              document.body.removeChild(loadingEl);
             });
-        } catch (error) {
-          console.error("Error initializing PDF:", error);
-          handleError(error);
-        }
+        } catch (err) {
+          // Handle initialization errors
+          console.error("PDF initialization error:", err);
+          alert("PDFの初期化中にエラーが発生しました: " + (err.message || err));
 
-        // Error handler function
-        function handleError(error) {
-          alert("PDFの生成中にエラーが発生しました: " + error.message);
-
-          // Restore UI state
+          // Cleanup
+          const noPrintElements = document.querySelectorAll(".no-print");
           noPrintElements.forEach((el) => {
             el.style.display = "";
           });
