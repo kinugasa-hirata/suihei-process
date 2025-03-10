@@ -19,6 +19,7 @@
     <!-- Add jsPDF for PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="/js/fonts.js"></script>
     <style>
       .container {
         max-width: 1200px;
@@ -630,36 +631,169 @@
           });
         });
 
+      // Add this before the exportToPDF function
+      function loadJapaneseFonts(pdf) {
+        // Add Japanese font support
+        pdf.addFileToVFS('ipag.ttf', ipagFontBase64);  // We'll need to include the font base64
+        pdf.addFont('ipag.ttf', 'IPAGothic', 'normal');
+        pdf.setFont('IPAGothic');
+      }
+
       // PDF Export Function
-      function exportToPDF() {
+      async function exportToPDF() {
         // Get the delivery date from the date picker
         let deliveryDate = document.getElementById('deliveryDatePicker').value;
-        let dateStr;
-
-        if (deliveryDate) {
-          // Parse the selected date (format YYYY/MM/DD)
-          const parts = deliveryDate.split('/');
-          if (parts.length === 3) {
-            dateStr = parts[0] + parts[1] + parts[2]; // Convert to YYYYMMDD format
-          } else {
-            // Fallback to today's date if format is incorrect
-            const today = new Date();
-            dateStr = today.getFullYear() +
-                     String(today.getMonth() + 1).padStart(2, '0') +
-                     String(today.getDate()).padStart(2, '0');
-          }
-        } else {
-          // If no date selected, use today's date
-          const today = new Date();
-          dateStr = today.getFullYear() +
-                   String(today.getMonth() + 1).padStart(2, '0') +
-                   String(today.getDate()).padStart(2, '0');
-        }
-
-        // Generate filename: 水平ノズル検査_YYYYMMDD
+        let dateStr = formatDateForFilename(deliveryDate);
         const filename = `水平ノズル検査_${dateStr}`;
 
         // Show loading indicator
+        const loadingEl = createLoadingIndicator();
+        document.body.appendChild(loadingEl);
+
+        try {
+          // Initialize jsPDF with better defaults for Japanese documents
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF({
+            orientation: 'landscape',
+            unit: 'mm',
+            format: 'a4',
+            compress: true,
+            putOnlyUsedFonts: true,
+            floatPrecision: 16
+          });
+
+          // Set default font size and line height
+          const defaultFontSize = 10;
+          const headerFontSize = 16;
+          const titleFontSize = 14;
+          const lineHeight = 1.4;
+
+          // Add page header
+          function addPageHeader(pageNumber) {
+            pdf.setFontSize(headerFontSize);
+            pdf.text('水平ノズル全数検査成績書', 15, 20);
+
+            pdf.setFontSize(defaultFontSize);
+            const headerInfo = [
+              `品名: 水平ノズル 仕様書番号: KDMP-0434 担当者: ${document.getElementById('inspector').textContent}`,
+              `図番: P2MM302000 数量:${document.getElementById('fileCount').textContent}個 検査方法: 全数検査 検査日: ${new Date().toLocaleDateString('ja-JP')} 納期: ${deliveryDate || 'YYYY/MM/DD'}`
+            ];
+
+            headerInfo.forEach((line, idx) => {
+              pdf.text(line, 15, 30 + (idx * 7));
+            });
+
+            // Add environment note
+            pdf.setFontSize(9);
+            pdf.text('当社検査における環境は室温20℃±5℃、湿度40%±25%で管理された部屋で実施しております。', 15, 45);
+            
+            // Add unit note
+            pdf.text('単位 (mm)', pdf.internal.pageSize.width - 30, 45);
+
+            return 55; // Return Y position after header
+          }
+
+          // Function to create table
+          function createTable(startY) {
+            const table = document.querySelector('.table-responsive table');
+            const headers = Array.from(table.querySelectorAll('thead tr'));
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
+            
+            const columnWidths = {
+              filename: 20,
+              measurement: 15,
+              weight: 20
+            };
+
+            // Draw table headers
+            let currentY = startY;
+            headers.forEach((headerRow, idx) => {
+              const cells = Array.from(headerRow.cells);
+              let currentX = 15;
+              
+              cells.forEach((cell, cellIdx) => {
+                const width = columnWidths[cellIdx === 0 ? 'filename' : 'measurement'];
+                pdf.setFontSize(8);
+                pdf.rect(currentX, currentY, width, 7);
+                pdf.text(cell.textContent.trim(), currentX + 1, currentY + 5);
+                currentX += width;
+              });
+              
+              currentY += 7;
+            });
+
+            // Draw table body
+            pdf.setFontSize(8);
+            rows.forEach((row, rowIdx) => {
+              if (currentY > pdf.internal.pageSize.height - 20) {
+                pdf.addPage();
+                currentY = addPageHeader(pdf.getNumberOfPages());
+              }
+
+              const cells = Array.from(row.cells);
+              let currentX = 15;
+
+              cells.forEach((cell, cellIdx) => {
+                const width = columnWidths[cellIdx === 0 ? 'filename' : 'measurement'];
+                const isInvalid = cell.classList.contains('invalid-value');
+                
+                pdf.rect(currentX, currentY, width, 7);
+                
+                if (isInvalid) {
+                  pdf.setTextColor(220, 53, 69); // Red color for invalid values
+                }
+                
+                pdf.text(cell.textContent.trim(), currentX + 1, currentY + 5);
+                
+                if (isInvalid) {
+                  pdf.setTextColor(0); // Reset color
+                }
+                
+                currentX += width;
+              });
+
+              currentY += 7;
+            });
+
+            return currentY;
+          }
+
+          // Add footer
+          function addFooter(y) {
+            pdf.setFontSize(9);
+            pdf.text('＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。', 15, y + 10);
+          }
+
+          // Generate PDF
+          let yPos = addPageHeader(1);
+          yPos = createTable(yPos);
+          addFooter(yPos);
+
+          // Save the PDF
+          pdf.save(`${filename}.pdf`);
+        } catch (error) {
+          console.error('Error generating PDF:', error);
+          alert('PDFの生成中にエラーが発生しました。');
+        } finally {
+          document.body.removeChild(loadingEl);
+        }
+      }
+
+      // Helper functions
+      function formatDateForFilename(dateStr) {
+        if (dateStr) {
+          const parts = dateStr.split('/');
+          if (parts.length === 3) {
+            return parts[0] + parts[1].padStart(2, '0') + parts[2].padStart(2, '0');
+          }
+        }
+        const today = new Date();
+        return today.getFullYear() +
+               String(today.getMonth() + 1).padStart(2, '0') +
+               String(today.getDate()).padStart(2, '0');
+      }
+
+      function createLoadingIndicator() {
         const loadingEl = document.createElement('div');
         loadingEl.style.position = 'fixed';
         loadingEl.style.top = '0';
@@ -672,237 +806,7 @@
         loadingEl.style.alignItems = 'center';
         loadingEl.style.zIndex = '9999';
         loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
-        document.body.appendChild(loadingEl);
-
-        // Initialize jsPDF
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({
-          orientation: 'landscape',
-          unit: 'mm',
-          format: 'a4',
-          compress: true,
-          margins: {
-            top: 15,
-            right: 15,
-            bottom: 15,
-            left: 15
-          }
-        });
-
-        // Get the necessary information
-        const inspectorName = document.getElementById('inspector').textContent.trim();
-        const fileCount = document.getElementById('fileCount').textContent;
-
-        // Get the table element
-        const table = document.querySelector('.table-responsive table');
-        const headerRows = Array.from(table.querySelectorAll('thead tr'));
-        const dataRows = Array.from(table.querySelectorAll('tbody tr'));
-
-        // Constants for PDF layout
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const margin = 15; // 15mm margin
-        const usableWidth = pageWidth - (2 * margin);
-        const usableHeight = pageHeight - (2 * margin);
-
-        // Font sizes and spacing
-        const titleFontSize = 16;
-        const headerFontSize = 12;
-        const contentFontSize = 10;
-        const tableFontSize = 8;
-        const lineHeight = 1.2; // Line height multiplier
-
-        // Function to add header to each page
-        function addPageHeader(pageNumber) {
-          // Reset font and colors
-          pdf.setFontSize(titleFontSize);
-          pdf.setFont(undefined, 'bold');
-          pdf.setTextColor(0, 0, 0);
-
-          // Add title
-          const title = '水平ノズル全数検査成績書';
-          pdf.text(title, margin, margin + 10);
-
-          // Add header information
-          pdf.setFontSize(headerFontSize);
-
-          // First line of header
-          pdf.text(`品名: 水平ノズル 仕様書番号: KDMP-0434 担当者: ${inspectorName}`, margin, margin + 20);
-
-          // Second line of header with current page number
-          const inspectionDate = document.querySelector('.header-info').textContent.match(/検査日: (\d{4}\/\d{2}\/\d{2})/) || ['', ''];
-          const deliveryDateValue = document.getElementById('deliveryDatePicker').value || 'YYYY/MM/DD';
-          pdf.text(`図番: P2MM302000 数量:${fileCount}個 検査方法: 全数検査 検査日: ${inspectionDate[1]} 納期: ${deliveryDateValue}`, margin, margin + 30);
-
-          // Position company name at right
-          const companyName = '㈱平田商店';
-          const companyNameWidth = pdf.getStringUnitWidth(companyName) * headerFontSize / pdf.internal.scaleFactor;
-          pdf.text(companyName, pageWidth - margin - companyNameWidth, margin + 30);
-
-          // Add environment note
-          pdf.setFontSize(contentFontSize);
-          pdf.setFont(undefined, 'normal');
-          pdf.text('当社検査における環境は室温20°C±5°C、湿度40%±25%で管理された部屋で実施しております。', margin, margin + 45);
-
-          // Add units text at right side
-          pdf.text('単位 (mm)', pageWidth - margin - 30, margin + 45);
-
-          // Return the current y position after the header
-          return margin + 55;
-        }
-
-        // Function to add table header
-        function addTableHeader(yPos) {
-          pdf.setFontSize(tableFontSize);
-          pdf.setFont(undefined, 'normal');
-
-          // Create a clone of the table header for processing
-          const headerTable = document.createElement('table');
-          headerTable.className = 'table';
-          const headerThead = document.createElement('thead');
-          headerTable.appendChild(headerThead);
-
-          // Copy the header rows
-          headerRows.forEach(row => {
-            headerThead.appendChild(row.cloneNode(true));
-          });
-
-          // Create a temporary element to hold the table for html2canvas
-          const tempHeader = document.createElement('div');
-          tempHeader.appendChild(headerTable);
-          document.body.appendChild(tempHeader);
-          tempHeader.style.position = 'absolute';
-          tempHeader.style.left = '-9999px';
-
-          // Return a promise to render the header
-          return new Promise((resolve, reject) => {
-            html2canvas(tempHeader, {
-              scale: 2,
-              backgroundColor: '#ffffff'
-            }).then(canvas => {
-              // Remove the temporary element
-              document.body.removeChild(tempHeader);
-
-              // Add the header image to the PDF
-              const imgData = canvas.toDataURL('image/png');
-              const imgWidth = usableWidth;
-              const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-              pdf.addImage(imgData, 'PNG', margin, yPos, imgWidth, imgHeight);
-
-              // Return the new Y position
-              resolve(yPos + imgHeight);
-            }).catch(err => {
-              reject(err);
-            });
-          });
-        }
-
-        // Function to add rows to the current page
-        function addRows(startIndex, endIndex, yPos) {
-          // Create a temporary table for the rows
-          const tempTable = document.createElement('table');
-          tempTable.className = 'table';
-
-          // Add the required rows
-          const tbody = document.createElement('tbody');
-          for (let i = startIndex; i < endIndex; i++) {
-            if (dataRows[i]) {
-              tbody.appendChild(dataRows[i].cloneNode(true));
-            }
-          }
-          tempTable.appendChild(tbody);
-
-          // Create a container for html2canvas
-          const tempContainer = document.createElement('div');
-          tempContainer.appendChild(tempTable);
-          document.body.appendChild(tempContainer);
-          tempContainer.style.position = 'absolute';
-          tempContainer.style.left = '-9999px';
-
-          // Return a promise to render the rows
-          return new Promise((resolve, reject) => {
-            html2canvas(tempContainer, {
-              scale: 2,
-              backgroundColor: '#ffffff'
-            }).then(canvas => {
-              // Remove the temporary element
-              document.body.removeChild(tempContainer);
-
-              // Add the rows image to the PDF
-              const imgData = canvas.toDataURL('image/png');
-              const imgWidth = usableWidth;
-              const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-              pdf.addImage(imgData, 'PNG', margin, yPos, imgWidth, imgHeight);
-
-              // Return the new Y position
-              resolve(yPos + imgHeight);
-            }).catch(err => {
-              reject(err);
-            });
-          });
-        }
-
-        // Function to add the footer note
-        function addFooter(yPos) {
-          pdf.setFontSize(contentFontSize);
-          pdf.setFont(undefined, 'normal');
-          pdf.text('＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。', margin, yPos + 10);
-        }
-
-        // Main function to generate PDF with pagination
-        async function generatePDF() {
-          try {
-            // Initialize variables for pagination
-            let currentPage = 1;
-            let rowsPerPage = 20; // Adjust based on how many rows fit on a page
-            let currentRowIndex = 0;
-
-            // Process all rows with pagination
-            while (currentRowIndex < dataRows.length) {
-              // Add a new page if not the first page
-              if (currentPage > 1) {
-                pdf.addPage();
-              }
-
-              // Add the header to the current page
-              let yPosition = addPageHeader(currentPage);
-
-              // Add the table header
-              yPosition = await addTableHeader(yPosition);
-
-              // Calculate how many rows will fit on this page
-              const endRowIndex = Math.min(currentRowIndex + rowsPerPage, dataRows.length);
-
-              // Add rows for this page
-              yPosition = await addRows(currentRowIndex, endRowIndex, yPosition);
-
-              // Add footer if this is the last page
-              if (endRowIndex >= dataRows.length) {
-                addFooter(yPosition);
-              }
-
-              // Update counters for next page
-              currentRowIndex = endRowIndex;
-              currentPage++;
-            }
-
-            // Save the PDF
-            pdf.save(`${filename}.pdf`);
-
-            // Clean up and remove loading indicator
-            document.body.removeChild(loadingEl);
-
-          } catch (error) {
-            console.error('Error generating PDF:', error);
-            alert('PDFの生成中にエラーが発生しました。');
-            document.body.removeChild(loadingEl);
-          }
-        }
-
-        // Start generating the PDF
-        generatePDF();
+        return loadingEl;
       }
     </script>
   </body>
