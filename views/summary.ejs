@@ -236,81 +236,36 @@
         .container {
           max-width: none !important;
           width: 100% !important;
-          padding: 10mm 5mm 10mm 20mm !important;
+          padding: 10mm 15mm !important; /* Balanced padding */
           margin: 0 auto !important;
-        }
-  
-        /* Content margins */
-        #pdf-container {
-          max-width: none !important;
-          width: 95% !important;
-          margin: 0 auto !important;
-          padding: 10mm !important;
-        }
-  
-        /* Table container adjustments */
-        .table-responsive {
-          overflow: visible !important;
-          width: 100% !important;
-          margin-left: 0 !important;
-          page-break-inside: avoid !important;
         }
   
         /* Table adjustments */
         .table {
           width: 100% !important;
-          table-layout: fixed;
-          font-size: 8pt !important;
+          font-size: 9pt !important;
           border-collapse: collapse !important;
-          page-break-inside: avoid !important;
         }
   
-        /* Adjust table header behavior */
+        /* Keep table header on each page */
         thead {
-          display: table-header-group !important;
+          display: table-header-group;
         }
   
+        /* Keep rows together */
         tr {
-          page-break-inside: avoid !important;
+          page-break-inside: avoid;
         }
   
-        /* Ensure proper margins for content */
+        /* Basic body settings */
         body {
-          margin: 15mm 25mm !important;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-  
-        /* Adjust header spacing */
-        .header-info {
-          margin-bottom: 15mm !important;
-        }
-  
-        /* Reduce space between table rows */
-        .table td, .table th {
-          padding: 2mm 1mm !important;
-        }
-  
-        /* Hide browser's default headers and footers */
-        html {
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-  
-        /* This is important - it removes the URL from the footer */
-        @page {
           margin: 0;
-        }
-  
-        /* Ensure proper margins for content */
-        body {
-          margin: 15mm;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
         }
   
-        /* Hide all browser-generated content */
-        .no-print, .no-print * {
+        /* Hide print elements */
+        .no-print {
           display: none !important;
         }
       }
