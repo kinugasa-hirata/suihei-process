@@ -527,8 +527,36 @@ app.get("/summary", requireLogin, async (req, res) => {
     let query;
     let params;
 
-    // Check for selected files in query parameters
-    if (req.query.selectedFiles) {
+    // First check if we have a file range selection
+    const minFileNumber = req.query.minFile
+      ? parseInt(req.query.minFile, 10)
+      : null;
+    const maxFileNumber = req.query.maxFile
+      ? parseInt(req.query.maxFile, 10)
+      : null;
+
+    if (minFileNumber !== null && maxFileNumber !== null) {
+      // Use the file number range query
+      query = `
+        SELECT f.id, f.filename, fw.weight, f.uploaded_at
+        FROM files f
+        LEFT JOIN file_weights fw ON f.id = fw.file_id
+        WHERE 
+          CASE 
+            WHEN f.filename ~ '^[0-9]+' THEN 
+              CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
+            ELSE 0
+          END BETWEEN $1 AND $2
+        ORDER BY 
+          CASE 
+            WHEN f.filename ~ '^[0-9]+' THEN 
+              CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
+            ELSE 0
+          END ASC
+      `;
+      params = [minFileNumber, maxFileNumber];
+    } else if (req.query.selectedFiles) {
+      // Handle individually selected files
       const selectedFiles = req.query.selectedFiles
         .split(",")
         .filter((id) => id);
@@ -549,35 +577,24 @@ app.get("/summary", requireLogin, async (req, res) => {
             END ASC
         `;
         params = selectedFiles;
+      } else {
+        // No files selected, return empty result
+        return res.render("summary", {
+          files: [],
+          fileData: {},
+          minFile: "",
+          maxFile: "",
+        });
       }
+    } else {
+      // No selection criteria provided, return empty result
+      return res.render("summary", {
+        files: [],
+        fileData: {},
+        minFile: "",
+        maxFile: "",
+      });
     }
-
-    // If no selected files, fall back to min/max range
-    const minFileNumber = req.query.minFile
-      ? parseInt(req.query.minFile, 10)
-      : 0;
-    const maxFileNumber = req.query.maxFile
-      ? parseInt(req.query.maxFile, 10)
-      : 9999;
-
-    query = `
-      SELECT f.id, f.filename, fw.weight, f.uploaded_at
-      FROM files f
-      LEFT JOIN file_weights fw ON f.id = fw.file_id
-      WHERE 
-        CASE 
-          WHEN f.filename ~ '^[0-9]+' THEN 
-            CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
-          ELSE 0
-        END BETWEEN $1 AND $2
-      ORDER BY 
-        CASE 
-          WHEN f.filename ~ '^[0-9]+' THEN 
-            CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
-          ELSE 0
-        END ASC
-    `;
-    params = [minFileNumber, maxFileNumber];
 
     console.log("Query:", query); // Debug log
     console.log("Params:", params); // Debug log
