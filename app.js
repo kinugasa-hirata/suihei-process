@@ -751,6 +751,7 @@ app.get("/summary", requireLogin, async (req, res) => {
       maxFile: req.query.maxFile || "",
       inspectorName: req.session.inspectorName,
       username: req.session.username,
+      validationRanges: validationRanges
     });
   } catch (err) {
     console.error("Error fetching summary data:", err);

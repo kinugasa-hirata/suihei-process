@@ -293,6 +293,34 @@
           box-shadow: none;
         }
       }
+
+      /* Add this to the existing style section */
+      .invalid-value {
+        color: #dc3545 !important;  /* Bootstrap's danger red */
+        font-weight: bold;
+        background-color: rgba(220, 53, 69, 0.1);  /* Light red background */
+        position: relative;
+      }
+
+      .invalid-value:hover::after {
+        content: attr(title);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 5px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: nowrap;
+        z-index: 1000;
+      }
+
+      /* Ensure the highlight-cell class doesn't override invalid-value */
+      .highlight-cell.invalid-value {
+        background-color: rgba(220, 53, 69, 0.1) !important;
+      }
     </style>
   </head>
   <body>
@@ -521,6 +549,9 @@
                   <% } else { %>
                   <td
                     class="<%= fileData[file.id][header].value !== '-' && !fileData[file.id][header].isValid ? 'invalid-value' : '' %> highlight-cell data-cell"
+                    <% if (fileData[file.id][header].value !== '-') { %>
+                      title="Allowed range: <%= validationRanges[header] ? validationRanges[header].min + ' - ' + validationRanges[header].max : 'No range' %>"
+                    <% } %>
                   >
                     <%= fileData[file.id][header].value %>
                   </td>
@@ -871,189 +902,6 @@
         }
 
         // Start generating the PDF
-        generatePDF();
-      }
-
-        // Initialize jsPDF
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF(pdfOptions);
-
-        // Function to handle multi-page generation
-        function generatePDF() {
-          // Get table element which might be long
-          const tableElement = content.querySelector('.table-responsive table');
-          const headerElement = content.querySelector('.content-section');
-          const footerElement = content.querySelector('.bottom-note');
-
-          // If no table found, fall back to capturing the entire content
-          if (!tableElement) {
-            html2canvas(content, {
-              scale: 2,
-              useCORS: true,
-              logging: false,
-              backgroundColor: '#ffffff'
-            }).then(canvas => {
-              const imgData = canvas.toDataURL('image/png');
-              const pageWidth = pdf.internal.pageSize.getWidth();
-              const ratio = canvas.width / canvas.height;
-              const imgWidth = pageWidth;
-              const imgHeight = imgWidth / ratio;
-
-              pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-              pdf.save(`${filename}.pdf`);
-
-              // Restore display of no-print elements
-              noPrintElements.forEach(el => {
-                el.style.display = '';
-              });
-
-              document.body.removeChild(loadingEl);
-            }).catch(handleError);
-            return;
-          }
-
-          // First, render the header
-          html2canvas(headerElement, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: '#ffffff'
-          }).then(headerCanvas => {
-            const headerImgData = headerCanvas.toDataURL('image/png');
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
-            const headerRatio = headerCanvas.width / headerCanvas.height;
-            const headerImgWidth = pageWidth;
-            const headerImgHeight = headerImgWidth / headerRatio;
-
-            // Add header to first page
-            pdf.addImage(headerImgData, 'PNG', 0, 0, headerImgWidth, headerImgHeight);
-            let yOffset = headerImgHeight;
-
-            // Get table rows for pagination
-            const rows = Array.from(tableElement.querySelectorAll('tbody tr'));
-            const headerRows = Array.from(tableElement.querySelectorAll('thead tr'));
-
-            // Create a temporary table for rendering
-            const tempTable = document.createElement('table');
-            tempTable.className = 'table table-bordered table-hover';
-            tempTable.style.width = '100%';
-
-            // Add table header
-            const thead = document.createElement('thead');
-            headerRows.forEach(row => {
-              thead.appendChild(row.cloneNode(true));
-            });
-            tempTable.appendChild(thead);
-
-            // Create tbody for content
-            const tbody = document.createElement('tbody');
-            tempTable.appendChild(tbody);
-
-            // Maximum rows per page (adjust as needed)
-            const maxRowsPerPage = 20;
-            let currentPage = 1;
-
-            // Process rows in batches
-            function processRowBatch(startIndex) {
-              // Clear previous rows
-              tbody.innerHTML = '';
-
-              // Add rows for current page
-              const endIndex = Math.min(startIndex + maxRowsPerPage, rows.length);
-              for (let i = startIndex; i < endIndex; i++) {
-                tbody.appendChild(rows[i].cloneNode(true));
-              }
-
-              // Create a temporary container
-              const tempContainer = document.createElement('div');
-              tempContainer.appendChild(tempTable);
-              document.body.appendChild(tempContainer);
-              tempContainer.style.position = 'absolute';
-              tempContainer.style.left = '-9999px';
-
-              // Render the table chunk
-              html2canvas(tempContainer, {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: '#ffffff'
-              }).then(tableCanvas => {
-                // Remove temp container
-                document.body.removeChild(tempContainer);
-
-                const tableImgData = tableCanvas.toDataURL('image/png');
-                const tableRatio = tableCanvas.width / tableCanvas.height;
-                const tableImgWidth = pageWidth;
-                const tableImgHeight = tableImgWidth / tableRatio;
-
-                // If not the first page, add a new page
-                if (currentPage > 1) {
-                  pdf.addPage();
-                  // Add header to new page
-                  pdf.addImage(headerImgData, 'PNG', 0, 0, headerImgWidth, headerImgHeight);
-                  yOffset = headerImgHeight;
-                }
-
-                // Add table chunk to current page
-                pdf.addImage(tableImgData, 'PNG', 0, yOffset, tableImgWidth, tableImgHeight);
-
-                // Move to next batch or finish
-                if (endIndex < rows.length) {
-                  currentPage++;
-                  processRowBatch(endIndex);
-                } else {
-                  // Add footer to the last page if needed
-                  if (footerElement) {
-                    html2canvas(footerElement, {
-                      scale: 2,
-                      useCORS: true,
-                      backgroundColor: '#ffffff'
-                    }).then(footerCanvas => {
-                      const footerImgData = footerCanvas.toDataURL('image/png');
-                      const footerRatio = footerCanvas.width / footerCanvas.height;
-                      const footerImgWidth = pageWidth;
-                      const footerImgHeight = footerImgWidth / footerRatio;
-
-                      pdf.addImage(footerImgData, 'PNG', 0, yOffset + tableImgHeight, footerImgWidth, footerImgHeight);
-                      finalizePDF();
-                    }).catch(handleError);
-                  } else {
-                    finalizePDF();
-                  }
-                }
-              }).catch(handleError);
-            }
-
-            // Start processing with the first batch
-            processRowBatch(0);
-
-            function finalizePDF() {
-              // Save PDF
-              pdf.save(`${filename}.pdf`);
-
-              // Restore display of no-print elements
-              noPrintElements.forEach(el => {
-                el.style.display = '';
-              });
-
-              // Remove loading indicator
-              document.body.removeChild(loadingEl);
-            }
-          }).catch(handleError);
-        }
-
-        function handleError(error) {
-          console.error('PDF generation error:', error);
-          alert('PDFの生成中にエラーが発生しました。');
-
-          // Restore display of no-print elements
-          noPrintElements.forEach(el => {
-            el.style.display = '';
-          });
-
-          document.body.removeChild(loadingEl);
-        }
-
-        // Start PDF generation
         generatePDF();
       }
     </script>
