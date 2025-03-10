@@ -1,4 +1,4 @@
-<!-- Simplified index.ejs - Fixed token '=' syntax error -->
+<!-- Enhanced summary.ejs with reliable PDF Export -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -7,868 +7,905 @@
     <!-- Vercel Analytics script -->
     <script defer src="/_vercel/insights/script.js"></script>
     <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-    <title>水平ノズル検査</title>
+    <title>水平ノズル全数検査成績書</title>
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
     />
     <link
-      href="https://fonts.googleapis.com/icon?family=Material+Icons"
       rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
     />
+    <!-- Add jsPDF and html2canvas for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
       .container {
         max-width: 1200px;
-        margin-top: 2rem;
+        margin-top: 0;
       }
-      .upload-form,
-      .summary-form {
-        padding: 1.5rem;
-        background-color: #f8f9fa;
-        border-radius: 5px;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
+      .summary-table {
+        margin-top: 2rem;
       }
       .nav-links {
         margin-bottom: 2rem;
       }
-      .file-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 1rem;
-        margin-top: 2rem;
-      }
-      .file-card {
-        background-color: #f8f9fa;
-        border-radius: 8px;
-        padding: 1.5rem 1rem;
+      .no-data {
+        padding: 2rem;
         text-align: center;
-        transition: all 0.3s ease;
-        cursor: pointer;
-        border: 2px solid #dee2e6;
-        position: relative;
-        user-select: none; /* Prevent text selection during interactions */
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        margin-bottom: 2rem;
       }
-      .file-card:hover {
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        border-color: #adb5bd;
-      }
-      .file-card.selected {
-        background-color: #e3f2fd;
-        border-color: #0d6efd;
-        box-shadow: 0 0 0 2px #0d6efd;
-      }
-      .file-card.selected .file-number {
-        color: #000;
-      }
-      .file-number {
-        font-size: 2.5rem;
+      .highlight-cell {
+        background-color: #fff3cd;
         font-weight: bold;
-        color: #0d6efd;
-        margin-bottom: 0.5rem;
       }
-      .weight-form {
-        margin-top: 0.5rem;
+      .table-responsive {
+        overflow-x: auto;
+      }
+      .file-filter-form {
+        background-color: #e9ecef;
+        padding: 1rem;
+        border-radius: 5px;
+        margin-bottom: 1.5rem;
+      }
+      .form-range-group {
         display: flex;
-        justify-content: center;
+        gap: 1rem;
+        align-items: end;
       }
-      .weight-input {
-        width: 80px;
-        font-size: 0.9rem;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        border: 1px solid #ced4da;
-      }
-      .file-card .file-content {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
-      .delete-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: rgba(220, 53, 69, 0.9);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: bold;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-        pointer-events: none;
-        border-radius: 6px;
-      }
-      .file-card.deleting .delete-overlay {
-        opacity: 1;
+      .range-input {
+        width: 120px;
       }
 
-      /* Add this to remove the up/down arrows */
-      .weight-input::-webkit-outer-spin-button,
-      .weight-input::-webkit-inner-spin-button {
-        -webkit-appearance: none;
+      .content-section {
+        background-color: white;
+        padding: 1rem;
         margin: 0;
       }
-      .weight-input[type="number"] {
-        -moz-appearance: textfield;
-        appearance: textfield;
-      }
 
-      .upload-form {
+      .header-info {
+        display: flex;
         justify-content: space-between;
+        align-items: center;
+        margin: 10px 0;
+        padding: 5px 0;
       }
 
-      .summary-form form {
-        margin-top: auto;
+      .company-info {
+        font-weight: bold;
+        font-size: 1.2em;
+      }
+
+      .editable {
+        border-bottom: 1px solid #ccc;
+        padding: 0 5px;
+        min-width: 50px;
+        display: inline-block;
+      }
+
+      .date-input {
+        border: 1px solid #ccc;
+        padding: 2px 5px;
+        border-radius: 4px;
+      }
+
+      .note {
+        margin: 15px 0;
+        font-size: 0.9em;
+        color: #666;
+        padding-left: 5px;
+      }
+
+      .note::before {
+        content: "※";
+        margin-right: 5px;
+      }
+
+      .unit-note {
+        text-align: right;
+        font-weight: bold;
+      }
+
+      /* Table styles */
+      .table {
+        background-color: white;
+      }
+
+      .table td {
+        text-align: center; /* Center align all table cells */
+        vertical-align: middle;
+      }
+
+      .table thead td {
+        background-color: white;
+        font-weight: normal;
+        text-align: center;
+        vertical-align: middle;
+        border: 1px solid #dee2e6;
+      }
+
+      .table tbody td {
+        text-align: center; /* Ensure body cells are also centered */
+      }
+
+      /* Keep filename cell styles if needed */
+      .filename-cell {
+        text-align: center;
+        font-weight: bold;
+      }
+
+      .table-bordered {
+        border-color: #dee2e6;
+      }
+
+      .smaller-text {
+        font-size: 0.9em;
+      }
+
+      /* Hide the indicator row but keep it functional */
+      .table thead tr:last-child {
+        position: absolute;
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      .button-container {
+        position: fixed;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 1000;
+      }
+
+      .button-container button,
+      .button-container a {
+        width: 100px;
+        padding: 10px;
+        text-align: center;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        font-weight: bold;
+      }
+
+      .button-home {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        text-decoration: none;
+        display: block;
+      }
+
+      .button-print {
+        background-color: #6c757d;
+        color: white;
+        border: none;
+      }
+
+      .button-pdf {
+        background-color: #007bff;
+        color: white;
+        border: none;
+      }
+
+      .logs-container {
+        margin-top: 20px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+
+      .logs-header {
+        padding: 10px;
+        background-color: #f8f9fa;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .logs-content {
+        padding: 15px;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .logs-content.hidden {
+        display: none;
+      }
+
+      .toggle-icon {
+        font-size: 12px;
+      }
+
+      /* PDF container for better control during exports */
+      #pdf-container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        background-color: white;
+        overflow: visible; /* Changed from hidden to allow scrolling */
+        padding: 0 20px; /* Add some horizontal padding */
+      }
+
+      /* Loading indicator */
+      .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+      }
+
+      .loading-message {
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        text-align: center;
+      }
+
+      @media print {
+        /* Page setup with margin for content */
+        @page {
+          size: A4 landscape;
+          margin: 15mm; /* Increased margin for printed output */
+        }
+
+        body {
+          width: 297mm; /* A4 width */
+          height: 210mm; /* A4 height */
+          margin: 0;
+          padding: 0;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        /* Hide non-printable elements */
+        .no-print {
+          display: none !important;
+        }
+
+        /* Reset container styling for print */
+        .container {
+          width: 100%;
+          max-width: none;
+          margin: 0;
+          padding: 5mm;
+        }
+
+        /* Adjust table for printing */
+        .table {
+          font-size: 9pt;
+          margin: 0;
+          border-collapse: collapse;
+          width: 100%;
+        }
+
+        .table td,
+        .table th {
+          padding: 2px 4px;
+          border: 1px solid #000;
+        }
+
+        /* Header adjustments */
+        h2 {
+          font-size: 14pt;
+          margin: 0 0 5mm 0;
+        }
+
+        /* Force show background colors and images in print */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+
+        .content-section {
+          padding: 0;
+          background-color: white;
+          box-shadow: none;
+        }
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <div class="d-flex justify-content-end mb-3">
-        <a
-          href="/logout"
-          class="btn btn-outline-danger"
-          style="margin-top: 20px"
-        >
-          ログアウト
-        </a>
-      </div>
-      <h1 class="mb-4">水平ノズル検査</h1>
-
-      <!-- Summary Report and Upload forms in a row -->
-      <div class="row mb-4">
-        <!-- Summary Report form -->
-        <div class="col-md-8">
-          <div class="summary-form h-100">
-            <h3>ファイル選択</h3>
-            <p>始めのファイル番号と終わりの番号を入力してください</p>
-            <form id="rangeSelectForm" onsubmit="selectFileRange(event)">
-              <div class="row">
-                <div class="col-md-5">
-                  <label for="minFile" class="form-label">始めのファイル</label>
-                  <input
-                    type="number"
-                    class="form-control"
-                    id="minFile"
-                    name="minFile"
-                    placeholder="e.g., 240"
-                  />
-                </div>
-                <div class="col-md-5">
-                  <label for="maxFile" class="form-label"
-                    >終わりのファイル</label
-                  >
-                  <input
-                    type="number"
-                    class="form-control"
-                    id="maxFile"
-                    name="maxFile"
-                    placeholder="e.g., 250"
-                  />
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                  <button type="submit" class="btn btn-info w-100">
-                    ファイル選択
-                  </button>
-                </div>
+      <div id="pdf-container">
+        <div class="content-section">
+          <div class="container">
+            <h2>水平ノズル全数検査成績書</h2>
+            <div class="header-info">
+              <div>
+                <strong>品名:</strong> 水平ノズル
+                <strong>仕様書番号:</strong> KDMP-0434
+                <strong>担当者:</strong>
+                <span class="editable" contenteditable="true" id="inspector"
+                  ><%= inspectorName %></span
+                >
               </div>
-            </form>
-          </div>
-        </div>
-
-        <!-- Upload form -->
-        <div class="col-md-4">
-          <div class="upload-form h-100">
-            <form
-              action="/upload"
-              method="post"
-              enctype="multipart/form-data"
-              class="d-flex justify-content-between align-items-center h-100"
-            >
-              <h2 class="mb-0">測定データアップロード</h2>
-              <div class="d-flex align-items-center">
+            </div>
+            <div class="header-info">
+              <div style="white-space: nowrap">
+                <strong>図番:</strong> P2MM302000 <strong>数量:</strong
+                ><span id="fileCount"><%= files ? files.length : 0 %></span>個
+                <strong>検査方法:</strong> 全数検査 <strong>検査日:</strong> <%=
+                new Date().toLocaleDateString('ja-JP', { year: 'numeric', month:
+                '2-digit', day: '2-digit' }).replace(/\//g, '/') %>
+                <strong>納期:</strong>
                 <input
-                  type="file"
-                  id="files"
-                  name="files"
-                  accept=".txt"
-                  multiple
-                  required
-                  style="display: none"
-                  onchange="this.form.submit()"
+                  type="text"
+                  id="deliveryDatePicker"
+                  class="date-input flatpickr"
+                  placeholder="YYYY/MM/DD"
                 />
-                <input type="hidden" name="overwriteAction" value="overwrite" />
-                <label
-                  for="files"
-                  class="btn btn-primary mb-0 d-flex align-items-center"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    class="bi bi-upload me-2"
-                    viewBox="0 0 16 16"
-                  >
-                    <path
-                      d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"
-                    />
-                    <path
-                      d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"
-                    />
-                  </svg>
-                  アップロード
-                </label>
               </div>
-            </form>
-          </div>
-        </div>
-      </div>
-
-      <!-- Add this hidden form for the View Selected button -->
-      <form
-        id="viewSelectedForm"
-        action="/summary"
-        method="get"
-        style="display: none"
-      >
-        <input
-          type="hidden"
-          name="selectedFiles"
-          id="selectedFilesInput"
-          value=""
-        />
-      </form>
-
-      <!-- File grid -->
-      <div class="d-flex justify-content-between align-items-center">
-        <h2>ファイル一覧</h2>
-        <div>
-          <button id="saveAllWeightsBtn" class="btn btn-success me-2">
-            重量データ保存
-          </button>
-          <button id="viewSelectedBtn" class="btn btn-info" disabled>
-            検査成績書作成へ
-          </button>
-          <button id="exportWeightsBtn" class="btn btn-secondary me-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              fill="currentColor"
-              class="bi bi-download me-1"
-              viewBox="0 0 16 16"
-            >
-              <path
-                d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"
-              />
-              <path
-                d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"
-              />
-            </svg>
-            重量データエクスポート
-          </button>
-          <button id="importWeightsBtn" class="btn btn-secondary me-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              fill="currentColor"
-              class="bi bi-upload me-1"
-              viewBox="0 0 16 16"
-            >
-              <path
-                d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"
-              />
-              <path
-                d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"
-              />
-            </svg>
-            重量データインポート
-          </button>
-
-          <!-- Add this file input element, hidden but will be triggered by the import button -->
-          <input
-            type="file"
-            id="weightFileInput"
-            accept=".json"
-            style="display: none"
-          />
-        </div>
-      </div>
-
-      <% if (files && files.length > 0) { %>
-      <div class="file-grid">
-        <% var sortedFiles = []; files.forEach(function(file) {
-        sortedFiles.push(file); }); sortedFiles.sort(function(a, b) { var numA =
-        parseInt((a.filename.match(/^\d+/) || ['0'])[0], 10); var numB =
-        parseInt((b.filename.match(/^\d+/) || ['0'])[0], 10); return numA -
-        numB; }); sortedFiles.forEach(function(file) { var fileNumber =
-        file.filename; var match = file.filename.match(/^(\d+)/); if (match) {
-        fileNumber = match[1]; } %>
-        <div
-          class="file-card"
-          data-file-id="<%= file.id %>"
-          data-filename="<%= file.filename %>"
-        >
-          <div class="delete-overlay">Release to Delete</div>
-          <div class="file-content">
-            <div class="file-number"><%= fileNumber %></div>
-            <% if (file.weight) { %>
-            <div class="weight-display mb-2"><%= file.weight %> g</div>
-            <% } %>
-            <div class="weight-form">
-              <input
-                type="number"
-                class="weight-input"
-                data-file-id="<%= file.id %>"
-                step="0.1"
-                value="<%= file.weight || '' %>"
-                placeholder="Weight (g)"
-                style="text-align: center"
-              />
+              <div class="company-info">㈱平田商店</div>
             </div>
-            <div class="view-data-link mt-2">
-              <a
-                href="/files/<%= file.id %>"
-                class="btn btn-sm btn-outline-secondary"
-                style="padding: 4px; font-size: 0.8rem; border-radius: 50%"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  fill="currentColor"
-                  class="bi bi-search"
-                  viewBox="0 0 16 16"
-                >
-                  <path
-                    d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"
-                  />
-                </svg>
-              </a>
+            <div class="header-info">
+              <div style="margin-left: auto">
+                <button
+                  id="quickApproveButton"
+                  style="
+                    width: 48px;
+                    height: 48px;
+                    border-radius: 50%;
+                    background-color: white;
+                    color: white;
+                    border: none;
+                    font-weight: bold;
+                    cursor: pointer;
+                    box-shadow: 0 2px 4px white;
+                  "
+                  title="一括承認"
+                ></button>
+              </div>
+            </div>
+
+            <div class="environment-note">
+              <div>
+                当社検査における環境は室温20℃±5℃、湿度40%±25%で管理された部屋で実施しております。
+              </div>
+            </div>
+
+            <div class="unit-note">
+              <div>単位（ｍｍ）</div>
             </div>
           </div>
         </div>
-        <% }); %>
+
+        <div class="container">
+          <% if (typeof error !== 'undefined' && error) { %>
+          <div class="alert alert-danger"><%= error %></div>
+          <% } %> <% if (typeof files !== 'undefined' && files && files.length >
+          0) { %>
+          <!-- Summary table -->
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+              <thead>
+                <!-- Specification rows -->
+                <tr>
+                  <td>図面寸法</td>
+                  <td>8.2</td>
+                  <td>37.5</td>
+                  <td>15.9</td>
+                  <td>24.1</td>
+                  <td>Φ11.2</td>
+                  <td>Φ3.2全貫通</td>
+                  <td>Φ8.0</td>
+                  <td>深さ5.0</td>
+                  <td>P.C.D 30</td>
+                  <td>Φ155.4</td>
+                  <td>83.1</td>
+                  <td>Φ122.3</td>
+                  <td>嵌め合い</td>
+                  <td>目視点検</td>
+                  <td>（参考値）</td>
+                </tr>
+                <tr>
+                  <td>寸法公差</td>
+                  <td>±0.2</td>
+                  <td>±0.3</td>
+                  <td>±0.2</td>
+                  <td>±0.2</td>
+                  <td>＋0.2/0</td>
+                  <td>±0.1</td>
+                  <td>±0.2</td>
+                  <td>±0.1</td>
+                  <td>±0.2</td>
+                  <td>±0.5</td>
+                  <td>±0.3</td>
+                  <td>±0.5</td>
+                  <td>-</td>
+                  <td>-</td>
+                  <td>-</td>
+                </tr>
+                <tr>
+                  <td>上限値</td>
+                  <td>8.4</td>
+                  <td>37.8</td>
+                  <td>16.1</td>
+                  <td>24.3</td>
+                  <td>11.4</td>
+                  <td>3.3</td>
+                  <td>8.2</td>
+                  <td>5.1</td>
+                  <td>30.2</td>
+                  <td>155.9</td>
+                  <td>83.4</td>
+                  <td>122.8</td>
+                  <td>-</td>
+                  <td>-</td>
+                  <td>-</td>
+                </tr>
+                <tr>
+                  <td>下限値</td>
+                  <td>8.0</td>
+                  <td>37.2</td>
+                  <td>15.7</td>
+                  <td>23.9</td>
+                  <td>11.2</td>
+                  <td>3.1</td>
+                  <td>7.8</td>
+                  <td>4.9</td>
+                  <td>29.8</td>
+                  <td>154.9</td>
+                  <td>82.8</td>
+                  <td>121.8</td>
+                  <td>-</td>
+                  <td>-</td>
+                  <td>-</td>
+                </tr>
+                <tr>
+                  <td>測定器具</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>ピンゲージ</td>
+                  <td>ピンゲージ</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>治具</td>
+                  <td>目視</td>
+                  <td>秤</td>
+                </tr>
+                <tr>
+                  <td>記載事項</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>合否</td>
+                  <td>合否</td>
+                  <td>合否</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>合否</td>
+                  <td>合否</td>
+                  <td>測定値</td>
+                </tr>
+                <!-- Original header row -->
+                <tr>
+                  <th>Filename</th>
+                  <% var displayHeaders = ['A', 'B', 'C', 'D', 'E', 'F', 'G',
+                  'H', 'I', 'J', 'K', 'L', 'M', 'N']; %> <% var internalHeaders
+                  = ['A', 'B', 'C', 'D', 'E', 'F', 'G1', 'G2', 'G3', 'G4', 'H',
+                  'I', 'J', 'K', 'L', 'M', 'N']; %> <%
+                  displayHeaders.forEach(function(header) { %>
+                  <th><%= header %></th>
+                  <% }); %>
+                  <th>質量 (g)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% files.forEach(function(file) { %>
+                <tr>
+                  <td class="filename-cell" data-file-id="<%= file.id %>">
+                    <strong><%= file.filename %></strong>
+                  </td>
+                  <% displayHeaders.forEach(function(header) { %> <% if (header
+                  === 'G') { %>
+                  <td
+                    class="<%= fileData[file.id]['G1'].value !== '-' && (!fileData[file.id]['G1'].isValid || !fileData[file.id]['G2'].isValid || !fileData[file.id]['G3'].isValid || !fileData[file.id]['G4'].isValid) ? 'invalid-value' : '' %> highlight-cell data-cell g-value-cell"
+                    title="G1: <%= fileData[file.id]['G1'].value %>&#13;
+                           G2: <%= fileData[file.id]['G2'].value %>&#13;
+                           G3: <%= fileData[file.id]['G3'].value %>&#13;
+                           G4: <%= fileData[file.id]['G4'].value %>"
+                  >
+                    <%= fileData[file.id]['G1'].value %> <% const invalidCount =
+                    ['G2', 'G3', 'G4'].filter(g => fileData[file.id][g].value
+                    !== '-' && !fileData[file.id][g].isValid ).length; if
+                    (invalidCount > 0) { %>
+                    <span
+                      class="hidden-g-warning"
+                      title="他の <%= invalidCount %> 箇所の G 値が範囲外です"
+                    >
+                      <%= invalidCount %>
+                    </span>
+                    <% } %>
+                  </td>
+                  <% } else { %>
+                  <td
+                    class="<%= fileData[file.id][header].value !== '-' && !fileData[file.id][header].isValid ? 'invalid-value' : '' %> highlight-cell data-cell"
+                  >
+                    <%= fileData[file.id][header].value %>
+                  </td>
+                  <% } %> <% }); %>
+                  <td>
+                    <% if (file.weight) { %> <%=
+                    (parseFloat(file.weight)).toFixed(1) %> <% } else { %> <% if
+                    (username !== 'hinkan') { %>
+                    <span
+                      class="text-muted weight-editable"
+                      data-file-id="<%= file.id %>"
+                      >Not set</span
+                    >
+                    <% } else { %>
+                    <span class="text-muted">Not set</span>
+                    <% } %> <% } %>
+                  </td>
+                </tr>
+                <% }); %>
+              </tbody>
+            </table>
+            <div class="bottom-note" style="margin-top: 10px; text-align: left">
+              ＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。
+            </div>
+          </div>
+          <% } else { %>
+          <div class="no-data">
+            <h3>No Data Available</h3>
+            <p class="text-muted">
+              No files match your current filter criteria.
+            </p>
+            <a href="/" class="btn btn-primary">Go to Upload Page</a>
+          </div>
+          <% } %>
+        </div>
       </div>
-      <% } else { %>
-      <div class="alert alert-info">
-        <p>水平ノズル検査データ一覧</p>
+
+      <!-- Buttons positioned at the side of the page - These will be hidden when printing -->
+      <div class="button-container no-print">
+        <a href="/" class="button-home">ホーム</a>
+        <button onclick="window.print()" class="button-print">印刷</button>
+        <button onclick="exportToPDF()" class="button-pdf">PDF出力</button>
       </div>
-      <% } %>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
     <script>
+      // Initialize date picker and set up button handlers
       document.addEventListener("DOMContentLoaded", function () {
-        const fileCards = document.querySelectorAll(".file-card");
-        const selectedFiles = new Set();
-        let pressTimer;
-        let isDragging = false;
-
-        // Add this function to handle weight saving
-        async function saveWeight(fileId, weight) {
-          try {
-            if (!weight || isNaN(weight)) {
-              console.error("Invalid weight value:", weight);
-              return false;
-            }
-
-            // Format weight to one decimal place
-            const formattedWeight = parseFloat(weight).toFixed(1);
-
-            const response = await fetch("/update-weights", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                weights: [{ fileId, weight: formattedWeight }],
-              }),
-            });
-
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
-            if (result.success) {
-              const card = document.querySelector(
-                `.file-card[data-file-id="${fileId}"]`
-              );
-              let weightDisplay = card.querySelector(".weight-display");
-
-              if (!weightDisplay) {
-                weightDisplay = document.createElement("div");
-                weightDisplay.className = "weight-display mb-2";
-                card
-                  .querySelector(".file-content")
-                  .insertBefore(
-                    weightDisplay,
-                    card.querySelector(".weight-form")
-                  );
-              }
-
-              weightDisplay.textContent = `${formattedWeight} g`;
-              console.log(
-                `Weight saved successfully: ${formattedWeight}g for file ${fileId}`
-              );
-              return true;
-            }
-            console.error("Failed to save weight:", result);
-            return false;
-          } catch (error) {
-            console.error("Error saving weight:", error);
-            return false;
-          }
+        // Initialize date picker
+        if (typeof flatpickr !== "undefined") {
+          flatpickr("#deliveryDatePicker", {
+            dateFormat: "Y/m/d",
+            locale: "ja",
+            allowInput: true,
+          });
         }
 
-        // Update weight input event listeners
-        document
-          .querySelectorAll(".weight-input")
-          .forEach((input, index, inputs) => {
-            input.addEventListener("change", async function (e) {
-              const weight = this.value;
-              const fileId = this.dataset.fileId;
+        // Quick approve button handler
+        var quickApproveButton = document.getElementById("quickApproveButton");
+        if (quickApproveButton) {
+          quickApproveButton.addEventListener("click", function () {
+            var rows = document.querySelectorAll("tbody tr");
+            for (var i = 0; i < rows.length; i++) {
+              var row = rows[i];
+              var cellIndexes = [5, 6, 13, 14]; // E, F, M, N columns
 
-              if (weight && !isNaN(weight)) {
-                if (!weight.includes(".")) {
-                  weight += ".0"; // Append .0 if no decimal is present
-                }
-                const success = await saveWeight(fileId, weight);
-                if (success) {
-                  // Update the display immediately
-                  let weightDisplay =
-                    this.closest(".file-card").querySelector(".weight-display");
-                  if (!weightDisplay) {
-                    weightDisplay = document.createElement("div");
-                    weightDisplay.className = "weight-display mb-2";
-                    this.closest(".file-content").insertBefore(
-                      weightDisplay,
-                      this.closest(".weight-form")
-                    );
+              for (var j = 0; j < cellIndexes.length; j++) {
+                var cellIndex = cellIndexes[j];
+                if (row.cells && row.cells.length > cellIndex) {
+                  var cell = row.cells[cellIndex];
+                  if (
+                    cell.textContent.trim() === "-" ||
+                    cell.textContent.trim() === ""
+                  ) {
+                    cell.classList.remove("invalid-value");
+                    cell.textContent = "合";
                   }
-                  weightDisplay.textContent = `${weight} g`;
-                } else {
-                  alert("重量の保存に失敗しました。もう一度お試しください。");
                 }
               }
-            });
-
-            // Handle Enter key separately
-            input.addEventListener("keypress", function (e) {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                const nextInput = inputs[index + 1];
-                if (nextInput) {
-                  nextInput.focus();
-                } else {
-                  this.blur();
-                }
-              }
-            });
+            }
           });
-
-        // Fix Save All Weights functionality
-        const saveAllWeightsBtn = document.getElementById("saveAllWeightsBtn");
-        saveAllWeightsBtn.addEventListener("click", async function () {
-          try {
-            const weightInputs = document.querySelectorAll(".weight-input");
-            const weights = [];
-
-            weightInputs.forEach((input) => {
-              const fileId = input.dataset.fileId;
-              const weight = input.value;
-              if (weight && !isNaN(weight)) {
-                weights.push({ fileId, weight });
-              }
-            });
-
-            if (weights.length === 0) {
-              alert("保存する重量がありません!");
-              return;
-            }
-
-            const response = await fetch("/update-weights", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ weights }),
-            });
-
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
-            if (result.success) {
-              weights.forEach(({ fileId, weight }) => {
-                const card = document.querySelector(
-                  `.file-card[data-file-id="${fileId}"]`
-                );
-                let weightDisplay = card.querySelector(".weight-display");
-                if (!weightDisplay) {
-                  weightDisplay = document.createElement("div");
-                  weightDisplay.className = "weight-display mb-2";
-                  card
-                    .querySelector(".file-content")
-                    .insertBefore(
-                      weightDisplay,
-                      card.querySelector(".weight-form")
-                    );
-                }
-                weightDisplay.textContent = `${weight} g`;
-              });
-              // Use a more subtle notification instead of alert
-              const notification = document.createElement("div");
-              notification.className =
-                "alert alert-success position-fixed top-0 start-50 translate-middle-x mt-3";
-              notification.style.zIndex = "1050";
-              notification.textContent = "全ての重量を保存しました!";
-              document.body.appendChild(notification);
-              setTimeout(() => notification.remove(), 3000);
-            }
-          } catch (error) {
-            console.error("Error saving weights:", error);
-            alert(
-              "重量の保存中にエラーが発生しました。もう一度お試しください。"
-            );
-          }
-        });
-
-        // Helper function to update the summary form with selected files
-        function updateSummaryForm() {
-          const viewSelectedBtn = document.getElementById("viewSelectedBtn");
-          const selectedFilesInput =
-            document.getElementById("selectedFilesInput");
-
-          if (selectedFiles.size > 0) {
-            viewSelectedBtn.disabled = false;
-            viewSelectedBtn.textContent = `選択されたファイル：${selectedFiles.size}`;
-            const selectedFilesArray = Array.from(selectedFiles);
-            selectedFilesInput.value = selectedFilesArray.join(",");
-            console.log(
-              "Setting selected files input value:",
-              selectedFilesInput.value
-            ); // Debug log
-          } else {
-            viewSelectedBtn.disabled = true;
-            viewSelectedBtn.textContent = "View Selected Files";
-            selectedFilesInput.value = "";
-          }
         }
 
-        // Function to handle file selection
-        function toggleFileSelection(card) {
-          const fileId = card.dataset.fileId;
-          if (card.classList.contains("selected")) {
-            selectedFiles.delete(fileId);
-            card.classList.remove("selected");
-          } else {
-            selectedFiles.add(fileId);
-            card.classList.add("selected");
-          }
-          updateSummaryForm();
-        }
-
-        // Handle range selection
-        window.selectFileRange = function (event) {
-          event.preventDefault();
-
-          const minFile = parseInt(document.getElementById("minFile").value);
-          const maxFile = parseInt(document.getElementById("maxFile").value);
-
-          if (isNaN(minFile) || isNaN(maxFile)) {
-            alert("Please enter valid file numbers");
-            return;
-          }
-
-          // Clear previous selections
-          selectedFiles.clear();
-          fileCards.forEach((card) => card.classList.remove("selected"));
-
-          // Add new selections
-          fileCards.forEach((card) => {
-            const filename = card.dataset.filename;
-            const fileNumber = parseInt(filename.match(/^\d+/)?.[0]);
-
-            if (fileNumber >= minFile && fileNumber <= maxFile) {
-              card.classList.add("selected");
-              selectedFiles.add(card.dataset.fileId);
-            }
+        // PDF export button handler
+        var pdfButton = document.querySelector(".button-pdf");
+        if (pdfButton) {
+          pdfButton.addEventListener("click", function () {
+            exportToPDF();
           });
-
-          updateSummaryForm();
-        };
-
-        // Handle View Selected button click
-        document
-          .getElementById("viewSelectedBtn")
-          .addEventListener("click", function (e) {
-            e.preventDefault();
-            if (selectedFiles.size > 0) {
-              document.getElementById("viewSelectedForm").submit();
-            }
-          });
-
-        // Add click handlers to file cards
-        fileCards.forEach((card) => {
-          card.addEventListener("click", function (e) {
-            if (!e.target.closest("form")) {
-              toggleFileSelection(this);
-            }
-          });
-
-          // Handle long press for deletion
-          card.addEventListener("mousedown", function (e) {
-            if (e.target.closest("form")) return;
-
-            pressTimer = setTimeout(() => {
-              card.classList.add("deleting");
-            }, 2000); // 2 second long press
-          });
-
-          card.addEventListener("mousemove", function () {
-            isDragging = true;
-            clearTimeout(pressTimer);
-          });
-
-          card.addEventListener("mouseup", function () {
-            clearTimeout(pressTimer);
-            if (card.classList.contains("deleting")) {
-              card.classList.remove("deleting");
-              if (
-                confirm(
-                  `本当にファイル ${card.dataset.filename} を削除しますか？`
-                )
-              ) {
-                fetch("/delete-file", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ fileId: card.dataset.fileId }),
-                })
-                  .then((response) => {
-                    if (!response.ok) {
-                      throw new Error("Network response was not ok");
-                    }
-                    return response.json();
-                  })
-                  .then((result) => {
-                    if (result.success) {
-                      // Remove the card from UI
-                      card.remove();
-                      // Optional: Show success message
-                      const notification = document.createElement("div");
-                      notification.className =
-                        "alert alert-success position-fixed top-0 start-50 translate-middle-x mt-3";
-                      notification.style.zIndex = "1050";
-                      notification.textContent = "ファイルを削除しました";
-                      document.body.appendChild(notification);
-                      setTimeout(() => notification.remove(), 3000);
-                    } else {
-                      throw new Error(result.error || "削除に失敗しました");
-                    }
-                  })
-                  .catch((error) => {
-                    console.error("Error:", error);
-                    alert(
-                      "ファイルの削除中にエラーが発生しました: " + error.message
-                    );
-                  });
-              }
-            }
-          });
-
-          card.addEventListener("mouseleave", function () {
-            clearTimeout(pressTimer);
-            card.classList.remove("deleting");
-          });
-        });
-
-        function viewFileData(fileId) {
-          window.location.href = `/fileData/${fileId}`;
         }
       });
 
-      // Export weights functionality
-      const exportWeightsBtn = document.getElementById("exportWeightsBtn");
-      if (exportWeightsBtn) {
-        exportWeightsBtn.addEventListener("click", async function () {
-          try {
-            // Show loading indicator
-            const loadingEl = document.createElement("div");
-            loadingEl.style.position = "fixed";
-            loadingEl.style.top = "0";
-            loadingEl.style.left = "0";
-            loadingEl.style.width = "100%";
-            loadingEl.style.height = "100%";
-            loadingEl.style.backgroundColor = "rgba(255,255,255,0.8)";
-            loadingEl.style.display = "flex";
-            loadingEl.style.justifyContent = "center";
-            loadingEl.style.alignItems = "center";
-            loadingEl.style.zIndex = "9999";
-            loadingEl.innerHTML =
-              '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">データを取得中です。お待ちください...</div>';
-            document.body.appendChild(loadingEl);
+      // Enhanced PDF Export Function with precise pagination
+      function exportToPDF() {
+        // Create and show loading indicator
+        const loadingEl = document.createElement("div");
+        loadingEl.className = "loading-overlay";
+        loadingEl.innerHTML =
+          '<div class="loading-message">PDFを生成中です。お待ちください...</div>';
+        document.body.appendChild(loadingEl);
 
-            // Fetch weight data from server
-            const response = await fetch("/export-weights");
+        try {
+          // Hide buttons for capture
+          const noPrintElements = document.querySelectorAll(".no-print");
+          noPrintElements.forEach((el) => {
+            el.style.display = "none";
+          });
 
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
+          // Current date for filename
+          const today = new Date();
+          const dateStr =
+            today.getFullYear() +
+            String(today.getMonth() + 1).padStart(2, "0") +
+            String(today.getDate()).padStart(2, "0");
+          const filename = "水平ノズル検査_" + dateStr;
 
-            const data = await response.json();
+          // Initialize jsPDF
+          const { jsPDF } = window.jspdf;
 
-            if (!data || data.length === 0) {
-              alert("エクスポートするデータがありません。");
-              document.body.removeChild(loadingEl);
-              return;
-            }
-
-            // Create JSON string with proper formatting
-            const jsonStr = JSON.stringify(data, null, 2);
-
-            // Create a Blob with the JSON data
-            const blob = new Blob([jsonStr], { type: "application/json" });
-
-            // Create a date string for the filename
-            const today = new Date();
-            const dateStr =
-              today.getFullYear() +
-              String(today.getMonth() + 1).padStart(2, "0") +
-              String(today.getDate()).padStart(2, "0");
-
-            // Create a download link and trigger it
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `weight_data_${dateStr}.json`;
-            document.body.appendChild(link);
-            link.click();
-
-            // Clean up
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-            document.body.removeChild(loadingEl);
-          } catch (error) {
-            console.error("Error exporting weights:", error);
-            alert(
-              "重量データのエクスポート中にエラーが発生しました: " +
-                error.message
-            );
-            if (document.body.contains(loadingEl)) {
-              document.body.removeChild(loadingEl);
-            }
-          }
-        });
-      }
-
-      // Import weights functionality
-      const importWeightsBtn = document.getElementById("importWeightsBtn");
-      const weightFileInput = document.getElementById("weightFileInput");
-
-      if (importWeightsBtn && weightFileInput) {
-        importWeightsBtn.addEventListener("click", function () {
-          weightFileInput.click();
-        });
-
-        weightFileInput.addEventListener("change", async function (e) {
-          if (!this.files || this.files.length === 0) {
-            return;
+          // Check if jsPDF is available
+          if (!jsPDF) {
+            throw new Error("jsPDF library not loaded properly");
           }
 
-          const file = this.files[0];
+          // Create the PDF in landscape A4 format
+          const pdf = new jsPDF({
+            orientation: "landscape",
+            unit: "mm",
+            format: "a4",
+          });
 
-          try {
-            // Show loading indicator
-            const loadingEl = document.createElement("div");
-            loadingEl.style.position = "fixed";
-            loadingEl.style.top = "0";
-            loadingEl.style.left = "0";
-            loadingEl.style.width = "100%";
-            loadingEl.style.height = "100%";
-            loadingEl.style.backgroundColor = "rgba(255,255,255,0.8)";
-            loadingEl.style.display = "flex";
-            loadingEl.style.justifyContent = "center";
-            loadingEl.style.alignItems = "center";
-            loadingEl.style.zIndex = "9999";
-            loadingEl.innerHTML =
-              '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">データをインポート中です。お待ちください...</div>';
-            document.body.appendChild(loadingEl);
+          // Get table rows to calculate if we need pagination
+          const tableRows = document.querySelectorAll("tbody tr");
+          const rowCount = tableRows.length;
 
-            // Read the file
-            const reader = new FileReader();
+          // Determine rows per page based on content size
+          // Smaller threshold for better readability and to prevent cutoff
+          const rowsPerFirstPage = 14; // Reduced from 20 to ensure no cutoff on first page
+          const rowsPerSubsequentPage = 22; // Can fit more on subsequent pages without the header
 
-            reader.onload = async function (event) {
-              try {
-                const weightData = JSON.parse(event.target.result);
+          // Determine if we need a single or multi-page approach
+          const singlePageMode = rowCount <= rowsPerFirstPage;
 
-                if (!Array.isArray(weightData)) {
-                  throw new Error(
-                    "無効なJSONフォーマットです。配列形式が必要です。"
-                  );
+          // Function to create row groups for pagination
+          function createRowGroups() {
+            const groups = [];
+            let currentIndex = 0;
+
+            // First page gets fewer rows to accommodate header
+            groups.push(Array.from(tableRows).slice(0, rowsPerFirstPage));
+            currentIndex += rowsPerFirstPage;
+
+            // Subsequent pages get more rows
+            while (currentIndex < rowCount) {
+              const remainingRows = Math.min(
+                rowsPerSubsequentPage,
+                rowCount - currentIndex
+              );
+              groups.push(
+                Array.from(tableRows).slice(
+                  currentIndex,
+                  currentIndex + remainingRows
+                )
+              );
+              currentIndex += remainingRows;
+            }
+
+            return groups;
+          }
+
+          // Get the header and table sections
+          const headerSection = document.querySelector(".content-section");
+          const tableSection = document.querySelector(".table-responsive");
+          const tableHeaderRows = document.querySelectorAll("thead tr");
+
+          // Backup original styles for restoration later
+          const tableStyleBackup = tableSection.style.cssText;
+
+          // Apply optimal styling for PDF generation
+          tableSection.style.width = "1100px";
+          tableSection.style.maxWidth = "1100px";
+          tableSection.style.overflow = "visible";
+
+          // Apply consistent sizing to table cells
+          document.querySelectorAll(".table td, .table th").forEach((cell) => {
+            cell.style.padding = "2px 5px";
+            cell.style.fontSize = "11px";
+            // Ensure cell borders are visible
+            cell.style.border = "1px solid #dee2e6";
+          });
+
+          // First, capture just the header section
+          html2canvas(headerSection, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: "#ffffff",
+            logging: false,
+          })
+            .then((headerCanvas) => {
+              // Calculate dimensions for header
+              const pageWidth = pdf.internal.pageSize.getWidth();
+              const pageHeight = pdf.internal.pageSize.getHeight();
+
+              // Convert header to image
+              const headerImgData = headerCanvas.toDataURL("image/png");
+              const headerImgWidth = pageWidth - 20; // 10mm margin on each side
+              const headerImgHeight =
+                (headerCanvas.height * headerImgWidth) / headerCanvas.width;
+
+              // Create row groups for pagination
+              const rowGroups = createRowGroups();
+              const totalPages = rowGroups.length;
+
+              // Process each page
+              processPage(0);
+
+              function processPage(pageIndex) {
+                if (pageIndex >= totalPages) {
+                  // All pages processed, save PDF and clean up
+                  pdf.save(filename + ".pdf");
+                  tableSection.style.cssText = tableStyleBackup;
+                  noPrintElements.forEach((el) => {
+                    el.style.display = "";
+                  });
+                  document.body.removeChild(loadingEl);
+                  return;
                 }
 
-                // Send data to the server
-                const response = await fetch("/import-weights", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ weightData }),
+                // Create a temporary table for this page's rows
+                const tempTable = document.createElement("table");
+                tempTable.className = "table table-bordered table-hover";
+
+                // Add table header
+                const thead = document.createElement("thead");
+                tableHeaderRows.forEach((row) => {
+                  thead.appendChild(row.cloneNode(true));
                 });
+                tempTable.appendChild(thead);
 
-                if (!response.ok) {
-                  throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                // Add rows for this page
+                const tbody = document.createElement("tbody");
+                rowGroups[pageIndex].forEach((row) => {
+                  tbody.appendChild(row.cloneNode(true));
+                });
+                tempTable.appendChild(tbody);
 
-                const result = await response.json();
+                // Create container for temporary table
+                const tempContainer = document.createElement("div");
+                tempContainer.style.position = "absolute";
+                tempContainer.style.left = "-9999px";
+                tempContainer.style.width = "1100px";
+                tempContainer.style.backgroundColor = "#ffffff";
+                tempContainer.appendChild(tempTable);
+                document.body.appendChild(tempContainer);
 
-                if (result.success) {
-                  // Show success message
-                  alert(result.message);
+                // Capture this page's table
+                html2canvas(tempContainer, {
+                  scale: 2,
+                  backgroundColor: "#ffffff",
+                  logging: false,
+                })
+                  .then((tableCanvas) => {
+                    // If not the first page, add a new page
+                    if (pageIndex > 0) {
+                      pdf.addPage();
+                    }
 
-                  // Refresh the page to show updated weights
-                  window.location.reload();
-                } else {
-                  throw new Error(
-                    result.error || "不明なエラーが発生しました。"
-                  );
-                }
-              } catch (error) {
-                console.error("Error parsing or importing data:", error);
-                alert("インポート中にエラーが発生しました: " + error.message);
-              } finally {
-                document.body.removeChild(loadingEl);
+                    // Add header only to first page
+                    if (pageIndex === 0) {
+                      pdf.addImage(
+                        headerImgData,
+                        "PNG",
+                        10,
+                        10,
+                        headerImgWidth,
+                        headerImgHeight
+                      );
+                    }
+
+                    // Calculate dimensions for table
+                    const tableImgData = tableCanvas.toDataURL("image/png");
+                    const tableImgWidth = pageWidth - 20;
+                    const tableImgHeight =
+                      (tableCanvas.height * tableImgWidth) / tableCanvas.width;
+
+                    // Position table on page
+                    const yPos = pageIndex === 0 ? headerImgHeight + 15 : 10;
+
+                    // Add table to PDF
+                    pdf.addImage(
+                      tableImgData,
+                      "PNG",
+                      10,
+                      yPos,
+                      tableImgWidth,
+                      tableImgHeight
+                    );
+
+                    // Add footer note on last page
+                    if (pageIndex === totalPages - 1) {
+                      const footerNote =
+                        "＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。";
+                      pdf.setFontSize(10);
+                      pdf.text(footerNote, 10, yPos + tableImgHeight + 10);
+                    }
+
+                    // Remove temp container
+                    document.body.removeChild(tempContainer);
+
+                    // Process next page
+                    processPage(pageIndex + 1);
+                  })
+                  .catch((err) => {
+                    // Handle canvas error
+                    if (document.body.contains(tempContainer)) {
+                      document.body.removeChild(tempContainer);
+                    }
+                    console.error("Error capturing table:", err);
+                    alert(
+                      "テーブルのキャプチャ中にエラーが発生しました: " +
+                        (err.message || err)
+                    );
+
+                    // Clean up
+                    tableSection.style.cssText = tableStyleBackup;
+                    noPrintElements.forEach((el) => {
+                      el.style.display = "";
+                    });
+                    document.body.removeChild(loadingEl);
+                  });
               }
-            };
+            })
+            .catch((err) => {
+              // Handle header canvas error
+              console.error("Error capturing header:", err);
+              alert(
+                "ヘッダーのキャプチャ中にエラーが発生しました: " +
+                  (err.message || err)
+              );
 
-            reader.onerror = function () {
+              // Clean up
+              tableSection.style.cssText = tableStyleBackup;
+              noPrintElements.forEach((el) => {
+                el.style.display = "";
+              });
               document.body.removeChild(loadingEl);
-              alert("ファイルの読み込み中にエラーが発生しました。");
-            };
+            });
+        } catch (err) {
+          // Handle initialization errors
+          console.error("PDF initialization error:", err);
+          alert("PDFの初期化中にエラーが発生しました: " + (err.message || err));
 
-            reader.readAsText(file);
-          } catch (error) {
-            console.error("Error setting up import:", error);
-            alert("インポート設定中にエラーが発生しました: " + error.message);
-            if (document.body.contains(loadingEl)) {
-              document.body.removeChild(loadingEl);
-            }
-          }
-
-          // Reset the file input so the same file can be selected again
-          this.value = "";
-        });
+          // Clean up
+          const noPrintElements = document.querySelectorAll(".no-print");
+          noPrintElements.forEach((el) => {
+            el.style.display = "";
+          });
+          document.body.removeChild(loadingEl);
+        }
       }
     </script>
   </body>

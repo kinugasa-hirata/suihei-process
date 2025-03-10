@@ -638,7 +638,7 @@
         }
       });
 
-      // Improved PDF Export Function - optimized for better formatting
+      // Enhanced PDF Export Function with precise pagination
       function exportToPDF() {
         // Create and show loading indicator
         const loadingEl = document.createElement("div");
@@ -677,15 +677,67 @@
             format: "a4",
           });
 
-          // Split content into header and table to handle them separately
-          const headerSection = document.querySelector(".content-section");
-          const tableSection = document.querySelector(".table-responsive");
-
           // Get table rows to calculate if we need pagination
           const tableRows = document.querySelectorAll("tbody tr");
           const rowCount = tableRows.length;
 
-          // First, capture the header section
+          // Determine rows per page based on content size
+          // Smaller threshold for better readability and to prevent cutoff
+          const rowsPerFirstPage = 14; // Reduced from 20 to ensure no cutoff on first page
+          const rowsPerSubsequentPage = 22; // Can fit more on subsequent pages without the header
+
+          // Determine if we need a single or multi-page approach
+          const singlePageMode = rowCount <= rowsPerFirstPage;
+
+          // Function to create row groups for pagination
+          function createRowGroups() {
+            const groups = [];
+            let currentIndex = 0;
+
+            // First page gets fewer rows to accommodate header
+            groups.push(Array.from(tableRows).slice(0, rowsPerFirstPage));
+            currentIndex += rowsPerFirstPage;
+
+            // Subsequent pages get more rows
+            while (currentIndex < rowCount) {
+              const remainingRows = Math.min(
+                rowsPerSubsequentPage,
+                rowCount - currentIndex
+              );
+              groups.push(
+                Array.from(tableRows).slice(
+                  currentIndex,
+                  currentIndex + remainingRows
+                )
+              );
+              currentIndex += remainingRows;
+            }
+
+            return groups;
+          }
+
+          // Get the header and table sections
+          const headerSection = document.querySelector(".content-section");
+          const tableSection = document.querySelector(".table-responsive");
+          const tableHeaderRows = document.querySelectorAll("thead tr");
+
+          // Backup original styles for restoration later
+          const tableStyleBackup = tableSection.style.cssText;
+
+          // Apply optimal styling for PDF generation
+          tableSection.style.width = "1100px";
+          tableSection.style.maxWidth = "1100px";
+          tableSection.style.overflow = "visible";
+
+          // Apply consistent sizing to table cells
+          document.querySelectorAll(".table td, .table th").forEach((cell) => {
+            cell.style.padding = "2px 5px";
+            cell.style.fontSize = "11px";
+            // Ensure cell borders are visible
+            cell.style.border = "1px solid #dee2e6";
+          });
+
+          // First, capture just the header section
           html2canvas(headerSection, {
             scale: 2,
             useCORS: true,
@@ -698,220 +750,156 @@
               const pageWidth = pdf.internal.pageSize.getWidth();
               const pageHeight = pdf.internal.pageSize.getHeight();
 
+              // Convert header to image
               const headerImgData = headerCanvas.toDataURL("image/png");
               const headerImgWidth = pageWidth - 20; // 10mm margin on each side
               const headerImgHeight =
                 (headerCanvas.height * headerImgWidth) / headerCanvas.width;
 
-              // Add header to PDF
-              pdf.addImage(
-                headerImgData,
-                "PNG",
-                10,
-                10,
-                headerImgWidth,
-                headerImgHeight
-              );
+              // Create row groups for pagination
+              const rowGroups = createRowGroups();
+              const totalPages = rowGroups.length;
 
-              // Now capture the table
-              // First optimize table for capture
-              const tableStyleBackup = tableSection.style.cssText;
-              tableSection.style.width = "1100px"; // Set fixed width for better capture
-              tableSection.style.maxWidth = "1100px";
-              tableSection.style.overflow = "visible";
+              // Process each page
+              processPage(0);
 
-              // Apply consistent sizing to table cells
-              document
-                .querySelectorAll(".table td, .table th")
-                .forEach((cell) => {
-                  cell.style.padding = "2px 5px";
-                  cell.style.minWidth = "auto";
-                  cell.style.fontSize = "11px";
+              function processPage(pageIndex) {
+                if (pageIndex >= totalPages) {
+                  // All pages processed, save PDF and clean up
+                  pdf.save(filename + ".pdf");
+                  tableSection.style.cssText = tableStyleBackup;
+                  noPrintElements.forEach((el) => {
+                    el.style.display = "";
+                  });
+                  document.body.removeChild(loadingEl);
+                  return;
+                }
+
+                // Create a temporary table for this page's rows
+                const tempTable = document.createElement("table");
+                tempTable.className = "table table-bordered table-hover";
+
+                // Add table header
+                const thead = document.createElement("thead");
+                tableHeaderRows.forEach((row) => {
+                  thead.appendChild(row.cloneNode(true));
                 });
+                tempTable.appendChild(thead);
 
-              // Determine if we need a single or multi-page approach
-              const singlePageMode = rowCount <= 25; // Use single page for up to 25 rows
+                // Add rows for this page
+                const tbody = document.createElement("tbody");
+                rowGroups[pageIndex].forEach((row) => {
+                  tbody.appendChild(row.cloneNode(true));
+                });
+                tempTable.appendChild(tbody);
 
-              if (singlePageMode) {
-                // Single page approach - capture whole table at once
-                html2canvas(tableSection, {
+                // Create container for temporary table
+                const tempContainer = document.createElement("div");
+                tempContainer.style.position = "absolute";
+                tempContainer.style.left = "-9999px";
+                tempContainer.style.width = "1100px";
+                tempContainer.style.backgroundColor = "#ffffff";
+                tempContainer.appendChild(tempTable);
+                document.body.appendChild(tempContainer);
+
+                // Capture this page's table
+                html2canvas(tempContainer, {
                   scale: 2,
-                  useCORS: true,
-                  allowTaint: true,
                   backgroundColor: "#ffffff",
                   logging: false,
                 })
                   .then((tableCanvas) => {
+                    // If not the first page, add a new page
+                    if (pageIndex > 0) {
+                      pdf.addPage();
+                    }
+
+                    // Add header only to first page
+                    if (pageIndex === 0) {
+                      pdf.addImage(
+                        headerImgData,
+                        "PNG",
+                        10,
+                        10,
+                        headerImgWidth,
+                        headerImgHeight
+                      );
+                    }
+
+                    // Calculate dimensions for table
                     const tableImgData = tableCanvas.toDataURL("image/png");
                     const tableImgWidth = pageWidth - 20;
                     const tableImgHeight =
                       (tableCanvas.height * tableImgWidth) / tableCanvas.width;
 
-                    // Add table below header with some spacing
+                    // Position table on page
+                    const yPos = pageIndex === 0 ? headerImgHeight + 15 : 10;
+
+                    // Add table to PDF
                     pdf.addImage(
                       tableImgData,
                       "PNG",
                       10,
-                      headerImgHeight + 15,
+                      yPos,
                       tableImgWidth,
                       tableImgHeight
                     );
 
-                    // Add footer note
-                    const footerNote =
-                      "＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。";
-                    pdf.setFontSize(10);
-                    pdf.text(
-                      footerNote,
-                      10,
-                      headerImgHeight + tableImgHeight + 20
-                    );
+                    // Add footer note on last page
+                    if (pageIndex === totalPages - 1) {
+                      const footerNote =
+                        "＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。";
+                      pdf.setFontSize(10);
+                      pdf.text(footerNote, 10, yPos + tableImgHeight + 10);
+                    }
 
-                    // Save PDF
-                    pdf.save(filename + ".pdf");
+                    // Remove temp container
+                    document.body.removeChild(tempContainer);
 
-                    // Restore original styles
-                    tableSection.style.cssText = tableStyleBackup;
-                    noPrintElements.forEach((el) => {
-                      el.style.display = "";
-                    });
-                    document.body.removeChild(loadingEl);
+                    // Process next page
+                    processPage(pageIndex + 1);
                   })
                   .catch((err) => {
-                    handleCanvasError(err);
-                  });
-              } else {
-                // Multi-page approach
-                // Count rows and determine splits
-                const rowsPerPage = 20;
-                const totalPages = Math.ceil(rowCount / rowsPerPage);
+                    // Handle canvas error
+                    if (document.body.contains(tempContainer)) {
+                      document.body.removeChild(tempContainer);
+                    }
+                    console.error("Error capturing table:", err);
+                    alert(
+                      "テーブルのキャプチャ中にエラーが発生しました: " +
+                        (err.message || err)
+                    );
 
-                // Create clone of table header for reference
-                const headerRow = document
-                  .querySelector("thead")
-                  .cloneNode(true);
-
-                // Process each page
-                processTablePages(0);
-
-                function processTablePages(pageIndex) {
-                  if (pageIndex >= totalPages) {
-                    // All pages processed
+                    // Clean up
                     tableSection.style.cssText = tableStyleBackup;
                     noPrintElements.forEach((el) => {
                       el.style.display = "";
                     });
                     document.body.removeChild(loadingEl);
-                    pdf.save(filename + ".pdf");
-                    return;
-                  }
-
-                  // Create a temporary table for just this page's rows
-                  const tempTable = document.createElement("table");
-                  tempTable.className = "table table-bordered table-hover";
-                  tempTable.appendChild(headerRow.cloneNode(true));
-
-                  const tbody = document.createElement("tbody");
-
-                  // Calculate start and end indices for this page
-                  const startIdx = pageIndex * rowsPerPage;
-                  const endIdx = Math.min(startIdx + rowsPerPage, rowCount);
-
-                  // Add rows for this page
-                  for (let i = startIdx; i < endIdx; i++) {
-                    if (tableRows[i]) {
-                      tbody.appendChild(tableRows[i].cloneNode(true));
-                    }
-                  }
-
-                  tempTable.appendChild(tbody);
-
-                  // Create container for temporary table
-                  const tempContainer = document.createElement("div");
-                  tempContainer.style.position = "absolute";
-                  tempContainer.style.left = "-9999px";
-                  tempContainer.style.width = "1100px";
-                  tempContainer.style.backgroundColor = "#ffffff";
-                  tempContainer.appendChild(tempTable);
-                  document.body.appendChild(tempContainer);
-
-                  // Capture this page's table
-                  html2canvas(tempContainer, {
-                    scale: 2,
-                    backgroundColor: "#ffffff",
-                    logging: false,
-                  })
-                    .then((tableCanvas) => {
-                      // If not the first page, add a new page
-                      if (pageIndex > 0) {
-                        pdf.addPage();
-                      }
-
-                      // Calculate dimensions
-                      const tableImgData = tableCanvas.toDataURL("image/png");
-                      const tableImgWidth = pageWidth - 20;
-                      const tableImgHeight =
-                        (tableCanvas.height * tableImgWidth) /
-                        tableCanvas.width;
-
-                      // Position on first or subsequent page
-                      const yPos = pageIndex === 0 ? headerImgHeight + 15 : 10;
-
-                      // Add table to PDF
-                      pdf.addImage(
-                        tableImgData,
-                        "PNG",
-                        10,
-                        yPos,
-                        tableImgWidth,
-                        tableImgHeight
-                      );
-
-                      // Add footer note on last page
-                      if (pageIndex === totalPages - 1) {
-                        const footerNote =
-                          "＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。";
-                        pdf.setFontSize(10);
-                        pdf.text(footerNote, 10, yPos + tableImgHeight + 10);
-                      }
-
-                      // Remove temp container
-                      document.body.removeChild(tempContainer);
-
-                      // Process next page
-                      processTablePages(pageIndex + 1);
-                    })
-                    .catch((err) => {
-                      document.body.removeChild(tempContainer);
-                      handleCanvasError(err);
-                    });
-                }
+                  });
               }
             })
             .catch((err) => {
-              handleCanvasError(err);
-            });
+              // Handle header canvas error
+              console.error("Error capturing header:", err);
+              alert(
+                "ヘッダーのキャプチャ中にエラーが発生しました: " +
+                  (err.message || err)
+              );
 
-          // Error handler function
-          function handleCanvasError(err) {
-            console.error("Canvas rendering error:", err);
-            alert(
-              "PDFの生成中にエラーが発生しました: " +
-                (err.message || "画像の取得に失敗しました")
-            );
-
-            // Restore original display
-            noPrintElements.forEach((el) => {
-              el.style.display = "";
+              // Clean up
+              tableSection.style.cssText = tableStyleBackup;
+              noPrintElements.forEach((el) => {
+                el.style.display = "";
+              });
+              document.body.removeChild(loadingEl);
             });
-            document.body.removeChild(loadingEl);
-          }
         } catch (err) {
           // Handle initialization errors
           console.error("PDF initialization error:", err);
           alert("PDFの初期化中にエラーが発生しました: " + (err.message || err));
 
-          // Cleanup
+          // Clean up
           const noPrintElements = document.querySelectorAll(".no-print");
           noPrintElements.forEach((el) => {
             el.style.display = "";
