@@ -297,6 +297,30 @@
       .highlight-cell.invalid-value {
         background-color: rgba(220, 53, 69, 0.1) !important;
       }
+  
+      .button-xyz {
+        background-color: #28a745;
+        color: white;
+        border: none;
+      }
+  
+      /* Hide buttons when printing is triggered by XYZ button */
+      .hide-for-print {
+        display: block;
+      }
+  
+      @media print {
+        .hide-for-print {
+          display: none !important;
+        }
+      }
+
+      /* Add this to your existing styles */
+      .button-abc {
+        background-color: #17a2b8; /* Different color from XYZ button */
+        color: white;
+        border: none;
+      }
     </style>
   </head>
   <body>
@@ -570,6 +594,8 @@
         <a href="/" class="button-home">ホーム</a>
         <button onclick="window.print()" class="button-print">印刷</button>
         <button onclick="exportToPDF()" class="button-pdf">PDF出力</button>
+        <button class="button-xyz" onclick="printClean()">XYZ</button>
+        <button class="button-abc" onclick="exportToPDF()">ABC</button>
       </div>
     </div>
 
@@ -611,10 +637,6 @@
       let deliveryDate = document.getElementById('deliveryDatePicker').value || '';
       let dateStr = formatDateForFilename(deliveryDate);
       const filename = `水平ノズル検査_${dateStr}`;
-
-      // Show loading indicator
-      const loadingEl = createLoadingIndicator();
-      document.body.appendChild(loadingEl);
 
       try {
         // Initialize jsPDF with portrait orientation
@@ -740,8 +762,6 @@
       } catch (error) {
         console.error('Error generating PDF:', error);
         alert('PDFの生成中にエラーが発生しました: ' + (error.message || error));
-      } finally {
-        document.body.removeChild(loadingEl);
       }
     }
 
@@ -759,21 +779,17 @@
             String(today.getDate()).padStart(2, '0');
     }
 
-    // Create a loading indicator while generating PDF
-    function createLoadingIndicator() {
-      const loadingEl = document.createElement('div');
-      loadingEl.style.position = 'fixed';
-      loadingEl.style.top = '0';
-      loadingEl.style.left = '0';
-      loadingEl.style.width = '100%';
-      loadingEl.style.height = '100%';
-      loadingEl.style.backgroundColor = 'rgba(255,255,255,0.8)';
-      loadingEl.style.display = 'flex';
-      loadingEl.style.justifyContent = 'center';
-      loadingEl.style.alignItems = 'center';
-      loadingEl.style.zIndex = '9999';
-      loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
-      return loadingEl;
+    function printClean() {
+      // Add hide-for-print class to button container
+      document.querySelector('.button-container').classList.add('hide-for-print');
+      
+      // Trigger print
+      window.print();
+      
+      // Remove hide-for-print class after printing
+      setTimeout(() => {
+        document.querySelector('.button-container').classList.remove('hide-for-print');
+      }, 1000);
     }
     </script>
   </body>
