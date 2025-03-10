@@ -232,15 +232,27 @@
           margin: 10mm;
         }
   
-        /* Remove default headers/footers */
-        @page :first {
-          margin-top: 0;
+        /* Hide browser's default headers and footers */
+        html {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+  
+        /* This is important - it removes the URL from the footer */
+        @page {
+          margin: 0;
+        }
+  
+        /* Ensure proper margins for content */
+        body {
+          margin: 15mm;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
   
         /* Hide all browser-generated content */
-        body {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
+        .no-print, .no-print * {
+          display: none !important;
         }
       }
   

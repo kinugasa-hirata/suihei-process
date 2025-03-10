@@ -512,8 +512,14 @@ app.post("/delete-file", requireLogin, async (req, res) => {
   }
 });
 
-// Updated Summary Route to handle selected files
-// Updated Summary Route with new cell coordinates
+// Add this before the summary route
+app.post("/set-selected-files", requireLogin, async (req, res) => {
+  const { selectedFiles } = req.body;
+  req.session.selectedFiles = selectedFiles;
+  res.redirect("/summary");
+});
+
+// Modify the summary route
 app.get("/summary", requireLogin, async (req, res) => {
   let client;
   try {
@@ -522,11 +528,9 @@ app.get("/summary", requireLogin, async (req, res) => {
     let query;
     let params;
 
-    // Check for selected files first
-    if (req.query.selectedFiles) {
-      const selectedFiles = req.query.selectedFiles
-        .split(",")
-        .filter((id) => id);
+    // Use session storage instead of URL parameters
+    if (req.session.selectedFiles) {
+      const selectedFiles = req.session.selectedFiles;
       console.log("Selected files IDs:", selectedFiles); // Debug log
 
       if (selectedFiles.length > 0) {
@@ -751,7 +755,7 @@ app.get("/summary", requireLogin, async (req, res) => {
       maxFile: req.query.maxFile || "",
       inspectorName: req.session.inspectorName,
       username: req.session.username,
-      validationRanges: validationRanges
+      validationRanges: validationRanges,
     });
   } catch (err) {
     console.error("Error fetching summary data:", err);
@@ -909,7 +913,7 @@ app.get("/export-weights", async (req, res) => {
   let client;
   try {
     client = await pool.connect();
-    
+
     // Get all files with their weights
     const result = await client.query(`
       SELECT f.filename, fw.weight
@@ -922,31 +926,31 @@ app.get("/export-weights", async (req, res) => {
           ELSE 0
         END ASC
     `);
-    
+
     // Process the results to match the required format
-    const weightData = result.rows.map(row => {
+    const weightData = result.rows.map((row) => {
       // Extract file number if present
       let fileName = row.filename;
       const match = row.filename.match(/^(\d+)/);
       if (match) {
         fileName = match[1];
       }
-      
+
       return {
         fileName: fileName,
-        weight: row.weight ? parseFloat(row.weight).toFixed(1) : null
+        weight: row.weight ? parseFloat(row.weight).toFixed(1) : null,
       };
     });
-    
+
     // Filter out entries with null weights
-    const filteredData = weightData.filter(item => item.weight !== null);
-    
+    const filteredData = weightData.filter((item) => item.weight !== null);
+
     res.json(filteredData);
   } catch (err) {
     console.error("Error exporting weights:", err);
-    res.status(500).json({ 
-      success: false, 
-      error: "Error exporting weights: " + err.message 
+    res.status(500).json({
+      success: false,
+      error: "Error exporting weights: " + err.message,
     });
   } finally {
     if (client) client.release();
@@ -968,57 +972,59 @@ app.post("/import-weights", async (req, res) => {
   let client;
   try {
     const { weightData } = req.body;
-    
+
     if (!Array.isArray(weightData) || weightData.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: "Invalid data format" 
+      return res.status(400).json({
+        success: false,
+        error: "Invalid data format",
       });
     }
-    
+
     client = await pool.connect();
     await client.query("BEGIN");
-    
+
     let updatedCount = 0;
     let skippedCount = 0;
     let notFoundCount = 0;
-    
+
     for (const item of weightData) {
       if (!item.fileName || !item.weight || isNaN(parseFloat(item.weight))) {
         continue;
       }
-      
+
       // First, find the file by matching the filename pattern
       const fileNamePattern = `^${item.fileName}`;
       const fileResult = await client.query(
         `SELECT id FROM files WHERE filename ~ $1 LIMIT 1`,
         [fileNamePattern]
       );
-      
+
       if (fileResult.rows.length === 0) {
         notFoundCount++;
         continue;
       }
-      
+
       const fileId = fileResult.rows[0].id;
-      
+
       // Check if weight already exists
       const weightResult = await client.query(
         `SELECT weight FROM file_weights WHERE file_id = $1`,
         [fileId]
       );
-      
+
       const weight = parseFloat(item.weight).toFixed(1);
-      
+
       if (weightResult.rows.length > 0) {
         // Weight exists, check if it's the same
-        const existingWeight = parseFloat(weightResult.rows[0].weight).toFixed(1);
+        const existingWeight = parseFloat(weightResult.rows[0].weight).toFixed(
+          1
+        );
         if (existingWeight === weight) {
           skippedCount++;
           continue;
         }
       }
-      
+
       // Insert or update weight
       await client.query(
         `INSERT INTO file_weights (file_id, weight)
@@ -1027,23 +1033,22 @@ app.post("/import-weights", async (req, res) => {
          DO UPDATE SET weight = $2`,
         [fileId, weight]
       );
-      
+
       updatedCount++;
     }
-    
+
     await client.query("COMMIT");
-    
+
     res.json({
       success: true,
-      message: `${updatedCount} weights updated, ${skippedCount} skipped (unchanged), ${notFoundCount} files not found.`
+      message: `${updatedCount} weights updated, ${skippedCount} skipped (unchanged), ${notFoundCount} files not found.`,
     });
-    
   } catch (err) {
     if (client) await client.query("ROLLBACK");
     console.error("Error importing weights:", err);
     res.status(500).json({
       success: false,
-      error: "Error importing weights: " + err.message
+      error: "Error importing weights: " + err.message,
     });
   } finally {
     if (client) client.release();
