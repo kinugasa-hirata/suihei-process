@@ -32,8 +32,8 @@
       }
       
       .container {
-        max-width: 100%;
-        margin-top: 0;
+        max-width: 1200px; /* Increased from 100% to a fixed width */
+        margin: 0 auto; /* Center the container */
         padding: 15px;
       }
       
@@ -129,16 +129,14 @@
         font-weight: bold;
       }
   
-      /* Table styles for portrait orientation */
+      /* Table styles for better horizontal space utilization */
       .table {
-        background-color: white;
-        font-size: 0.85rem; /* Slightly smaller font for portrait orientation */
+        width: 100%;
+        font-size: 0.9rem; /* Slightly larger font for better readability */
       }
   
       .table td {
-        text-align: center; /* Center align all table cells */
-        vertical-align: middle;
-        padding: 0.3rem; /* Smaller padding for portrait mode */
+        padding: 0.4rem; /* Increased padding for better spacing */
       }
   
       .table thead td {
@@ -217,75 +215,36 @@
         border: none;
       }
   
-      /* PDF container for portrait orientation */
+      /* PDF container with better width */
       #pdf-container {
         width: 100%;
-        max-width: 800px; /* Adjusted for portrait */
+        max-width: 1000px; /* Increased from 800px */
         margin: 0 auto;
-        background-color: white;
-        overflow: visible;
-        padding: 10px;
       }
   
       @media print {
         /* Page setup with margin for content */
         @page {
-          size: A4 portrait; /* Changed to portrait */
-          margin: 15mm;
+          size: A4 portrait;
+          margin: 10mm; /* Reduced margins */
         }
   
         body {
           width: 210mm; /* A4 width in portrait */
           height: 297mm; /* A4 height in portrait */
-          margin: 0;
-          padding: 0;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
         }
   
-        /* Hide non-printable elements */
-        .no-print {
-          display: none !important;
-        }
-  
-        /* Reset container styling for print */
         .container {
-          width: 100%;
+          width: 190mm; /* Slightly less than A4 width to account for margins */
           max-width: none;
-          margin: 0;
+          margin: 0 auto;
           padding: 5mm;
         }
   
         /* Adjust table for printing */
         .table {
-          font-size: 8pt; /* Smaller font for portrait mode */
-          margin: 0;
-          border-collapse: collapse;
+          font-size: 9pt; /* Slightly larger font for print */
           width: 100%;
-        }
-  
-        .table td,
-        .table th {
-          padding: 2px 4px;
-          border: 1px solid #000;
-        }
-  
-        /* Header adjustments */
-        h2 {
-          font-size: 14pt;
-          margin: 0 0 5mm 0;
-        }
-  
-        /* Force show background colors and images in print */
-        * {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-  
-        .content-section {
-          padding: 0;
-          background-color: white;
-          box-shadow: none;
         }
       }
   
