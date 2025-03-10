@@ -616,10 +616,10 @@
         }
       });
 
-      // PDF generation function
-      function generatePDF() {
-        // Create loading indicator
-        var loadingEl = document.createElement("div");
+      // PDF Export Function that captures all content
+      function exportToPDF() {
+        // Show loading indicator
+        const loadingEl = document.createElement("div");
         loadingEl.style.position = "fixed";
         loadingEl.style.top = "0";
         loadingEl.style.left = "0";
@@ -636,64 +636,241 @@
 
         try {
           // Get date for filename
-          var today = new Date();
-          var dateStr =
+          const today = new Date();
+          const dateStr =
             today.getFullYear() +
             String(today.getMonth() + 1).padStart(2, "0") +
             String(today.getDate()).padStart(2, "0");
 
           // Create filename
-          var filename = "水平ノズル検査_" + dateStr;
+          const filename = "水平ノズル検査_" + dateStr;
 
-          // Get content and hide non-printable elements
-          var content = document.getElementById("pdf-container");
-          var noPrintElements = document.querySelectorAll(".no-print");
+          // Hide buttons and UI elements that shouldn't appear in PDF
+          const noPrintElements = document.querySelectorAll(".no-print");
+          noPrintElements.forEach((el) => {
+            el.style.display = "none";
+          });
 
-          for (var i = 0; i < noPrintElements.length; i++) {
-            noPrintElements[i].style.display = "none";
-          }
+          // Store original body overflow style to restore later
+          const originalOverflow = document.body.style.overflow;
+          document.body.style.overflow = "visible"; // Ensure all content is visible
 
-          // Use html2canvas to render PDF
-          html2canvas(content, {
+          // Initialize jsPDF
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF("landscape", "mm", "a4");
+
+          // Get PDF dimensions
+          const pageWidth = pdf.internal.pageSize.getWidth();
+          const pageHeight = pdf.internal.pageSize.getHeight();
+
+          // Get all the necessary elements
+          const header = document.querySelector(".content-section");
+          const table = document.querySelector(".table-responsive table");
+
+          // First, capture the header
+          html2canvas(header, {
             scale: 2,
             useCORS: true,
-            logging: false,
+            allowTaint: true,
             backgroundColor: "#ffffff",
+            logging: false,
           })
-            .then(function (canvas) {
-              var imgData = canvas.toDataURL("image/png");
+            .then((headerCanvas) => {
+              // Calculate dimensions for header
+              const headerImgData = headerCanvas.toDataURL("image/png");
+              const headerImgWidth = pageWidth - 20; // 10mm margin on each side
+              const headerImgHeight =
+                (headerCanvas.height * headerImgWidth) / headerCanvas.width;
 
-              var { jsPDF } = window.jspdf;
-              var pdf = new jsPDF("landscape", "mm", "a4");
+              // Add header to PDF
+              pdf.addImage(
+                headerImgData,
+                "PNG",
+                10,
+                10,
+                headerImgWidth,
+                headerImgHeight
+              );
 
-              var pageWidth = pdf.internal.pageSize.getWidth();
-              var imgWidth = pageWidth - 20;
-              var imgHeight = (canvas.height * imgWidth) / canvas.width;
+              // Next, capture the table - this is where we need to handle pagination
+              const rows = Array.from(table.querySelectorAll("tbody tr"));
+              const headerRows = Array.from(table.querySelectorAll("thead tr"));
 
-              pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
-              pdf.save(filename + ".pdf");
+              // Create a clone of the table with just the header
+              const headerTable = document.createElement("table");
+              headerTable.className = table.className;
+              headerTable.style.width = table.style.width;
 
-              // Restore visibility of elements
-              for (var i = 0; i < noPrintElements.length; i++) {
-                noPrintElements[i].style.display = "";
-              }
+              const thead = document.createElement("thead");
+              headerRows.forEach((row) => {
+                thead.appendChild(row.cloneNode(true));
+              });
+              headerTable.appendChild(thead);
 
-              document.body.removeChild(loadingEl);
+              // Render the header rows
+              html2canvas(headerTable, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: "#ffffff",
+                logging: false,
+              })
+                .then((tableHeaderCanvas) => {
+                  // Calculate dimensions for table header
+                  const tableHeaderImgData =
+                    tableHeaderCanvas.toDataURL("image/png");
+                  const tableHeaderImgWidth = pageWidth - 20;
+                  const tableHeaderImgHeight =
+                    (tableHeaderCanvas.height * tableHeaderImgWidth) /
+                    tableHeaderCanvas.width;
+
+                  // Add table header to PDF, positioned below the document header
+                  const tableHeaderY = 10 + headerImgHeight + 5; // 5mm spacing
+                  pdf.addImage(
+                    tableHeaderImgData,
+                    "PNG",
+                    10,
+                    tableHeaderY,
+                    tableHeaderImgWidth,
+                    tableHeaderImgHeight
+                  );
+
+                  // Now handle the table rows with pagination
+                  // Create chunks of rows for pagination (e.g., 15 rows per page)
+                  const rowsPerPage = 15;
+                  const rowGroups = [];
+
+                  for (let i = 0; i < rows.length; i += rowsPerPage) {
+                    rowGroups.push(rows.slice(i, i + rowsPerPage));
+                  }
+
+                  // Process each group of rows
+                  const processRowGroup = (groupIndex) => {
+                    if (groupIndex >= rowGroups.length) {
+                      // All groups processed, finalize the PDF
+                      pdf.save(filename + ".pdf");
+
+                      // Restore UI state
+                      document.body.style.overflow = originalOverflow;
+                      noPrintElements.forEach((el) => {
+                        el.style.display = "";
+                      });
+                      document.body.removeChild(loadingEl);
+                      return;
+                    }
+
+                    // If not the first page, add a new page and repeat the headers
+                    if (groupIndex > 0) {
+                      pdf.addPage();
+                      pdf.addImage(
+                        headerImgData,
+                        "PNG",
+                        10,
+                        10,
+                        headerImgWidth,
+                        headerImgHeight
+                      );
+                      pdf.addImage(
+                        tableHeaderImgData,
+                        "PNG",
+                        10,
+                        tableHeaderY,
+                        tableHeaderImgWidth,
+                        tableHeaderImgHeight
+                      );
+                    }
+
+                    // Create a temporary table for this group of rows
+                    const tempTable = document.createElement("table");
+                    tempTable.className = table.className;
+                    tempTable.style.width = table.style.width;
+
+                    const tbody = document.createElement("tbody");
+                    rowGroups[groupIndex].forEach((row) => {
+                      tbody.appendChild(row.cloneNode(true));
+                    });
+                    tempTable.appendChild(tbody);
+
+                    // Append to DOM temporarily for rendering
+                    const tempContainer = document.createElement("div");
+                    tempContainer.appendChild(tempTable);
+                    tempContainer.style.position = "absolute";
+                    tempContainer.style.left = "-9999px";
+                    document.body.appendChild(tempContainer);
+
+                    // Render this group of rows
+                    html2canvas(tempTable, {
+                      scale: 2,
+                      useCORS: true,
+                      allowTaint: true,
+                      backgroundColor: "#ffffff",
+                      logging: false,
+                    })
+                      .then((rowsCanvas) => {
+                        // Remove the temporary container
+                        document.body.removeChild(tempContainer);
+
+                        // Calculate dimensions for rows
+                        const rowsImgData = rowsCanvas.toDataURL("image/png");
+                        const rowsImgWidth = pageWidth - 20;
+                        const rowsImgHeight =
+                          (rowsCanvas.height * rowsImgWidth) / rowsCanvas.width;
+
+                        // Calculate position for rows (below the table header)
+                        const rowsY = tableHeaderY + tableHeaderImgHeight + 2; // 2mm spacing
+
+                        // Add rows to PDF
+                        pdf.addImage(
+                          rowsImgData,
+                          "PNG",
+                          10,
+                          rowsY,
+                          rowsImgWidth,
+                          rowsImgHeight
+                        );
+
+                        // Add footer note on the last page
+                        if (groupIndex === rowGroups.length - 1) {
+                          const footerNote =
+                            "＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。";
+                          pdf.setFontSize(10);
+                          pdf.text(footerNote, 10, rowsY + rowsImgHeight + 10);
+                        }
+
+                        // Process the next group
+                        processRowGroup(groupIndex + 1);
+                      })
+                      .catch((error) => {
+                        console.error("Error rendering table rows:", error);
+                        handleError(error);
+                      });
+                  };
+
+                  // Start processing row groups
+                  processRowGroup(0);
+                })
+                .catch((error) => {
+                  console.error("Error rendering table header:", error);
+                  handleError(error);
+                });
             })
-            .catch(function (error) {
-              console.error("PDF generation error:", error);
-              alert("PDFの生成中にエラーが発生しました: " + error.message);
-
-              // Restore visibility of elements
-              for (var i = 0; i < noPrintElements.length; i++) {
-                noPrintElements[i].style.display = "";
-              }
-
-              document.body.removeChild(loadingEl);
+            .catch((error) => {
+              console.error("Error rendering header:", error);
+              handleError(error);
             });
         } catch (error) {
           console.error("Error initializing PDF:", error);
-          alert("PDFの初期化中にエラーが発生しました: " + error.message);
+          handleError(error);
+        }
+
+        // Error handler function
+        function handleError(error) {
+          alert("PDFの生成中にエラーが発生しました: " + error.message);
+
+          // Restore UI state
+          noPrintElements.forEach((el) => {
+            el.style.display = "";
+          });
           document.body.removeChild(loadingEl);
         }
       }
