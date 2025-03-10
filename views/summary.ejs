@@ -202,6 +202,12 @@
         text-decoration: none;
         display: block;
       }
+  
+      .button-pdf {
+        background-color: #dc3545; /* Red color to distinguish it */
+        color: white;
+        border: none;
+      }
     </style>
   </head>
   <body>
@@ -473,12 +479,15 @@
       <!-- Buttons positioned at the side of the page - These will be hidden when printing -->
       <div class="button-container no-print">
         <a href="/" class="button-home">ホーム</a>
+        <button class="button-pdf" onclick="exportLandscapePDF()">PDF</button>
       </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
       // Initialize Flatpickr
       flatpickr("#deliveryDatePicker", {
@@ -508,6 +517,75 @@
             });
           });
         });
+
+      async function exportLandscapePDF() {
+        try {
+          // Get the delivery date
+          const deliveryDate = document.getElementById('deliveryDatePicker').value;
+          const formattedDate = deliveryDate ? 
+            deliveryDate.replace(/\//g, '') : 
+            new Date().toLocaleDateString('ja-JP').replace(/\//g, '');
+          
+          // Get the serial number from the first row of the table
+          const firstRow = document.querySelector('.table tbody tr:first-child td:first-child');
+          const serialNumber = firstRow ? firstRow.textContent.trim() : '';
+          
+          // Create filename
+          const filename = `水平ノズル検査-${formattedDate}-${serialNumber}`;
+
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF({
+            orientation: 'landscape',
+            unit: 'mm',
+            format: 'a4'
+          });
+
+          // Get only the table content
+          const tableElement = document.querySelector('.table-responsive table');
+          if (!tableElement) {
+            throw new Error('テーブルが見つかりません');
+          }
+
+          // Create a temporary div for the table
+          const tempDiv = document.createElement('div');
+          tempDiv.appendChild(tableElement.cloneNode(true));
+          document.body.appendChild(tempDiv);
+          tempDiv.style.position = 'absolute';
+          tempDiv.style.left = '-9999px';
+
+          // Convert table to canvas
+          const canvas = await html2canvas(tempDiv, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+          });
+
+          // Remove temporary element
+          document.body.removeChild(tempDiv);
+
+          // Get PDF dimensions
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+
+          // Add table image to PDF (full page)
+          pdf.addImage(
+            canvas.toDataURL('image/png'),
+            'PNG',
+            0,
+            0,
+            pdfWidth,
+            pdfHeight
+          );
+
+          // Save the PDF with new filename
+          pdf.save(`${filename}.pdf`);
+
+        } catch (error) {
+          console.error('Error generating PDF:', error);
+          alert('PDFの生成中にエラーが発生しました: ' + (error.message || error));
+        }
+      }
     </script>
   </body>
 </html>
