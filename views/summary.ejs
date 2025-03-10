@@ -18,6 +18,7 @@
     />
     <!-- Add jsPDF for PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/jspdf-font@1.0.7/dist/japanese.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="/js/fonts.js"></script>
     <style>
@@ -631,14 +632,6 @@
           });
         });
 
-      // Add this before the exportToPDF function
-      function loadJapaneseFonts(pdf) {
-        // Add Japanese font support
-        pdf.addFileToVFS('ipag.ttf', ipagFontBase64);  // We'll need to include the font base64
-        pdf.addFont('ipag.ttf', 'IPAGothic', 'normal');
-        pdf.setFont('IPAGothic');
-      }
-
       // PDF Export Function
       async function exportToPDF() {
         // Get the delivery date from the date picker
@@ -651,7 +644,7 @@
         document.body.appendChild(loadingEl);
 
         try {
-          // Initialize jsPDF with better defaults for Japanese documents
+          // Initialize jsPDF with Japanese font support
           const { jsPDF } = window.jspdf;
           const pdf = new jsPDF({
             orientation: 'landscape',
@@ -662,6 +655,11 @@
             floatPrecision: 16
           });
 
+          // Add Japanese font support
+          pdf.addFont('japanese');
+          pdf.setFont('japanese');
+          pdf.setLanguage('ja');
+
           // Set default font size and line height
           const defaultFontSize = 10;
           const headerFontSize = 16;
@@ -671,7 +669,11 @@
           // Add page header
           function addPageHeader(pageNumber) {
             pdf.setFontSize(headerFontSize);
-            pdf.text('水平ノズル全数検査成績書', 15, 20);
+            const title = '水平ノズル全数検査成績書';
+            const titleWidth = pdf.getStringUnitWidth(title) * headerFontSize / pdf.internal.scaleFactor;
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const titleX = (pageWidth - titleWidth) / 2;
+            pdf.text(title, titleX, 20);
 
             pdf.setFontSize(defaultFontSize);
             const headerInfo = [
@@ -683,12 +685,19 @@
               pdf.text(line, 15, 30 + (idx * 7));
             });
 
+            // Add company name on the right
+            const companyName = '㈱平田商店';
+            const companyWidth = pdf.getStringUnitWidth(companyName) * defaultFontSize / pdf.internal.scaleFactor;
+            pdf.text(companyName, pageWidth - 15 - companyWidth, 30);
+
             // Add environment note
             pdf.setFontSize(9);
             pdf.text('当社検査における環境は室温20℃±5℃、湿度40%±25%で管理された部屋で実施しております。', 15, 45);
             
             // Add unit note
-            pdf.text('単位 (mm)', pdf.internal.pageSize.width - 30, 45);
+            const unitText = '単位 (mm)';
+            const unitWidth = pdf.getStringUnitWidth(unitText) * 9 / pdf.internal.scaleFactor;
+            pdf.text(unitText, pageWidth - 15 - unitWidth, 45);
 
             return 55; // Return Y position after header
           }
@@ -699,11 +708,11 @@
             const headers = Array.from(table.querySelectorAll('thead tr'));
             const rows = Array.from(table.querySelectorAll('tbody tr'));
             
-            const columnWidths = {
-              filename: 20,
-              measurement: 15,
-              weight: 20
-            };
+            // Calculate column widths based on content
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const tableWidth = pageWidth - 30; // 15mm margin on each side
+            const columnCount = headers[0].cells.length;
+            const standardWidth = tableWidth / columnCount;
 
             // Draw table headers
             let currentY = startY;
@@ -712,17 +721,22 @@
               let currentX = 15;
               
               cells.forEach((cell, cellIdx) => {
-                const width = columnWidths[cellIdx === 0 ? 'filename' : 'measurement'];
+                const cellContent = cell.textContent.trim();
                 pdf.setFontSize(8);
+                const width = standardWidth;
                 pdf.rect(currentX, currentY, width, 7);
-                pdf.text(cell.textContent.trim(), currentX + 1, currentY + 5);
+                
+                // Center align text in cell
+                const textWidth = pdf.getStringUnitWidth(cellContent) * 8 / pdf.internal.scaleFactor;
+                const textX = currentX + (width - textWidth) / 2;
+                pdf.text(cellContent, textX, currentY + 5);
+                
                 currentX += width;
               });
-              
               currentY += 7;
             });
 
-            // Draw table body
+            // Draw table body with similar centering
             pdf.setFontSize(8);
             rows.forEach((row, rowIdx) => {
               if (currentY > pdf.internal.pageSize.height - 20) {
@@ -734,7 +748,8 @@
               let currentX = 15;
 
               cells.forEach((cell, cellIdx) => {
-                const width = columnWidths[cellIdx === 0 ? 'filename' : 'measurement'];
+                const cellContent = cell.textContent.trim();
+                const width = standardWidth;
                 const isInvalid = cell.classList.contains('invalid-value');
                 
                 pdf.rect(currentX, currentY, width, 7);
@@ -743,7 +758,10 @@
                   pdf.setTextColor(220, 53, 69); // Red color for invalid values
                 }
                 
-                pdf.text(cell.textContent.trim(), currentX + 1, currentY + 5);
+                // Center align text in cell
+                const textWidth = pdf.getStringUnitWidth(cellContent) * 8 / pdf.internal.scaleFactor;
+                const textX = currentX + (width - textWidth) / 2;
+                pdf.text(cellContent, textX, currentY + 5);
                 
                 if (isInvalid) {
                   pdf.setTextColor(0); // Reset color
@@ -761,7 +779,8 @@
           // Add footer
           function addFooter(y) {
             pdf.setFontSize(9);
-            pdf.text('＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。', 15, y + 10);
+            const footerText = '＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。';
+            pdf.text(footerText, 15, y + 10);
           }
 
           // Generate PDF
