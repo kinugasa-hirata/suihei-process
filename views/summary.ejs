@@ -32,15 +32,19 @@
       }
       
       .container {
-        max-width: 1200px;
+        max-width: 100%;
         margin-top: 0;
+        padding: 15px;
       }
+      
       .summary-table {
         margin-top: 2rem;
       }
+      
       .nav-links {
         margin-bottom: 2rem;
       }
+      
       .no-data {
         padding: 2rem;
         text-align: center;
@@ -48,120 +52,129 @@
         border-radius: 5px;
         margin-bottom: 2rem;
       }
+      
       .highlight-cell {
         background-color: #fff3cd;
         font-weight: bold;
       }
+      
       .table-responsive {
         overflow-x: auto;
       }
+      
       .file-filter-form {
         background-color: #e9ecef;
         padding: 1rem;
         border-radius: 5px;
         margin-bottom: 1.5rem;
       }
+      
       .form-range-group {
         display: flex;
         gap: 1rem;
         align-items: end;
       }
+      
       .range-input {
         width: 120px;
       }
-
+  
       .content-section {
         background-color: white;
         padding: 1rem;
         margin: 0;
       }
-
+  
       .header-info {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin: 10px 0;
         padding: 5px 0;
+        flex-wrap: wrap; /* Allow wrapping on smaller screens */
       }
-
+  
       .company-info {
         font-weight: bold;
         font-size: 1.2em;
       }
-
+  
       .editable {
         border-bottom: 1px solid #ccc;
         padding: 0 5px;
         min-width: 50px;
         display: inline-block;
       }
-
+  
       .date-input {
         border: 1px solid #ccc;
         padding: 2px 5px;
         border-radius: 4px;
       }
-
+  
       .note {
         margin: 15px 0;
         font-size: 0.9em;
         color: #666;
         padding-left: 5px;
       }
-
+  
       .note::before {
         content: "※";
         margin-right: 5px;
       }
-
+  
       .unit-note {
         text-align: right;
         font-weight: bold;
       }
-
-      /* Table styles */
+  
+      /* Table styles for portrait orientation */
       .table {
         background-color: white;
+        font-size: 0.85rem; /* Slightly smaller font for portrait orientation */
       }
-
+  
       .table td {
         text-align: center; /* Center align all table cells */
         vertical-align: middle;
+        padding: 0.3rem; /* Smaller padding for portrait mode */
       }
-
+  
       .table thead td {
         background-color: white;
         font-weight: normal;
         text-align: center;
         vertical-align: middle;
         border: 1px solid #dee2e6;
+        font-size: 0.8rem; /* Even smaller font for headers */
       }
-
+  
       .table tbody td {
         text-align: center; /* Ensure body cells are also centered */
       }
-
+  
       /* Keep filename cell styles if needed */
       .filename-cell {
         text-align: center;
         font-weight: bold;
       }
-
+  
       .table-bordered {
         border-color: #dee2e6;
       }
-
+  
       .smaller-text {
-        font-size: 0.9em;
+        font-size: 0.8em;
       }
-
+  
       /* Hide the indicator row but keep it functional */
       .table thead tr:last-child {
         position: absolute;
         visibility: hidden;
         pointer-events: none;
       }
-
+  
       .button-container {
         position: fixed;
         right: 20px;
@@ -172,7 +185,7 @@
         gap: 10px;
         z-index: 1000;
       }
-
+  
       .button-container button,
       .button-container a {
         width: 100px;
@@ -183,7 +196,7 @@
         cursor: pointer;
         font-weight: bold;
       }
-
+  
       .button-home {
         background-color: #007bff;
         color: white;
@@ -191,79 +204,50 @@
         text-decoration: none;
         display: block;
       }
-
+  
       .button-print {
         background-color: #6c757d;
         color: white;
         border: none;
       }
-
+  
       .button-pdf {
         background-color: #007bff;
         color: white;
         border: none;
       }
-
-      .logs-container {
-        margin-top: 20px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-      }
-
-      .logs-header {
-        padding: 10px;
-        background-color: #f8f9fa;
-        cursor: pointer;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      .logs-content {
-        padding: 15px;
-        max-height: 300px;
-        overflow-y: auto;
-      }
-
-      .logs-content.hidden {
-        display: none;
-      }
-
-      .toggle-icon {
-        font-size: 12px;
-      }
-
-      /* PDF container for better control during exports */
+  
+      /* PDF container for portrait orientation */
       #pdf-container {
         width: 100%;
-        max-width: 1200px;
+        max-width: 800px; /* Adjusted for portrait */
         margin: 0 auto;
         background-color: white;
-        overflow: visible; /* Changed from hidden to allow scrolling */
-        padding: 0 20px; /* Add some horizontal padding */
+        overflow: visible;
+        padding: 10px;
       }
-
+  
       @media print {
         /* Page setup with margin for content */
         @page {
-          size: A4 landscape;
-          margin: 15mm; /* Increased margin for printed output */
+          size: A4 portrait; /* Changed to portrait */
+          margin: 15mm;
         }
-
+  
         body {
-          width: 297mm; /* A4 width */
-          height: 210mm; /* A4 height */
+          width: 210mm; /* A4 width in portrait */
+          height: 297mm; /* A4 height in portrait */
           margin: 0;
           padding: 0;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
-
+  
         /* Hide non-printable elements */
         .no-print {
           display: none !important;
         }
-
+  
         /* Reset container styling for print */
         .container {
           width: 100%;
@@ -271,48 +255,48 @@
           margin: 0;
           padding: 5mm;
         }
-
+  
         /* Adjust table for printing */
         .table {
-          font-size: 9pt;
+          font-size: 8pt; /* Smaller font for portrait mode */
           margin: 0;
           border-collapse: collapse;
           width: 100%;
         }
-
+  
         .table td,
         .table th {
           padding: 2px 4px;
           border: 1px solid #000;
         }
-
+  
         /* Header adjustments */
         h2 {
           font-size: 14pt;
           margin: 0 0 5mm 0;
         }
-
+  
         /* Force show background colors and images in print */
         * {
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
         }
-
+  
         .content-section {
           padding: 0;
           background-color: white;
           box-shadow: none;
         }
       }
-
-      /* Add this to the existing style section */
+  
+      /* Invalid value styling */
       .invalid-value {
-        color: #dc3545 !important;  /* Bootstrap's danger red */
+        color: #dc3545 !important;
         font-weight: bold;
-        background-color: rgba(220, 53, 69, 0.1);  /* Light red background */
+        background-color: rgba(220, 53, 69, 0.1);
         position: relative;
       }
-
+  
       .invalid-value:hover::after {
         content: attr(title);
         position: absolute;
@@ -327,7 +311,7 @@
         white-space: nowrap;
         z-index: 1000;
       }
-
+  
       /* Ensure the highlight-cell class doesn't override invalid-value */
       .highlight-cell.invalid-value {
         background-color: rgba(220, 53, 69, 0.1) !important;
@@ -649,64 +633,158 @@
         let deliveryDate = document.getElementById('deliveryDatePicker').value;
         let dateStr = formatDateForFilename(deliveryDate);
         const filename = `水平ノズル検査_${dateStr}`;
-
+      
         // Show loading indicator
         const loadingEl = createLoadingIndicator();
         document.body.appendChild(loadingEl);
-
+      
         try {
-          // Initialize jsPDF with proper configuration
+          // Initialize jsPDF with portrait orientation
           const { jsPDF } = window.jspdf;
           const pdf = new jsPDF({
-            orientation: 'landscape',
+            orientation: 'portrait', // Changed to portrait
             unit: 'mm',
             format: 'a4',
             compress: true
           });
-
-          // Load Japanese font support - use proper way to add the font
-          // This works better than the previous method
-          pdf.addFont('https://cdn.jsdelivr.net/npm/noto-sans-japanese@1.0.0/NotoSansJP-Regular.ttf', 'NotoSansJP', 'normal');
-          pdf.setFont('NotoSansJP');
-          
-          // Set base font sizes
-          const defaultFontSize = 9;
-          const headerFontSize = 14;
-          pdf.setFontSize(defaultFontSize);
-
-          // Create content via HTML2Canvas approach for better character handling
+      
+          // Get necessary elements
           const contentElement = document.getElementById('pdf-container');
+          const tableElement = document.querySelector('.table-responsive table');
+          const tableHead = tableElement.querySelector('thead').cloneNode(true);
+          const tableBody = tableElement.querySelector('tbody');
+          const tableRows = Array.from(tableBody.querySelectorAll('tr'));
           
-          // Use html2canvas to capture the DOM content as an image
-          const canvas = await html2canvas(contentElement, {
-            scale: 2, // Higher scale for better quality
-            useCORS: true,
-            logging: false,
-            allowTaint: true,
-            backgroundColor: '#ffffff'
-          });
+          // Calculate how many rows can fit per page
+          // For A4 portrait, we estimate about 25 rows per page (after accounting for header)
+          const ROWS_PER_PAGE = 25;
+          const totalPages = Math.ceil(tableRows.length / ROWS_PER_PAGE);
           
-          // Calculate dimensions to fit on PDF
-          const imgData = canvas.toDataURL('image/png');
-          const pdfWidth = pdf.internal.pageSize.getWidth();
-          const pdfHeight = pdf.internal.pageSize.getHeight();
-          const imgWidth = canvas.width;
-          const imgHeight = canvas.height;
-          const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-          const imgX = (pdfWidth - imgWidth * ratio) / 2;
-          const imgY = 10; // Top margin
+          // Function to create a page with header content
+          async function createPageHeader(pageNum) {
+            // Clone the header section for each page
+            const headerSection = document.querySelector('.content-section').cloneNode(true);
+            const containerDiv = document.createElement('div');
+            containerDiv.style.width = '100%';
+            containerDiv.appendChild(headerSection);
+            
+            // Capture the header as an image
+            const headerCanvas = await html2canvas(containerDiv, {
+              scale: 2,
+              useCORS: true,
+              logging: false,
+              backgroundColor: '#ffffff'
+            });
+            
+            const headerImgData = headerCanvas.toDataURL('image/png');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const headerHeight = 60; // Adjust as needed
+            
+            // Add the header image to the PDF
+            pdf.addImage(headerImgData, 'PNG', 0, 0, pdfWidth, headerHeight);
+            
+            return headerHeight; // Return the height where the table should start
+          }
           
-          // Add image to PDF
-          pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+          // Function to create table section for a page
+          async function createTableSection(startRow, endRow, startY) {
+            // Create a temporary table with header and selected rows
+            const tempTable = document.createElement('table');
+            tempTable.className = 'table table-bordered table-hover';
+            tempTable.appendChild(tableHead.cloneNode(true));
+            
+            const tempBody = document.createElement('tbody');
+            for (let i = startRow; i < endRow && i < tableRows.length; i++) {
+              tempBody.appendChild(tableRows[i].cloneNode(true));
+            }
+            tempTable.appendChild(tempBody);
+            
+            // Create a container for the table
+            const tableContainer = document.createElement('div');
+            tableContainer.className = 'table-responsive';
+            tableContainer.appendChild(tempTable);
+            
+            // Capture the table as an image
+            const tableCanvas = await html2canvas(tableContainer, {
+              scale: 2,
+              useCORS: true,
+              logging: false,
+              backgroundColor: '#ffffff'
+            });
+            
+            const tableImgData = tableCanvas.toDataURL('image/png');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const availableHeight = pdfHeight - startY - 25; // Leave space for footer
+            
+            // Calculate the appropriate height to maintain aspect ratio
+            const aspectRatio = tableCanvas.width / tableCanvas.height;
+            const tableWidth = pdfWidth - 10; // 5mm margin on each side
+            const tableHeight = tableWidth / aspectRatio;
+            
+            // Add the table image to the PDF
+            pdf.addImage(tableImgData, 'PNG', 5, startY, tableWidth, tableHeight);
+            
+            return startY + tableHeight;
+          }
           
-          // Add footer with page numbers
-          pdf.setFontSize(8);
-          pdf.text(`出力日: ${new Date().toLocaleDateString('ja-JP')}`, 10, pdfHeight - 10);
-          pdf.text('Page 1', pdfWidth - 20, pdfHeight - 10);
-
+          // Function to add footer to a page
+          function addFooter(pageNum, totalPages) {
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            
+            // Create a separate canvas for the footer text
+            const footerCanvas = document.createElement('canvas');
+            const footerCtx = footerCanvas.getContext('2d');
+            footerCanvas.width = 1000;
+            footerCanvas.height = 50;
+            
+            // Style the footer canvas
+            footerCtx.fillStyle = '#ffffff';
+            footerCtx.fillRect(0, 0, footerCanvas.width, footerCanvas.height);
+            footerCtx.fillStyle = '#000000';
+            footerCtx.font = '16px "Noto Sans JP", sans-serif';
+            footerCtx.textBaseline = 'top';
+            
+            // Draw the footer text
+            const footerText = '＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。';
+            footerCtx.fillText(footerText, 10, 10);
+            
+            // Add date and page number
+            footerCtx.font = '12px "Noto Sans JP", sans-serif';
+            const dateText = `出力日: ${new Date().toLocaleDateString('ja-JP')}`;
+            const pageText = `Page ${pageNum} / ${totalPages}`;
+            
+            footerCtx.fillText(dateText, 10, 30);
+            footerCtx.fillText(pageText, 800, 30);
+            
+            // Convert to image and add to PDF
+            const footerImgData = footerCanvas.toDataURL('image/png');
+            pdf.addImage(footerImgData, 'PNG', 5, pdfHeight - 15, pdfWidth - 10, 10);
+          }
+          
+          // Generate each page
+          for (let page = 0; page < totalPages; page++) {
+            if (page > 0) {
+              pdf.addPage();
+            }
+            
+            // Add header to this page
+            const startY = await createPageHeader(page + 1);
+            
+            // Calculate which rows to include
+            const startRow = page * ROWS_PER_PAGE;
+            const endRow = Math.min((page + 1) * ROWS_PER_PAGE, tableRows.length);
+            
+            // Add table section for this page
+            await createTableSection(startRow, endRow, startY);
+            
+            // Add footer to this page
+            addFooter(page + 1, totalPages);
+          }
+      
           // Save the PDF
           pdf.save(`${filename}.pdf`);
-          
         } catch (error) {
           console.error('Error generating PDF:', error);
           alert('PDFの生成中にエラーが発生しました: ' + error.message);
@@ -714,7 +792,7 @@
           document.body.removeChild(loadingEl);
         }
       }
-
+      
       // Helper function to format date for filename
       function formatDateForFilename(dateStr) {
         if (dateStr) {
@@ -725,10 +803,10 @@
         }
         const today = new Date();
         return today.getFullYear() +
-              String(today.getMonth() + 1).padStart(2, '0') +
-              String(today.getDate()).padStart(2, '0');
+               String(today.getMonth() + 1).padStart(2, '0') +
+               String(today.getDate()).padStart(2, '0');
       }
-
+      
       // Create a loading indicator while generating PDF
       function createLoadingIndicator() {
         const loadingEl = document.createElement('div');
