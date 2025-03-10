@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- Vercel Analytics script -->
     <script defer src="/_vercel/insights/script.js"></script>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
     <title>水平ノズル検査</title>
     <link
       rel="stylesheet"
@@ -253,6 +254,50 @@
           <button id="viewSelectedBtn" class="btn btn-info" disabled>
             検査成績書作成へ
           </button>
+          <button id="exportWeightsBtn" class="btn btn-secondary me-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              fill="currentColor"
+              class="bi bi-download me-1"
+              viewBox="0 0 16 16"
+            >
+              <path
+                d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"
+              />
+              <path
+                d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"
+              />
+            </svg>
+            重量データエクスポート
+          </button>
+          <button id="importWeightsBtn" class="btn btn-secondary me-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              fill="currentColor"
+              class="bi bi-upload me-1"
+              viewBox="0 0 16 16"
+            >
+              <path
+                d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"
+              />
+              <path
+                d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"
+              />
+            </svg>
+            重量データインポート
+          </button>
+
+          <!-- Add this file input element, hidden but will be triggered by the import button -->
+          <input
+            type="file"
+            id="weightFileInput"
+            accept=".json"
+            style="display: none"
+          />
         </div>
       </div>
 
@@ -652,6 +697,179 @@
           window.location.href = `/fileData/${fileId}`;
         }
       });
+
+      // Export weights functionality
+      const exportWeightsBtn = document.getElementById("exportWeightsBtn");
+      if (exportWeightsBtn) {
+        exportWeightsBtn.addEventListener("click", async function () {
+          try {
+            // Show loading indicator
+            const loadingEl = document.createElement("div");
+            loadingEl.style.position = "fixed";
+            loadingEl.style.top = "0";
+            loadingEl.style.left = "0";
+            loadingEl.style.width = "100%";
+            loadingEl.style.height = "100%";
+            loadingEl.style.backgroundColor = "rgba(255,255,255,0.8)";
+            loadingEl.style.display = "flex";
+            loadingEl.style.justifyContent = "center";
+            loadingEl.style.alignItems = "center";
+            loadingEl.style.zIndex = "9999";
+            loadingEl.innerHTML =
+              '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">データを取得中です。お待ちください...</div>';
+            document.body.appendChild(loadingEl);
+
+            // Fetch weight data from server
+            const response = await fetch("/export-weights");
+
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (!data || data.length === 0) {
+              alert("エクスポートするデータがありません。");
+              document.body.removeChild(loadingEl);
+              return;
+            }
+
+            // Create JSON string with proper formatting
+            const jsonStr = JSON.stringify(data, null, 2);
+
+            // Create a Blob with the JSON data
+            const blob = new Blob([jsonStr], { type: "application/json" });
+
+            // Create a date string for the filename
+            const today = new Date();
+            const dateStr =
+              today.getFullYear() +
+              String(today.getMonth() + 1).padStart(2, "0") +
+              String(today.getDate()).padStart(2, "0");
+
+            // Create a download link and trigger it
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `weight_data_${dateStr}.json`;
+            document.body.appendChild(link);
+            link.click();
+
+            // Clean up
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            document.body.removeChild(loadingEl);
+          } catch (error) {
+            console.error("Error exporting weights:", error);
+            alert(
+              "重量データのエクスポート中にエラーが発生しました: " +
+                error.message
+            );
+            if (document.body.contains(loadingEl)) {
+              document.body.removeChild(loadingEl);
+            }
+          }
+        });
+      }
+
+      // Import weights functionality
+      const importWeightsBtn = document.getElementById("importWeightsBtn");
+      const weightFileInput = document.getElementById("weightFileInput");
+
+      if (importWeightsBtn && weightFileInput) {
+        importWeightsBtn.addEventListener("click", function () {
+          weightFileInput.click();
+        });
+
+        weightFileInput.addEventListener("change", async function (e) {
+          if (!this.files || this.files.length === 0) {
+            return;
+          }
+
+          const file = this.files[0];
+
+          try {
+            // Show loading indicator
+            const loadingEl = document.createElement("div");
+            loadingEl.style.position = "fixed";
+            loadingEl.style.top = "0";
+            loadingEl.style.left = "0";
+            loadingEl.style.width = "100%";
+            loadingEl.style.height = "100%";
+            loadingEl.style.backgroundColor = "rgba(255,255,255,0.8)";
+            loadingEl.style.display = "flex";
+            loadingEl.style.justifyContent = "center";
+            loadingEl.style.alignItems = "center";
+            loadingEl.style.zIndex = "9999";
+            loadingEl.innerHTML =
+              '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">データをインポート中です。お待ちください...</div>';
+            document.body.appendChild(loadingEl);
+
+            // Read the file
+            const reader = new FileReader();
+
+            reader.onload = async function (event) {
+              try {
+                const weightData = JSON.parse(event.target.result);
+
+                if (!Array.isArray(weightData)) {
+                  throw new Error(
+                    "無効なJSONフォーマットです。配列形式が必要です。"
+                  );
+                }
+
+                // Send data to the server
+                const response = await fetch("/import-weights", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ weightData }),
+                });
+
+                if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                  // Show success message
+                  alert(result.message);
+
+                  // Refresh the page to show updated weights
+                  window.location.reload();
+                } else {
+                  throw new Error(
+                    result.error || "不明なエラーが発生しました。"
+                  );
+                }
+              } catch (error) {
+                console.error("Error parsing or importing data:", error);
+                alert("インポート中にエラーが発生しました: " + error.message);
+              } finally {
+                document.body.removeChild(loadingEl);
+              }
+            };
+
+            reader.onerror = function () {
+              document.body.removeChild(loadingEl);
+              alert("ファイルの読み込み中にエラーが発生しました。");
+            };
+
+            reader.readAsText(file);
+          } catch (error) {
+            console.error("Error setting up import:", error);
+            alert("インポート設定中にエラーが発生しました: " + error.message);
+            if (document.body.contains(loadingEl)) {
+              document.body.removeChild(loadingEl);
+            }
+          }
+
+          // Reset the file input so the same file can be selected again
+          this.value = "";
+        });
+      }
     </script>
   </body>
 </html>
