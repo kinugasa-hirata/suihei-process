@@ -130,6 +130,11 @@
         border: 1px solid #dee2e6;
       }
 
+      .table thead tr:last-child {
+        /* Visible in normal view */
+        display: table-row;
+      }
+
       .table tbody td {
         text-align: center; /* Ensure body cells are also centered */
         border: 1px solid #dee2e6;
@@ -301,6 +306,10 @@
         .table th {
           padding: 2px 4px;
           border: 1px solid #000 !important;
+        }
+
+        .table thead tr:last-child {
+          display: none !important;
         }
 
         /* Header adjustments */
@@ -528,7 +537,7 @@
                   <td>測定値</td>
                 </tr>
                 <!-- Original header row -->
-                <tr>
+                <tr class="column-labels-row print-hide">
                   <th>Filename</th>
                   <% var displayHeaders = ['A', 'B', 'C', 'D', 'E', 'F', 'G',
                   'H', 'I', 'J', 'K', 'L', 'M', 'N']; %> <% var internalHeaders
@@ -666,6 +675,14 @@
         urlElements.forEach(el => {
           el.classList.add('no-print');
         });
+
+              // Hide the header row with column labels
+        const headerRow = document.querySelector('.table thead tr:last-child');
+        if (headerRow) {
+          headerRow.classList.add('no-print');
+          // Add backup style in case class doesn't work
+          headerRow.style.display = 'none';
+        }
         
         // Fix table borders
         const tables = document.querySelectorAll('table');
