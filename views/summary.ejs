@@ -633,7 +633,7 @@
         });
 
       // PDF Export Function
-async function exportToPDF() {
+      async function exportToPDF() {
   // Get the delivery date from the date picker
   let deliveryDate = document.getElementById('deliveryDatePicker').value;
   let dateStr = formatDateForFilename(deliveryDate);
@@ -654,20 +654,8 @@ async function exportToPDF() {
     // Get the entire PDF container
     const content = document.getElementById('pdf-container');
     if (!content) {
-      throw new Error("PDF container element not found! Make sure there's a div with id 'pdf-container'");
+      throw new Error("PDF container element not found!");
     }
-    
-    // Capture the entire content with html2canvas
-    console.log("Capturing content with html2canvas");
-    const canvas = await html2canvas(content, {
-      scale: 2, // Higher resolution for better quality
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff'
-    });
-    
-    // Restore the button display
-    buttonContainer.style.display = originalDisplay;
     
     // Initialize jsPDF
     console.log("Initializing jsPDF");
@@ -679,18 +667,123 @@ async function exportToPDF() {
       compress: true
     });
     
-    // Add the captured image to the PDF
-    const imgData = canvas.toDataURL('image/png');
+    // Get the header section and table separately
+    const headerSection = document.querySelector('.content-section');
+    const tableSection = document.querySelector('.table-responsive');
+    
+    // First capture the header
+    console.log("Capturing header");
+    const headerCanvas = await html2canvas(headerSection, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff'
+    });
+    
+    // Add header to first page
     const pageWidth = pdf.internal.pageSize.getWidth();
+    const headerWidth = pageWidth;
+    const headerHeight = headerCanvas.height * headerWidth / headerCanvas.width;
+    pdf.addImage(
+      headerCanvas.toDataURL('image/png'),
+      'PNG',
+      0,
+      0,
+      headerWidth,
+      headerHeight
+    );
+    
+    // Now handle the table with pagination
+    console.log("Capturing table");
+    const tableCanvas = await html2canvas(tableSection, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff'
+    });
+    
+    // Calculate dimensions
+    const tableWidth = pageWidth;
+    const tableHeight = tableCanvas.height * tableWidth / tableCanvas.width;
     const pageHeight = pdf.internal.pageSize.getHeight();
     
-    // Calculate dimensions to fit the entire content while maintaining aspect ratio
-    const imgWidth = pageWidth;
-    const imgHeight = canvas.height * imgWidth / canvas.width;
+    // Check if table fits on first page with header
+    const remainingHeight = pageHeight - headerHeight - 10; // 10mm margin
     
-    // Add image to PDF
-    console.log("Adding captured image to PDF");
-    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+    if (tableHeight <= remainingHeight) {
+      // Table fits on first page
+      pdf.addImage(
+        tableCanvas.toDataURL('image/png'),
+        'PNG',
+        0,
+        headerHeight + 5, // 5mm spacing
+        tableWidth,
+        tableHeight
+      );
+    } else {
+      // Table doesn't fit on first page - divide it
+      console.log("Table too large for one page, paginating...");
+      
+      // How much of the table can fit on first page
+      const firstPageTableHeight = remainingHeight;
+      const firstPageTableRatio = firstPageTableHeight / tableHeight;
+      const firstPageCanvasHeight = firstPageTableRatio * tableCanvas.height;
+      
+      // Add portion of table to first page
+      pdf.addImage(
+        tableCanvas.toDataURL('image/png'),
+        'PNG',
+        0,
+        headerHeight + 5,
+        tableWidth,
+        firstPageTableHeight,
+        null,
+        'FAST',
+        0,
+        0,
+        0,
+        firstPageCanvasHeight
+      );
+      
+      // Add rest to new page(s)
+      let remainingCanvasHeight = tableCanvas.height - firstPageCanvasHeight;
+      let yPos = firstPageCanvasHeight;
+      let pageNum = 1;
+      
+      while (remainingCanvasHeight > 0) {
+        // Add a new page
+        pdf.addPage();
+        pageNum++;
+        console.log(`Adding page ${pageNum} for remaining table content`);
+        
+        // Calculate how much fits on this page
+        const pageCanvasHeight = Math.min(
+          remainingCanvasHeight,
+          pageHeight / tableHeight * tableCanvas.height
+        );
+        const pageImageHeight = pageCanvasHeight / tableCanvas.height * tableHeight;
+        
+        // Add table portion to this page
+        pdf.addImage(
+          tableCanvas.toDataURL('image/png'),
+          'PNG',
+          0,
+          0,
+          tableWidth,
+          pageImageHeight,
+          null,
+          'FAST',
+          0,
+          yPos,
+          0,
+          pageCanvasHeight
+        );
+        
+        // Update remaining height and position
+        remainingCanvasHeight -= pageCanvasHeight;
+        yPos += pageCanvasHeight;
+      }
+    }
     
     // Save the PDF
     console.log("Saving PDF");
@@ -699,6 +792,8 @@ async function exportToPDF() {
     console.error('Error generating PDF:', error);
     alert('PDFの生成中にエラーが発生しました: ' + error.message);
   } finally {
+    // Restore button display
+    buttonContainer.style.display = originalDisplay;
     document.body.removeChild(loadingEl);
   }
 }
