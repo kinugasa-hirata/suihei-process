@@ -181,13 +181,7 @@
       }
 
       .button-print {
-        background-color: #6c757d;
-        color: white;
-        border: none;
-      }
-
-      .button-pdf {
-        background-color: #007bff;
+        background-color: #16862f;
         color: white;
         border: none;
       }
@@ -300,6 +294,8 @@
           margin: 0;
           border-collapse: collapse;
           width: 100%;
+          page-break-inside: auto;
+          border: 1px solid #000 !important;
         }
 
         .table td,
@@ -310,6 +306,13 @@
 
         .table thead tr:last-child {
           display: none !important;
+        }
+
+        .table tr {
+          page-break-inside: avoid;
+          page-break-after: auto;
+          border: 1px solid #000 !important;
+          border-top: 1px solid #000 !important;
         }
 
         /* Header adjustments */
@@ -529,7 +532,7 @@
                   <td>測定値</td>
                   <td>合否</td>
                   <td>合否</td>
-                  <td>測定値</td>
+                  <td>重量(g)</td>
                 </tr>
                 <!-- Original header row -->
                 <tr class="column-labels-row print-hide">
@@ -624,7 +627,6 @@
       <div class="button-container no-print">
         <a href="/" class="button-home">ホーム</a>
         <button onclick="printReport()" class="button-print">印刷</button>
-        <button onclick="exportToPDF()" class="button-pdf">PDF</button>
       </div>
     </div>
 
@@ -698,152 +700,6 @@
           window.print();
         }, 200);
       }
-
-      /**
-       * PDF Export Function using browser's print functionality
-       */
-      async function exportToPDF() {
-        try {
-          // Show loading indicator
-          const loadingEl = createLoadingIndicator();
-          document.body.appendChild(loadingEl);
-          
-          console.log("Starting PDF export using print API");
-          
-          // Hide elements that shouldn't be in the PDF
-          const buttonContainer = document.querySelector('.button-container');
-          const originalDisplay = buttonContainer.style.display;
-          buttonContainer.style.display = 'none';
-          
-          // Hide URLs and timestamps
-          const urlElements = document.querySelectorAll('.url-display, .timestamp');
-          urlElements.forEach(el => {
-            el.classList.add('no-print');
-          });
-          
-          // Prepare for printing
-          const originalTitle = document.title;
-          const deliveryDate = document.getElementById('deliveryDatePicker').value;
-          const dateStr = formatDateForFilename(deliveryDate);
-          document.title = `水平ノズル検査_${dateStr}`;
-          
-          // Apply print-specific styles
-          const printStyle = document.createElement('style');
-          printStyle.innerHTML = `
-            @media print {
-              @page {
-                size: A4 landscape;
-                margin: 10mm;
-              }
-              
-              body {
-                width: 100%;
-                margin: 0;
-                padding: 0;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                color-adjust: exact !important;
-              }
-              
-              .table {
-                width: 100%;
-                border-collapse: collapse;
-                page-break-inside: avoid;
-                font-size: 9pt;
-              }
-              
-              .table th, .table td {
-                border: 1px solid #000 !important;
-                padding: 2px 4px;
-                text-align: center;
-                vertical-align: middle;
-              }
-              
-              /* Hide URLs and timestamps */
-              .url-display, .timestamp, .no-print {
-                display: none !important;
-              }
-              
-              /* Fix table top border */
-              table {
-                border-top: 1px solid #000 !important;
-              }
-              
-              tbody tr:first-child {
-                border-top: 1px solid #000 !important;
-              }
-            }
-          `;
-          document.head.appendChild(printStyle);
-          
-          // Use the browser's print functionality
-          setTimeout(() => {
-            window.print();
-            
-            // Restore original state
-            document.title = originalTitle;
-            buttonContainer.style.display = originalDisplay;
-            document.head.removeChild(printStyle);
-            
-            // Remove loading indicator
-            document.body.removeChild(loadingEl);
-          }, 500);
-        } catch (error) {
-          console.error('Error preparing for print:', error);
-          alert('印刷の準備中にエラーが発生しました: ' + error.message);
-          
-          // Try to restore state
-          const buttonContainer = document.querySelector('.button-container');
-          if (buttonContainer) buttonContainer.style.display = '';
-          
-          // Remove loading indicator
-          const loadingEl = document.querySelector('.loading-indicator');
-          if (loadingEl) document.body.removeChild(loadingEl);
-        }
-      }
-
-      // Helper functions
-      function formatDateForFilename(dateStr) {
-        if (dateStr) {
-          const parts = dateStr.split('/');
-          if (parts.length === 3) {
-            return parts[0] + parts[1].padStart(2, '0') + parts[2].padStart(2, '0');
-          }
-        }
-        const today = new Date();
-        return today.getFullYear() +
-              String(today.getMonth() + 1).padStart(2, '0') +
-              String(today.getDate()).padStart(2, '0');
-      }
-
-      function createLoadingIndicator() {
-        const loadingEl = document.createElement('div');
-        loadingEl.className = 'loading-indicator';
-        loadingEl.style.position = 'fixed';
-        loadingEl.style.top = '0';
-        loadingEl.style.left = '0';
-        loadingEl.style.width = '100%';
-        loadingEl.style.height = '100%';
-        loadingEl.style.backgroundColor = 'rgba(255,255,255,0.8)';
-        loadingEl.style.display = 'flex';
-        loadingEl.style.justifyContent = 'center';
-        loadingEl.style.alignItems = 'center';
-        loadingEl.style.zIndex = '9999';
-        loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
-        return loadingEl;
-      }
-      
-      // Set up event listeners when the document is ready
-      document.addEventListener('DOMContentLoaded', function() {
-        // Add additional event listeners if needed
-        
-        // Fix for table top borders - ensure all tables have proper borders
-        const tables = document.querySelectorAll('table');
-        tables.forEach(table => {
-          table.style.borderCollapse = 'collapse';
-          table.style.border = '1px solid #000';
-        });
-      });
     </script>
   </body>
 </html>
