@@ -633,7 +633,6 @@
         });
 
       // PDF Export Function
-      // PDF Export Function
 async function exportToPDF() {
   // Get the delivery date from the date picker
   let deliveryDate = document.getElementById('deliveryDatePicker').value;
@@ -702,6 +701,36 @@ async function exportToPDF() {
   } finally {
     document.body.removeChild(loadingEl);
   }
+}
+
+// Helper functions
+function formatDateForFilename(dateStr) {
+  if (dateStr) {
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      return parts[0] + parts[1].padStart(2, '0') + parts[2].padStart(2, '0');
+    }
+  }
+  const today = new Date();
+  return today.getFullYear() +
+         String(today.getMonth() + 1).padStart(2, '0') +
+         String(today.getDate()).padStart(2, '0');
+}
+
+function createLoadingIndicator() {
+  const loadingEl = document.createElement('div');
+  loadingEl.style.position = 'fixed';
+  loadingEl.style.top = '0';
+  loadingEl.style.left = '0';
+  loadingEl.style.width = '100%';
+  loadingEl.style.height = '100%';
+  loadingEl.style.backgroundColor = 'rgba(255,255,255,0.8)';
+  loadingEl.style.display = 'flex';
+  loadingEl.style.justifyContent = 'center';
+  loadingEl.style.alignItems = 'center';
+  loadingEl.style.zIndex = '9999';
+  loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
+  return loadingEl;
 }
     </script>
   </body>
