@@ -1,7 +1,6 @@
 <!-- Enhanced summary.ejs with PDF Export -->
 <!DOCTYPE html>
 <html lang="en">
-  <!-- Replace the head section in views/summary.ejs with this updated version -->
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -17,30 +16,22 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
     />
-    
-    <!-- Add NotoSansJP font for Japanese support -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
-    
+    <!-- Add jsPDF for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/jspdf-font@1.0.7/dist/japanese.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="/js/fonts.js"></script>
     <style>
-      /* Apply Noto Sans JP font to all elements */
-      body, table, button, input, .editable {
-        font-family: 'Noto Sans JP', sans-serif;
-      }
-      
       .container {
-        max-width: 1200px; /* Increased from 100% to a fixed width */
-        margin: 0 auto; /* Center the container */
-        padding: 15px;
+        max-width: 1200px;
+        margin-top: 0;
       }
-      
       .summary-table {
         margin-top: 2rem;
       }
-      
       .nav-links {
         margin-bottom: 2rem;
       }
-      
       .no-data {
         padding: 2rem;
         text-align: center;
@@ -48,131 +39,120 @@
         border-radius: 5px;
         margin-bottom: 2rem;
       }
-      
       .highlight-cell {
         background-color: #fff3cd;
         font-weight: bold;
       }
-      
       .table-responsive {
         overflow-x: auto;
       }
-      
       .file-filter-form {
         background-color: #e9ecef;
         padding: 1rem;
         border-radius: 5px;
         margin-bottom: 1.5rem;
       }
-      
       .form-range-group {
         display: flex;
         gap: 1rem;
         align-items: end;
       }
-      
       .range-input {
         width: 120px;
       }
-  
+
       .content-section {
         background-color: white;
         padding: 1rem;
         margin: 0;
       }
-  
+
       .header-info {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin: 10px 0;
         padding: 5px 0;
-        flex-wrap: wrap;
-        width: 100%;
       }
-  
+
       .company-info {
         font-weight: bold;
         font-size: 1.2em;
-        text-align: right;
-        margin-left: auto;
       }
-  
+
       .editable {
         border-bottom: 1px solid #ccc;
         padding: 0 5px;
         min-width: 50px;
         display: inline-block;
       }
-  
+
       .date-input {
         border: 1px solid #ccc;
         padding: 2px 5px;
         border-radius: 4px;
-        width: 120px;
       }
-  
+
       .note {
         margin: 15px 0;
         font-size: 0.9em;
         color: #666;
         padding-left: 5px;
       }
-  
+
       .note::before {
         content: "※";
         margin-right: 5px;
       }
-  
+
       .unit-note {
         text-align: right;
         font-weight: bold;
       }
-  
-      /* Table styles for better horizontal space utilization */
+
+      /* Table styles */
       .table {
-        width: 100%;
-        font-size: 0.9rem; /* Slightly larger font for better readability */
+        background-color: white;
       }
-  
+
       .table td {
-        padding: 0.4rem; /* Increased padding for better spacing */
+        text-align: center; /* Center align all table cells */
+        vertical-align: middle;
       }
-  
+
       .table thead td {
         background-color: white;
         font-weight: normal;
         text-align: center;
         vertical-align: middle;
         border: 1px solid #dee2e6;
-        font-size: 0.8rem; /* Even smaller font for headers */
       }
-  
+
       .table tbody td {
         text-align: center; /* Ensure body cells are also centered */
       }
-  
+
       /* Keep filename cell styles if needed */
       .filename-cell {
         text-align: center;
         font-weight: bold;
       }
-  
+
       .table-bordered {
         border-color: #dee2e6;
       }
-  
+
       .smaller-text {
-        font-size: 0.8em;
+        font-size: 0.9em;
       }
-  
+
       /* Hide the indicator row but keep it functional */
       .table thead tr:last-child {
         position: absolute;
         visibility: hidden;
         pointer-events: none;
       }
-  
+
       .button-container {
         position: fixed;
         right: 20px;
@@ -183,7 +163,7 @@
         gap: 10px;
         z-index: 1000;
       }
-  
+
       .button-container button,
       .button-container a {
         width: 100px;
@@ -194,7 +174,7 @@
         cursor: pointer;
         font-weight: bold;
       }
-  
+
       .button-home {
         background-color: #007bff;
         color: white;
@@ -202,11 +182,146 @@
         text-decoration: none;
         display: block;
       }
-  
-      .button-pdf {
-        background-color: #dc3545; /* Red color to distinguish it */
+
+      .button-print {
+        background-color: #6c757d;
         color: white;
         border: none;
+      }
+
+      .button-pdf {
+        background-color: #007bff;
+        color: white;
+        border: none;
+      }
+
+      .logs-container {
+        margin-top: 20px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+
+      .logs-header {
+        padding: 10px;
+        background-color: #f8f9fa;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .logs-content {
+        padding: 15px;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .logs-content.hidden {
+        display: none;
+      }
+
+      .toggle-icon {
+        font-size: 12px;
+      }
+
+      /* PDF container for better control during exports */
+      #pdf-container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        background-color: white;
+        overflow: visible; /* Changed from hidden to allow scrolling */
+        padding: 0 20px; /* Add some horizontal padding */
+      }
+
+      @media print {
+        /* Page setup with margin for content */
+        @page {
+          size: A4 landscape;
+          margin: 15mm; /* Increased margin for printed output */
+        }
+
+        body {
+          width: 297mm; /* A4 width */
+          height: 210mm; /* A4 height */
+          margin: 0;
+          padding: 0;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        /* Hide non-printable elements */
+        .no-print {
+          display: none !important;
+        }
+
+        /* Reset container styling for print */
+        .container {
+          width: 100%;
+          max-width: none;
+          margin: 0;
+          padding: 5mm;
+        }
+
+        /* Adjust table for printing */
+        .table {
+          font-size: 9pt;
+          margin: 0;
+          border-collapse: collapse;
+          width: 100%;
+        }
+
+        .table td,
+        .table th {
+          padding: 2px 4px;
+          border: 1px solid #000;
+        }
+
+        /* Header adjustments */
+        h2 {
+          font-size: 14pt;
+          margin: 0 0 5mm 0;
+        }
+
+        /* Force show background colors and images in print */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+
+        .content-section {
+          padding: 0;
+          background-color: white;
+          box-shadow: none;
+        }
+      }
+
+      /* Add this to the existing style section */
+      .invalid-value {
+        color: #dc3545 !important;  /* Bootstrap's danger red */
+        font-weight: bold;
+        background-color: rgba(220, 53, 69, 0.1);  /* Light red background */
+        position: relative;
+      }
+
+      .invalid-value:hover::after {
+        content: attr(title);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 5px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: nowrap;
+        z-index: 1000;
+      }
+
+      /* Ensure the highlight-cell class doesn't override invalid-value */
+      .highlight-cell.invalid-value {
+        background-color: rgba(220, 53, 69, 0.1) !important;
       }
     </style>
   </head>
@@ -479,15 +594,14 @@
       <!-- Buttons positioned at the side of the page - These will be hidden when printing -->
       <div class="button-container no-print">
         <a href="/" class="button-home">ホーム</a>
-        <button class="button-pdf" onclick="exportLandscapePDF()">PDF</button>
+        <button onclick="window.print()" class="button-print">印刷</button>
+        <button onclick="exportToPDF()" class="button-pdf">PDF</button>
       </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
       // Initialize Flatpickr
       flatpickr("#deliveryDatePicker", {
@@ -518,74 +632,77 @@
           });
         });
 
-      async function exportLandscapePDF() {
-        try {
-          // Get the delivery date
-          const deliveryDate = document.getElementById('deliveryDatePicker').value;
-          const formattedDate = deliveryDate ? 
-            deliveryDate.replace(/\//g, '') : 
-            new Date().toLocaleDateString('ja-JP').replace(/\//g, '');
-          
-          // Get the serial number from the first row of the table
-          const firstRow = document.querySelector('.table tbody tr:first-child td:first-child');
-          const serialNumber = firstRow ? firstRow.textContent.trim() : '';
-          
-          // Create filename
-          const filename = `水平ノズル検査-${formattedDate}-${serialNumber}`;
+      // PDF Export Function
+      // PDF Export Function
+async function exportToPDF() {
+  // Get the delivery date from the date picker
+  let deliveryDate = document.getElementById('deliveryDatePicker').value;
+  let dateStr = formatDateForFilename(deliveryDate);
+  const filename = `水平ノズル検査_${dateStr}`;
 
-          const { jsPDF } = window.jspdf;
-          const pdf = new jsPDF({
-            orientation: 'landscape',
-            unit: 'mm',
-            format: 'a4'
-          });
+  // Show loading indicator
+  const loadingEl = createLoadingIndicator();
+  document.body.appendChild(loadingEl);
 
-          // Get only the table content
-          const tableElement = document.querySelector('.table-responsive table');
-          if (!tableElement) {
-            throw new Error('テーブルが見つかりません');
-          }
-
-          // Create a temporary div for the table
-          const tempDiv = document.createElement('div');
-          tempDiv.appendChild(tableElement.cloneNode(true));
-          document.body.appendChild(tempDiv);
-          tempDiv.style.position = 'absolute';
-          tempDiv.style.left = '-9999px';
-
-          // Convert table to canvas
-          const canvas = await html2canvas(tempDiv, {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            backgroundColor: '#ffffff'
-          });
-
-          // Remove temporary element
-          document.body.removeChild(tempDiv);
-
-          // Get PDF dimensions
-          const pdfWidth = pdf.internal.pageSize.getWidth();
-          const pdfHeight = pdf.internal.pageSize.getHeight();
-
-          // Add table image to PDF (full page)
-          pdf.addImage(
-            canvas.toDataURL('image/png'),
-            'PNG',
-            0,
-            0,
-            pdfWidth,
-            pdfHeight
-          );
-
-          // Save the PDF with new filename
-          pdf.save(`${filename}.pdf`);
-
-        } catch (error) {
-          console.error('Error generating PDF:', error);
-          alert('PDFの生成中にエラーが発生しました: ' + (error.message || error));
-        }
-      }
+  try {
+    console.log("Starting PDF export with html2canvas approach");
+    
+    // Hide elements that shouldn't be in the PDF
+    const buttonContainer = document.querySelector('.button-container');
+    const originalDisplay = buttonContainer.style.display;
+    buttonContainer.style.display = 'none';
+    
+    // Get the entire PDF container
+    const content = document.getElementById('pdf-container');
+    if (!content) {
+      throw new Error("PDF container element not found! Make sure there's a div with id 'pdf-container'");
+    }
+    
+    // Capture the entire content with html2canvas
+    console.log("Capturing content with html2canvas");
+    const canvas = await html2canvas(content, {
+      scale: 2, // Higher resolution for better quality
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff'
+    });
+    
+    // Restore the button display
+    buttonContainer.style.display = originalDisplay;
+    
+    // Initialize jsPDF
+    console.log("Initializing jsPDF");
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4',
+      compress: true
+    });
+    
+    // Add the captured image to the PDF
+    const imgData = canvas.toDataURL('image/png');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    
+    // Calculate dimensions to fit the entire content while maintaining aspect ratio
+    const imgWidth = pageWidth;
+    const imgHeight = canvas.height * imgWidth / canvas.width;
+    
+    // Add image to PDF
+    console.log("Adding captured image to PDF");
+    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+    
+    // Save the PDF
+    console.log("Saving PDF");
+    pdf.save(`${filename}.pdf`);
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    alert('PDFの生成中にエラーが発生しました: ' + error.message);
+  } finally {
+    document.body.removeChild(loadingEl);
+  }
+}
     </script>
   </body>
 </html>
