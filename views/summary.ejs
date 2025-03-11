@@ -634,199 +634,135 @@
 
       // PDF Export Function
       async function exportToPDF() {
-  // Get the delivery date from the date picker
-  let deliveryDate = document.getElementById('deliveryDatePicker').value;
-  let dateStr = formatDateForFilename(deliveryDate);
-  const filename = `水平ノズル検査_${dateStr}`;
-
-  // Show loading indicator
-  const loadingEl = createLoadingIndicator();
-  document.body.appendChild(loadingEl);
-
-  try {
-    console.log("Starting PDF export with html2canvas approach");
-    
-    // Hide elements that shouldn't be in the PDF
-    const buttonContainer = document.querySelector('.button-container');
-    const originalDisplay = buttonContainer.style.display;
-    buttonContainer.style.display = 'none';
-    
-    // Get the entire PDF container
-    const content = document.getElementById('pdf-container');
-    if (!content) {
-      throw new Error("PDF container element not found!");
-    }
-    
-    // Initialize jsPDF
-    console.log("Initializing jsPDF");
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({
-      orientation: 'landscape',
-      unit: 'mm',
-      format: 'a4',
-      compress: true
-    });
-    
-    // Get the header section and table separately
-    const headerSection = document.querySelector('.content-section');
-    const tableSection = document.querySelector('.table-responsive');
-    
-    // First capture the header
-    console.log("Capturing header");
-    const headerCanvas = await html2canvas(headerSection, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff'
-    });
-    
-    // Add header to first page
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const headerWidth = pageWidth;
-    const headerHeight = headerCanvas.height * headerWidth / headerCanvas.width;
-    pdf.addImage(
-      headerCanvas.toDataURL('image/png'),
-      'PNG',
-      0,
-      0,
-      headerWidth,
-      headerHeight
-    );
-    
-    // Now handle the table with pagination
-    console.log("Capturing table");
-    const tableCanvas = await html2canvas(tableSection, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff'
-    });
-    
-    // Calculate dimensions
-    const tableWidth = pageWidth;
-    const tableHeight = tableCanvas.height * tableWidth / tableCanvas.width;
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    
-    // Check if table fits on first page with header
-    const remainingHeight = pageHeight - headerHeight - 10; // 10mm margin
-    
-    if (tableHeight <= remainingHeight) {
-      // Table fits on first page
-      pdf.addImage(
-        tableCanvas.toDataURL('image/png'),
-        'PNG',
-        0,
-        headerHeight + 5, // 5mm spacing
-        tableWidth,
-        tableHeight
-      );
-    } else {
-      // Table doesn't fit on first page - divide it
-      console.log("Table too large for one page, paginating...");
-      
-      // How much of the table can fit on first page
-      const firstPageTableHeight = remainingHeight;
-      const firstPageTableRatio = firstPageTableHeight / tableHeight;
-      const firstPageCanvasHeight = firstPageTableRatio * tableCanvas.height;
-      
-      // Add portion of table to first page
-      pdf.addImage(
-        tableCanvas.toDataURL('image/png'),
-        'PNG',
-        0,
-        headerHeight + 5,
-        tableWidth,
-        firstPageTableHeight,
-        null,
-        'FAST',
-        0,
-        0,
-        0,
-        firstPageCanvasHeight
-      );
-      
-      // Add rest to new page(s)
-      let remainingCanvasHeight = tableCanvas.height - firstPageCanvasHeight;
-      let yPos = firstPageCanvasHeight;
-      let pageNum = 1;
-      
-      while (remainingCanvasHeight > 0) {
-        // Add a new page
-        pdf.addPage();
-        pageNum++;
-        console.log(`Adding page ${pageNum} for remaining table content`);
+      try {
+        // Show loading indicator
+        const loadingEl = createLoadingIndicator();
+        document.body.appendChild(loadingEl);
         
-        // Calculate how much fits on this page
-        const pageCanvasHeight = Math.min(
-          remainingCanvasHeight,
-          pageHeight / tableHeight * tableCanvas.height
-        );
-        const pageImageHeight = pageCanvasHeight / tableCanvas.height * tableHeight;
+        console.log("Starting PDF export using print API");
         
-        // Add table portion to this page
-        pdf.addImage(
-          tableCanvas.toDataURL('image/png'),
-          'PNG',
-          0,
-          0,
-          tableWidth,
-          pageImageHeight,
-          null,
-          'FAST',
-          0,
-          yPos,
-          0,
-          pageCanvasHeight
-        );
+        // Hide elements that shouldn't be in the PDF
+        const buttonContainer = document.querySelector('.button-container');
+        const originalDisplay = buttonContainer.style.display;
+        buttonContainer.style.display = 'none';
         
-        // Update remaining height and position
-        remainingCanvasHeight -= pageCanvasHeight;
-        yPos += pageCanvasHeight;
+        // Prepare for printing
+        const originalTitle = document.title;
+        const deliveryDate = document.getElementById('deliveryDatePicker').value;
+        const dateStr = formatDateForFilename(deliveryDate);
+        document.title = `水平ノズル検査_${dateStr}`;
+        
+        // Save the original styles
+        const originalStyles = [];
+        document.querySelectorAll('style, link[rel="stylesheet"]').forEach(style => {
+          originalStyles.push({
+            element: style,
+            media: style.media
+          });
+          
+          // Set to print media
+          style.media = 'print';
+        });
+        
+        // Add print-specific styles
+        const printStyle = document.createElement('style');
+        printStyle.innerHTML = `
+          @media print {
+            @page {
+              size: landscape;
+              margin: 10mm;
+            }
+            
+            body {
+              margin: 0;
+              padding: 0;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            
+            .table td, .table th {
+              padding: 2px 4px;
+              font-size: 10px;
+            }
+            
+            .no-print {
+              display: none !important;
+            }
+            
+            .content-section {
+              margin-bottom: 10px;
+            }
+            
+            /* Force background colors */
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+          }
+        `;
+        document.head.appendChild(printStyle);
+        
+        // Use the browser's print functionality
+        setTimeout(() => {
+          window.print();
+          
+          // Restore original state
+          document.title = originalTitle;
+          buttonContainer.style.display = originalDisplay;
+          document.head.removeChild(printStyle);
+          
+          // Restore original media queries
+          originalStyles.forEach(item => {
+            item.element.media = item.media;
+          });
+          
+          // Remove loading indicator
+          document.body.removeChild(loadingEl);
+        }, 500);
+      } catch (error) {
+        console.error('Error preparing for print:', error);
+        alert('印刷の準備中にエラーが発生しました: ' + error.message);
+        
+        // Try to restore state
+        const buttonContainer = document.querySelector('.button-container');
+        if (buttonContainer) buttonContainer.style.display = '';
+        
+        // Remove loading indicator
+        const loadingEl = document.querySelector('.loading-indicator');
+        if (loadingEl) document.body.removeChild(loadingEl);
       }
     }
-    
-    // Save the PDF
-    console.log("Saving PDF");
-    pdf.save(`${filename}.pdf`);
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    alert('PDFの生成中にエラーが発生しました: ' + error.message);
-  } finally {
-    // Restore button display
-    buttonContainer.style.display = originalDisplay;
-    document.body.removeChild(loadingEl);
-  }
-}
 
-// Helper functions
-function formatDateForFilename(dateStr) {
-  if (dateStr) {
-    const parts = dateStr.split('/');
-    if (parts.length === 3) {
-      return parts[0] + parts[1].padStart(2, '0') + parts[2].padStart(2, '0');
+    // Helper functions
+    function formatDateForFilename(dateStr) {
+      if (dateStr) {
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+          return parts[0] + parts[1].padStart(2, '0') + parts[2].padStart(2, '0');
+        }
+      }
+      const today = new Date();
+      return today.getFullYear() +
+            String(today.getMonth() + 1).padStart(2, '0') +
+            String(today.getDate()).padStart(2, '0');
     }
-  }
-  const today = new Date();
-  return today.getFullYear() +
-         String(today.getMonth() + 1).padStart(2, '0') +
-         String(today.getDate()).padStart(2, '0');
-}
 
-function createLoadingIndicator() {
-  const loadingEl = document.createElement('div');
-  loadingEl.style.position = 'fixed';
-  loadingEl.style.top = '0';
-  loadingEl.style.left = '0';
-  loadingEl.style.width = '100%';
-  loadingEl.style.height = '100%';
-  loadingEl.style.backgroundColor = 'rgba(255,255,255,0.8)';
-  loadingEl.style.display = 'flex';
-  loadingEl.style.justifyContent = 'center';
-  loadingEl.style.alignItems = 'center';
-  loadingEl.style.zIndex = '9999';
-  loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
-  return loadingEl;
-}
+    function createLoadingIndicator() {
+      const loadingEl = document.createElement('div');
+      loadingEl.style.position = 'fixed';
+      loadingEl.style.top = '0';
+      loadingEl.style.left = '0';
+      loadingEl.style.width = '100%';
+      loadingEl.style.height = '100%';
+      loadingEl.style.backgroundColor = 'rgba(255,255,255,0.8)';
+      loadingEl.style.display = 'flex';
+      loadingEl.style.justifyContent = 'center';
+      loadingEl.style.alignItems = 'center';
+      loadingEl.style.zIndex = '9999';
+      loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
+      return loadingEl;
+    }
     </script>
   </body>
 </html>
