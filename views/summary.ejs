@@ -1,10 +1,10 @@
-<!-- Enhanced summary.ejs with PDF Export -->
+<!-- Improved summary.ejs with print fixes -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Vercel Analytics script -->
+    <!-- Vercel Analytics script - only loads in browser, not print -->
     <script defer src="/_vercel/insights/script.js"></script>
     <link rel="icon" href="/favicon.ico" type="image/x-icon" />
     <title>水平ノズル全数検査成績書</title>
@@ -20,7 +20,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/jspdf-font@1.0.7/dist/japanese.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="/js/fonts.js"></script>
     <style>
       .container {
         max-width: 1200px;
@@ -113,11 +112,14 @@
       /* Table styles */
       .table {
         background-color: white;
+        border-collapse: collapse;
       }
 
-      .table td {
+      .table td, .table th {
         text-align: center; /* Center align all table cells */
         vertical-align: middle;
+        border: 1px solid #dee2e6;
+        padding: 4px;
       }
 
       .table thead td {
@@ -130,27 +132,17 @@
 
       .table tbody td {
         text-align: center; /* Ensure body cells are also centered */
+        border: 1px solid #dee2e6;
       }
 
-      /* Keep filename cell styles if needed */
+      /* Filename cell styles */
       .filename-cell {
         text-align: center;
         font-weight: bold;
       }
 
-      .table-bordered {
-        border-color: #dee2e6;
-      }
-
       .smaller-text {
         font-size: 0.9em;
-      }
-
-      /* Hide the indicator row but keep it functional */
-      .table thead tr:last-child {
-        position: absolute;
-        visibility: hidden;
-        pointer-events: none;
       }
 
       .button-container {
@@ -234,68 +226,6 @@
         padding: 0 20px; /* Add some horizontal padding */
       }
 
-      @media print {
-        /* Page setup with margin for content */
-        @page {
-          size: A4 landscape;
-          margin: 15mm; /* Increased margin for printed output */
-        }
-
-        body {
-          width: 297mm; /* A4 width */
-          height: 210mm; /* A4 height */
-          margin: 0;
-          padding: 0;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-
-        /* Hide non-printable elements */
-        .no-print {
-          display: none !important;
-        }
-
-        /* Reset container styling for print */
-        .container {
-          width: 100%;
-          max-width: none;
-          margin: 0;
-          padding: 5mm;
-        }
-
-        /* Adjust table for printing */
-        .table {
-          font-size: 9pt;
-          margin: 0;
-          border-collapse: collapse;
-          width: 100%;
-        }
-
-        .table td,
-        .table th {
-          padding: 2px 4px;
-          border: 1px solid #000;
-        }
-
-        /* Header adjustments */
-        h2 {
-          font-size: 14pt;
-          margin: 0 0 5mm 0;
-        }
-
-        /* Force show background colors and images in print */
-        * {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-
-        .content-section {
-          padding: 0;
-          background-color: white;
-          box-shadow: none;
-        }
-      }
-
       /* Add this to the existing style section */
       .invalid-value {
         color: #dc3545 !important;  /* Bootstrap's danger red */
@@ -323,6 +253,89 @@
       .highlight-cell.invalid-value {
         background-color: rgba(220, 53, 69, 0.1) !important;
       }
+
+      /* Classes to hide URL and timestamp in print */
+      .url-display, .timestamp {
+        display: block;
+      }
+      
+      /* Print-specific styles */
+      @media print {
+        /* Page setup with margin for content */
+        @page {
+          size: A4 landscape;
+          margin: 15mm; /* Increased margin for printed output */
+        }
+
+        body {
+          width: 297mm; /* A4 width */
+          height: 210mm; /* A4 height */
+          margin: 0;
+          padding: 0;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        /* Hide non-printable elements */
+        .no-print, .button-container, .url-display, .timestamp {
+          display: none !important;
+        }
+
+        /* Reset container styling for print */
+        .container {
+          width: 100%;
+          max-width: none;
+          margin: 0;
+          padding: 5mm;
+        }
+
+        /* Adjust table for printing */
+        .table {
+          font-size: 9pt;
+          margin: 0;
+          border-collapse: collapse;
+          width: 100%;
+        }
+
+        .table td,
+        .table th {
+          padding: 2px 4px;
+          border: 1px solid #000 !important;
+        }
+
+        /* Header adjustments */
+        h2 {
+          font-size: 14pt;
+          margin: 0 0 5mm 0;
+        }
+
+        /* Force show background colors and images in print */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+
+        .content-section {
+          padding: 0;
+          background-color: white;
+          box-shadow: none;
+        }
+        
+        /* Ensure all table borders are visible and consistent */
+        table, th, td, tr {
+          border: 1px solid #000 !important;
+        }
+        
+        /* Fix for table top border */
+        table {
+          border-top: 1px solid #000 !important;
+          border-collapse: collapse !important;
+        }
+        
+        tbody tr:first-child {
+          border-top: 1px solid #000 !important;
+        }
+      }
     </style>
   </head>
   <body>
@@ -330,7 +343,14 @@
       <div id="pdf-container">
         <div class="content-section">
           <div class="container">
-            <h2>水平ノズル全数検査成績書</h2>
+            <!-- Page title - this will be visible in print -->
+            <h2 class="text-center">水平ノズル全数検査成績書</h2>
+            
+            <!-- URL display - this will be hidden in print -->
+            <div class="url-display no-print" style="text-align: right; font-size: 0.8em; color: #888;">
+              <%= typeof url !== 'undefined' ? url : 'https://suihei-process.vercel.app/summary?selectedFiles=' %>
+            </div>
+            
             <div class="header-info">
               <div>
                 <strong>品名:</strong> 水平ノズル
@@ -393,9 +413,8 @@
         <div class="container">
           <% if (typeof error !== 'undefined' && error) { %>
           <div class="alert alert-danger"><%= error %></div>
-          <% } %> <% if (typeof files !== 'undefined' && files && files.length >
-          0) { %>
-          <!-- Summary table -->
+          <% } %> <% if (typeof files !== 'undefined' && files && files.length > 0) { %>
+          <!-- Summary table with proper structure -->
           <div class="table-responsive">
             <table class="table table-bordered table-hover">
               <thead>
@@ -578,6 +597,12 @@
             <div class="bottom-note" style="margin-top: 10px; text-align: left">
               ＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。
             </div>
+            
+            <!-- Page number - will be styled as no-print in print media -->
+            <div class="page-info no-print">
+              <span class="page-number">1 / 2</span>
+              <span class="timestamp" style="float: right;">2025/03/11 10:28</span>
+            </div>
           </div>
           <% } else { %>
           <div class="no-data">
@@ -594,7 +619,7 @@
       <!-- Buttons positioned at the side of the page - These will be hidden when printing -->
       <div class="button-container no-print">
         <a href="/" class="button-home">ホーム</a>
-        <button onclick="window.print()" class="button-print">印刷</button>
+        <button onclick="printReport()" class="button-print">印刷</button>
         <button onclick="exportToPDF()" class="button-pdf">PDF</button>
       </div>
     </div>
@@ -632,137 +657,181 @@
           });
         });
 
-      // PDF Export Function
-      async function exportToPDF() {
-      try {
-        // Show loading indicator
-        const loadingEl = createLoadingIndicator();
-        document.body.appendChild(loadingEl);
-        
-        console.log("Starting PDF export using print API");
-        
-        // Hide elements that shouldn't be in the PDF
-        const buttonContainer = document.querySelector('.button-container');
-        const originalDisplay = buttonContainer.style.display;
-        buttonContainer.style.display = 'none';
-        
-        // Prepare for printing
-        const originalTitle = document.title;
-        const deliveryDate = document.getElementById('deliveryDatePicker').value;
-        const dateStr = formatDateForFilename(deliveryDate);
-        document.title = `水平ノズル検査_${dateStr}`;
-        
-        // Save the original styles
-        const originalStyles = [];
-        document.querySelectorAll('style, link[rel="stylesheet"]').forEach(style => {
-          originalStyles.push({
-            element: style,
-            media: style.media
-          });
-          
-          // Set to print media
-          style.media = 'print';
+      /**
+       * Enhanced printing function that ensures proper formatting
+       */
+      function printReport() {
+        // Hide URLs and timestamps before printing
+        const urlElements = document.querySelectorAll('.url-display, .timestamp');
+        urlElements.forEach(el => {
+          el.classList.add('no-print');
         });
         
-        // Add print-specific styles
-        const printStyle = document.createElement('style');
-        printStyle.innerHTML = `
-          @media print {
-            @page {
-              size: landscape;
-              margin: 10mm;
-            }
-            
-            body {
-              margin: 0;
-              padding: 0;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            
-            .table td, .table th {
-              padding: 2px 4px;
-              font-size: 10px;
-            }
-            
-            .no-print {
-              display: none !important;
-            }
-            
-            .content-section {
-              margin-bottom: 10px;
-            }
-            
-            /* Force background colors */
-            * {
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-              color-adjust: exact !important;
-            }
+        // Fix table borders
+        const tables = document.querySelectorAll('table');
+        tables.forEach(table => {
+          // Add border styles for consistent appearance
+          table.style.borderCollapse = 'collapse';
+          table.style.border = '1px solid #000';
+          
+          // Ensure top border is present
+          const firstRow = table.querySelector('tbody tr:first-child');
+          if (firstRow) {
+            firstRow.style.borderTop = '1px solid #000';
           }
-        `;
-        document.head.appendChild(printStyle);
+        });
         
-        // Use the browser's print functionality
+        // Small delay to ensure styles are applied
         setTimeout(() => {
           window.print();
+        }, 200);
+      }
+
+      /**
+       * PDF Export Function using browser's print functionality
+       */
+      async function exportToPDF() {
+        try {
+          // Show loading indicator
+          const loadingEl = createLoadingIndicator();
+          document.body.appendChild(loadingEl);
           
-          // Restore original state
-          document.title = originalTitle;
-          buttonContainer.style.display = originalDisplay;
-          document.head.removeChild(printStyle);
+          console.log("Starting PDF export using print API");
           
-          // Restore original media queries
-          originalStyles.forEach(item => {
-            item.element.media = item.media;
+          // Hide elements that shouldn't be in the PDF
+          const buttonContainer = document.querySelector('.button-container');
+          const originalDisplay = buttonContainer.style.display;
+          buttonContainer.style.display = 'none';
+          
+          // Hide URLs and timestamps
+          const urlElements = document.querySelectorAll('.url-display, .timestamp');
+          urlElements.forEach(el => {
+            el.classList.add('no-print');
           });
           
+          // Prepare for printing
+          const originalTitle = document.title;
+          const deliveryDate = document.getElementById('deliveryDatePicker').value;
+          const dateStr = formatDateForFilename(deliveryDate);
+          document.title = `水平ノズル検査_${dateStr}`;
+          
+          // Apply print-specific styles
+          const printStyle = document.createElement('style');
+          printStyle.innerHTML = `
+            @media print {
+              @page {
+                size: A4 landscape;
+                margin: 10mm;
+              }
+              
+              body {
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+              
+              .table {
+                width: 100%;
+                border-collapse: collapse;
+                page-break-inside: avoid;
+                font-size: 9pt;
+              }
+              
+              .table th, .table td {
+                border: 1px solid #000 !important;
+                padding: 2px 4px;
+                text-align: center;
+                vertical-align: middle;
+              }
+              
+              /* Hide URLs and timestamps */
+              .url-display, .timestamp, .no-print {
+                display: none !important;
+              }
+              
+              /* Fix table top border */
+              table {
+                border-top: 1px solid #000 !important;
+              }
+              
+              tbody tr:first-child {
+                border-top: 1px solid #000 !important;
+              }
+            }
+          `;
+          document.head.appendChild(printStyle);
+          
+          // Use the browser's print functionality
+          setTimeout(() => {
+            window.print();
+            
+            // Restore original state
+            document.title = originalTitle;
+            buttonContainer.style.display = originalDisplay;
+            document.head.removeChild(printStyle);
+            
+            // Remove loading indicator
+            document.body.removeChild(loadingEl);
+          }, 500);
+        } catch (error) {
+          console.error('Error preparing for print:', error);
+          alert('印刷の準備中にエラーが発生しました: ' + error.message);
+          
+          // Try to restore state
+          const buttonContainer = document.querySelector('.button-container');
+          if (buttonContainer) buttonContainer.style.display = '';
+          
           // Remove loading indicator
-          document.body.removeChild(loadingEl);
-        }, 500);
-      } catch (error) {
-        console.error('Error preparing for print:', error);
-        alert('印刷の準備中にエラーが発生しました: ' + error.message);
-        
-        // Try to restore state
-        const buttonContainer = document.querySelector('.button-container');
-        if (buttonContainer) buttonContainer.style.display = '';
-        
-        // Remove loading indicator
-        const loadingEl = document.querySelector('.loading-indicator');
-        if (loadingEl) document.body.removeChild(loadingEl);
-      }
-    }
-
-    // Helper functions
-    function formatDateForFilename(dateStr) {
-      if (dateStr) {
-        const parts = dateStr.split('/');
-        if (parts.length === 3) {
-          return parts[0] + parts[1].padStart(2, '0') + parts[2].padStart(2, '0');
+          const loadingEl = document.querySelector('.loading-indicator');
+          if (loadingEl) document.body.removeChild(loadingEl);
         }
       }
-      const today = new Date();
-      return today.getFullYear() +
-            String(today.getMonth() + 1).padStart(2, '0') +
-            String(today.getDate()).padStart(2, '0');
-    }
 
-    function createLoadingIndicator() {
-      const loadingEl = document.createElement('div');
-      loadingEl.style.position = 'fixed';
-      loadingEl.style.top = '0';
-      loadingEl.style.left = '0';
-      loadingEl.style.width = '100%';
-      loadingEl.style.height = '100%';
-      loadingEl.style.backgroundColor = 'rgba(255,255,255,0.8)';
-      loadingEl.style.display = 'flex';
-      loadingEl.style.justifyContent = 'center';
-      loadingEl.style.alignItems = 'center';
-      loadingEl.style.zIndex = '9999';
-      loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
-      return loadingEl;
-    }
+      // Helper functions
+      function formatDateForFilename(dateStr) {
+        if (dateStr) {
+          const parts = dateStr.split('/');
+          if (parts.length === 3) {
+            return parts[0] + parts[1].padStart(2, '0') + parts[2].padStart(2, '0');
+          }
+        }
+        const today = new Date();
+        return today.getFullYear() +
+              String(today.getMonth() + 1).padStart(2, '0') +
+              String(today.getDate()).padStart(2, '0');
+      }
+
+      function createLoadingIndicator() {
+        const loadingEl = document.createElement('div');
+        loadingEl.className = 'loading-indicator';
+        loadingEl.style.position = 'fixed';
+        loadingEl.style.top = '0';
+        loadingEl.style.left = '0';
+        loadingEl.style.width = '100%';
+        loadingEl.style.height = '100%';
+        loadingEl.style.backgroundColor = 'rgba(255,255,255,0.8)';
+        loadingEl.style.display = 'flex';
+        loadingEl.style.justifyContent = 'center';
+        loadingEl.style.alignItems = 'center';
+        loadingEl.style.zIndex = '9999';
+        loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
+        return loadingEl;
+      }
+      
+      // Set up event listeners when the document is ready
+      document.addEventListener('DOMContentLoaded', function() {
+        // Add additional event listeners if needed
+        
+        // Fix for table top borders - ensure all tables have proper borders
+        const tables = document.querySelectorAll('table');
+        tables.forEach(table => {
+          table.style.borderCollapse = 'collapse';
+          table.style.border = '1px solid #000';
+        });
+      });
     </script>
   </body>
 </html>
