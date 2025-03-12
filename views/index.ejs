@@ -1,4 +1,4 @@
-<!-- Simplified index.ejs - Fixed token '=' syntax error -->
+<!-- Final index.ejs with corrected layout -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -20,24 +20,53 @@
         max-width: 1200px;
         margin-top: 2rem;
       }
-      .upload-form,
-      .summary-form {
+      
+      /* Form styling */
+      .form-section {
+        margin-bottom: 2rem;
+      }
+      
+      .file-selection-form {
         padding: 1.5rem;
         background-color: #f8f9fa;
         border-radius: 5px;
+        border: 1px solid #dee2e6;
+        height: 100%;
+      }
+      
+      .upload-form {
+        padding: 1.5rem;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        border: 1px solid #dee2e6;
         height: 100%;
         display: flex;
         flex-direction: column;
+        justify-content: center;
+        align-items: center;
       }
-      .nav-links {
-        margin-bottom: 2rem;
+      
+      .action-buttons {
+        padding: 1.5rem;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        border: 1px solid #dee2e6;
+        height: 100%;
       }
+      
+      .action-buttons .btn {
+        margin-bottom: 0.5rem;
+        width: 100%;
+      }
+      
+      /* File grid styles */
       .file-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
         gap: 1rem;
-        margin-top: 2rem;
+        margin-top: 1rem;
       }
+      
       .file-card {
         background-color: #f8f9fa;
         border-radius: 8px;
@@ -47,43 +76,52 @@
         cursor: pointer;
         border: 2px solid #dee2e6;
         position: relative;
-        user-select: none; /* Prevent text selection during interactions */
+        user-select: none;
       }
+      
       .file-card:hover {
         box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         border-color: #adb5bd;
       }
+      
       .file-card.selected {
         background-color: #e3f2fd;
         border-color: #0d6efd;
         box-shadow: 0 0 0 2px #0d6efd;
       }
+      
       .file-card.selected .file-number {
         color: #000;
       }
+      
       .file-number {
         font-size: 2.5rem;
         font-weight: bold;
         color: #0d6efd;
         margin-bottom: 0.5rem;
       }
+      
       .weight-form {
         margin-top: 0.5rem;
         display: flex;
         justify-content: center;
       }
+      
       .weight-input {
         width: 80px;
         font-size: 0.9rem;
         padding: 0.25rem 0.5rem;
         border-radius: 4px;
         border: 1px solid #ced4da;
+        text-align: center;
       }
+      
       .file-card .file-content {
         display: flex;
         flex-direction: column;
         align-items: center;
       }
+      
       .delete-overlay {
         position: absolute;
         top: 0;
@@ -101,27 +139,40 @@
         pointer-events: none;
         border-radius: 6px;
       }
+      
       .file-card.deleting .delete-overlay {
         opacity: 1;
       }
 
-      /* Add this to remove the up/down arrows */
+      /* Remove the up/down arrows from number inputs */
       .weight-input::-webkit-outer-spin-button,
       .weight-input::-webkit-inner-spin-button {
         -webkit-appearance: none;
         margin: 0;
       }
+      
       .weight-input[type="number"] {
         -moz-appearance: textfield;
         appearance: textfield;
       }
-
-      .upload-form {
-        justify-content: space-between;
+      
+      /* Three-column layout */
+      .top-row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
       }
-
-      .summary-form form {
-        margin-top: auto;
+      
+      .column-left {
+        flex: 0 0 42%;
+      }
+      
+      .column-middle {
+        flex: 0 0 33%;
+      }
+      
+      .column-right {
+        flex: 0 0 25%;
       }
     </style>
   </head>
@@ -138,40 +189,39 @@
       </div>
       <h1 class="mb-4">水平ノズル検査</h1>
 
-      <!-- Summary Report and Upload forms in a row -->
-      <div class="row mb-4">
-        <!-- Summary Report form -->
-        <div class="col-md-8">
-          <div class="summary-form h-100">
+      <!-- Top row with three columns -->
+      <div class="top-row">
+        <!-- Left: File Selection Form -->
+        <div class="column-left">
+          <div class="file-selection-form">
             <h3>ファイル選択</h3>
-            <p>始めのファイル番号と終わりの番号を入力してください</p>
+            <p>始めのファイル番号とファイル数を入力してください</p>
             <form id="rangeSelectForm" onsubmit="selectFileRange(event)">
               <div class="row">
                 <div class="col-md-5">
-                  <label for="minFile" class="form-label">始めのファイル</label>
+                  <label for="startFile" class="form-label">始めのファイル</label>
                   <input
                     type="number"
                     class="form-control"
-                    id="minFile"
-                    name="minFile"
+                    id="startFile"
+                    name="startFile"
                     placeholder="e.g., 240"
                   />
                 </div>
                 <div class="col-md-5">
-                  <label for="maxFile" class="form-label"
-                    >終わりのファイル</label
-                  >
+                  <label for="fileCount" class="form-label">ファイル数</label>
                   <input
                     type="number"
                     class="form-control"
-                    id="maxFile"
-                    name="maxFile"
-                    placeholder="e.g., 250"
+                    id="fileCount"
+                    name="fileCount"
+                    placeholder="e.g., 10"
+                    min="1"
                   />
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
                   <button type="submit" class="btn btn-info w-100">
-                    ファイル選択
+                    選択
                   </button>
                 </div>
               </div>
@@ -179,56 +229,81 @@
           </div>
         </div>
 
-        <!-- Upload form -->
-        <div class="col-md-4">
-          <div class="upload-form h-100">
+        <!-- Middle: Data Upload Form -->
+        <div class="column-middle">
+          <div class="upload-form">
+            <h4 class="mb-3">測定データアップロード</h4>
             <form
               action="/upload"
               method="post"
               enctype="multipart/form-data"
-              class="d-flex justify-content-between align-items-center h-100"
             >
-              <h2 class="mb-0">測定データアップロード</h2>
-              <div class="d-flex align-items-center">
-                <input
-                  type="file"
-                  id="files"
-                  name="files"
-                  accept=".txt"
-                  multiple
-                  required
-                  style="display: none"
-                  onchange="this.form.submit()"
-                />
-                <input type="hidden" name="overwriteAction" value="overwrite" />
-                <label
-                  for="files"
-                  class="btn btn-primary mb-0 d-flex align-items-center"
+              <input
+                type="file"
+                id="files"
+                name="files"
+                accept=".txt"
+                multiple
+                required
+                style="display: none"
+                onchange="this.form.submit()"
+              />
+              <input type="hidden" name="overwriteAction" value="overwrite" />
+              <label
+                for="files"
+                class="btn btn-primary d-flex align-items-center justify-content-center"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  fill="currentColor"
+                  class="bi bi-upload me-2"
+                  viewBox="0 0 16 16"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    class="bi bi-upload me-2"
-                    viewBox="0 0 16 16"
-                  >
-                    <path
-                      d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"
-                    />
-                    <path
-                      d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"
-                    />
-                  </svg>
-                  アップロード
-                </label>
-              </div>
+                  <path
+                    d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"
+                  />
+                  <path
+                    d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"
+                  />
+                </svg>
+                アップロード
+              </label>
             </form>
+          </div>
+        </div>
+
+        <!-- Right: Action Buttons -->
+        <div class="column-right">
+          <div class="action-buttons">
+            <button id="saveAllWeightsBtn" class="btn btn-success">
+              重量データ保存
+            </button>
+            <button id="viewSelectedBtn" class="btn btn-info" disabled>
+              検査成績書作成へ
+            </button>
+            <button id="exportWeightsBtn" class="btn btn-secondary">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-download me-1" viewBox="0 0 16 16">
+                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+              </svg>
+              Data Export
+            </button>
+            <button id="importWeightsBtn" class="btn btn-secondary">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-upload me-1" viewBox="0 0 16 16">
+                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
+              </svg>
+              Data Import
+            </button>
+            <!-- Hidden file input for import -->
+            <input type="file" id="weightFileInput" accept=".json" style="display: none;" />
           </div>
         </div>
       </div>
 
-      <!-- Add this hidden form for the View Selected button -->
+      <!-- Hidden form for View Selected button -->
       <form
         id="viewSelectedForm"
         action="/summary"
@@ -243,40 +318,10 @@
         />
       </form>
 
-      <!-- File grid -->
-      <div class="d-flex justify-content-between align-items-center">
-        <h2>ファイル一覧</h2>
-        <div>
-          <button id="saveAllWeightsBtn" class="btn btn-success me-2">
-            重量データ保存
-          </button>
-          <button id="viewSelectedBtn" class="btn btn-info" disabled>
-            検査成績書作成へ
-          </button>
-          <!-- Add this button next to the existing buttons in the file list header section -->
-          <button id="exportWeightsBtn" class="btn btn-secondary me-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-download me-1" viewBox="0 0 16 16">
-              <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-              <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
-            </svg>
-            Data Export
-          </button>
+      <!-- File list heading -->
+      <h2 class="mb-3">ファイル一覧</h2>
 
-                    <!-- Add this button next to the export button -->
-          <button id="importWeightsBtn" class="btn btn-secondary me-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-upload me-1" viewBox="0 0 16 16">
-              <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-              <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
-            </svg>
-            Data Import
-          </button>
-
-          <!-- Add this file input element, hidden but will be triggered by the import button -->
-          <input type="file" id="weightFileInput" accept=".json" style="display: none;" />
-
-        </div>
-      </div>
-
+      <!-- File grid display -->
       <% if (files && files.length > 0) { %>
       <div class="file-grid">
         <% var sortedFiles = []; files.forEach(function(file) {
@@ -305,7 +350,6 @@
                 step="0.1"
                 value="<%= file.weight || '' %>"
                 placeholder="Weight (g)"
-                style="text-align: center"
               />
             </div>
             <div class="view-data-link mt-2">
@@ -347,7 +391,7 @@
         let pressTimer;
         let isDragging = false;
 
-        // Add this function to handle weight saving
+        // Weight saving function
         async function saveWeight(fileId, weight) {
           try {
             if (!weight || isNaN(weight)) {
@@ -409,7 +453,7 @@
           .querySelectorAll(".weight-input")
           .forEach((input, index, inputs) => {
             input.addEventListener("change", async function (e) {
-              const weight = this.value;
+              let weight = this.value;
               const fileId = this.dataset.fileId;
 
               if (weight && !isNaN(weight)) {
@@ -436,6 +480,11 @@
               }
             });
 
+            // Handle focus event to set cursor at the end
+            input.addEventListener("focus", function () {
+              this.setSelectionRange(this.value.length, this.value.length);
+            });
+
             // Handle Enter key separately
             input.addEventListener("keypress", function (e) {
               if (e.key === "Enter") {
@@ -450,7 +499,7 @@
             });
           });
 
-        // Fix Save All Weights functionality
+        // Save All Weights button
         const saveAllWeightsBtn = document.getElementById("saveAllWeightsBtn");
         saveAllWeightsBtn.addEventListener("click", async function () {
           try {
@@ -501,7 +550,8 @@
                 }
                 weightDisplay.textContent = `${weight} g`;
               });
-              // Use a more subtle notification instead of alert
+              
+              // Show success notification
               const notification = document.createElement("div");
               notification.className =
                 "alert alert-success position-fixed top-0 start-50 translate-middle-x mt-3";
@@ -518,7 +568,7 @@
           }
         });
 
-        // Helper function to update the summary form with selected files
+        // Summary form update function
         function updateSummaryForm() {
           const viewSelectedBtn = document.getElementById("viewSelectedBtn");
           const selectedFilesInput =
@@ -529,18 +579,14 @@
             viewSelectedBtn.textContent = `選択されたファイル：${selectedFiles.size}`;
             const selectedFilesArray = Array.from(selectedFiles);
             selectedFilesInput.value = selectedFilesArray.join(",");
-            console.log(
-              "Setting selected files input value:",
-              selectedFilesInput.value
-            ); // Debug log
           } else {
             viewSelectedBtn.disabled = true;
-            viewSelectedBtn.textContent = "View Selected Files";
+            viewSelectedBtn.textContent = "検査成績書作成へ";
             selectedFilesInput.value = "";
           }
         }
 
-        // Function to handle file selection
+        // File selection toggle function
         function toggleFileSelection(card) {
           const fileId = card.dataset.fileId;
           if (card.classList.contains("selected")) {
@@ -553,17 +599,20 @@
           updateSummaryForm();
         }
 
-        // Handle range selection
+        // File range selection function
         window.selectFileRange = function (event) {
           event.preventDefault();
 
-          const minFile = parseInt(document.getElementById("minFile").value);
-          const maxFile = parseInt(document.getElementById("maxFile").value);
+          const startFile = parseInt(document.getElementById("startFile").value);
+          const fileCount = parseInt(document.getElementById("fileCount").value);
 
-          if (isNaN(minFile) || isNaN(maxFile)) {
-            alert("Please enter valid file numbers");
+          if (isNaN(startFile) || isNaN(fileCount) || fileCount < 1) {
+            alert("有効なファイル番号とファイル数を入力してください");
             return;
           }
+
+          // Calculate the end file number based on start + count - 1
+          const endFile = startFile + fileCount - 1;
 
           // Clear previous selections
           selectedFiles.clear();
@@ -574,7 +623,7 @@
             const filename = card.dataset.filename;
             const fileNumber = parseInt(filename.match(/^\d+/)?.[0]);
 
-            if (fileNumber >= minFile && fileNumber <= maxFile) {
+            if (fileNumber >= startFile && fileNumber <= endFile) {
               card.classList.add("selected");
               selectedFiles.add(card.dataset.fileId);
             }
@@ -583,7 +632,7 @@
           updateSummaryForm();
         };
 
-        // Handle View Selected button click
+        // View Selected button handler
         document
           .getElementById("viewSelectedBtn")
           .addEventListener("click", function (e) {
@@ -593,7 +642,7 @@
             }
           });
 
-        // Add click handlers to file cards
+        // File card click handlers
         fileCards.forEach((card) => {
           card.addEventListener("click", function (e) {
             if (!e.target.closest("form")) {
@@ -601,7 +650,7 @@
             }
           });
 
-          // Handle long press for deletion
+          // Long press for deletion
           card.addEventListener("mousedown", function (e) {
             if (e.target.closest("form")) return;
 
@@ -641,7 +690,7 @@
                     if (result.success) {
                       // Remove the card from UI
                       card.remove();
-                      // Optional: Show success message
+                      // Show success message
                       const notification = document.createElement("div");
                       notification.className =
                         "alert alert-success position-fixed top-0 start-50 translate-middle-x mt-3";
@@ -669,12 +718,6 @@
           });
         });
 
-        function viewFileData(fileId) {
-          window.location.href = `/fileData/${fileId}`;
-        }
-      });
-
-        // Add this to the existing JavaScript section at the bottom of index.ejs
         // Export weights functionality
         const exportWeightsBtn = document.getElementById("exportWeightsBtn");
         if (exportWeightsBtn) {
@@ -837,7 +880,10 @@
             // Reset the file input so the same file can be selected again
             this.value = '';
           });
-        }
+      }
+      });
     </script>
   </body>
 </html>
+
+            
