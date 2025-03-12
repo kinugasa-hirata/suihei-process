@@ -280,6 +280,19 @@
           display: none !important;
         }
 
+        .editable {
+          border: none !important;
+          border-bottom: none !important;
+        }
+        
+        /* Hide border and styling for date input when printing */
+        .date-input, #deliveryDatePicker {
+          border: none !important;
+          background: transparent !important;
+          -webkit-appearance: none !important;
+          appearance: none !important;
+        }
+
         /* Reset container styling for print */
         .container {
           width: 100%;
