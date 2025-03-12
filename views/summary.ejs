@@ -258,74 +258,96 @@
         display: block;
       }
       
-      /* Print-specific styles with important flags */
-    @media print {
-      /* Reset table for print */
-      .table {
-        border-collapse: collapse !important;
-        border: 2px solid #000 !important;
-        margin: 0 !important;
-        width: 100% !important;
+      /* Print-specific styles */
+      @media print {
+        /* Page setup with margin for content */
+        @page {
+          size: A4 landscape;
+          margin: 15mm; /* Increased margin for printed output */
+        }
+
+        body {
+          width: 297mm; /* A4 width */
+          height: 210mm; /* A4 height */
+          margin: 0;
+          padding: 0;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        /* Hide non-printable elements */
+        .no-print, .button-container, .url-display, .timestamp {
+          display: none !important;
+        }
+
+        /* Reset container styling for print */
+        .container {
+          width: 100%;
+          max-width: none;
+          margin: 0;
+          padding: 5mm;
+        }
+
+        /* Adjust table for printing */
+        .table {
+          font-size: 9pt;
+          margin: 0;
+          border-collapse: collapse;
+          width: 100%;
+          page-break-inside: auto;
+          border: 1px solid #000 !important;
+        }
+
+        .table td,
+        .table th {
+          padding: 2px 4px;
+          border: 1px solid #000 !important;
+        }
+
+        .table thead tr:last-child {
+          display: none !important;
+        }
+
+        .table tr {
+          page-break-inside: avoid;
+          page-break-after: auto;
+          border: 1px solid #000 !important;
+          border-top: 1px solid #000 !important;
+        }
+
+        /* Header adjustments */
+        h2 {
+          font-size: 14pt;
+          margin: 0 0 5mm 0;
+        }
+
+        /* Force show background colors and images in print */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+
+        .content-section {
+          padding: 0;
+          background-color: white;
+          box-shadow: none;
+        }
+        
+        /* Ensure all table borders are visible and consistent */
+        table, th, td, tr {
+          border: 1px solid #000 !important;
+        }
+        
+        /* Fix for table top border */
+        table {
+          border-top: 1px solid #000 !important;
+          border-collapse: collapse !important;
+        }
+        
+        tbody tr:first-child {
+          border-top: 1px solid #000 !important;
+        }
       }
-      
-      /* Target thead specifically */
-      .table thead {
-        border-bottom: 2px solid #000 !important;
-        display: table-header-group !important;
-      }
-      
-      .table thead tr {
-        border-bottom: 1px solid #000 !important;
-      }
-      
-      /* Make first thead row have strong top border */
-      .table thead tr:first-child {
-        border-top: 2px solid #000 !important;
-      }
-      
-      .table thead tr:first-child td {
-        border-top: 2px solid #000 !important;
-      }
-      
-      /* Force all borders to be visible */
-      .table tbody, .table thead, .table tr, .table td, .table th {
-        border: 1px solid #000 !important;
-        page-break-inside: avoid !important;
-      }
-      
-      /* Specifically target the first row of the body */
-      .table tbody tr:first-child {
-        border-top: 2px solid #000 !important;
-      }
-      
-      .table tbody tr:first-child td {
-        border-top: 2px solid #000 !important;
-      }
-      
-      /* Add a box around the table */
-      #pdf-container {
-        border: none !important;
-      }
-      
-      /* Add a frame around the table container */
-      .table-responsive {
-        border: 1px solid transparent;
-        padding-top: 1px; /* Create space for the top border */
-        position: relative;
-      }
-      
-      /* Add extra pseudo-element for top border support */
-      .table-responsive::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background-color: #000;
-        z-index: 10;
-      }
-    }
     </style>
   </head>
   <body>
@@ -400,31 +422,27 @@
           <div class="alert alert-danger"><%= error %></div>
           <% } %> <% if (typeof files !== 'undefined' && files && files.length > 0) { %>
           <!-- Summary table with proper structure -->
-          <div class="table-responsive table-frame">
-            <table class="table table-bordered table-hover inspection-table">
-              <!-- Add a hidden row with a visible top border for print purposes -->
-              <tr class="print-only-border-row" style="display: none; height: 0;">
-                <td colspan="16" style="height: 0; padding: 0; border-top: 2px solid #000 !important;"></td>
-              </tr>
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
               <thead>
                 <!-- Specification rows -->
-                <tr class="top-border-row">
-                  <td style="border-top: 2px solid #000;">図面寸法</td>
-                  <td style="border-top: 2px solid #000;">8.2</td>
-                  <td style="border-top: 2px solid #000;">37.5</td>
-                  <td style="border-top: 2px solid #000;">15.9</td>
-                  <td style="border-top: 2px solid #000;">24.1</td>
-                  <td style="border-top: 2px solid #000;">Φ11.2</td>
-                  <td style="border-top: 2px solid #000;">Φ3.2全貫通</td>
-                  <td style="border-top: 2px solid #000;">Φ8.0</td>
-                  <td style="border-top: 2px solid #000;">深さ5.0</td>
-                  <td style="border-top: 2px solid #000;">P.C.D 30</td>
-                  <td style="border-top: 2px solid #000;">Φ155.4</td>
-                  <td style="border-top: 2px solid #000;">83.1</td>
-                  <td style="border-top: 2px solid #000;">Φ122.3</td>
-                  <td style="border-top: 2px solid #000;">嵌め合い</td>
-                  <td style="border-top: 2px solid #000;">目視点検</td>
-                  <td style="border-top: 2px solid #000;">（参考値）</td>
+                <tr>
+                  <td>図面寸法</td>
+                  <td>8.2</td>
+                  <td>37.5</td>
+                  <td>15.9</td>
+                  <td>24.1</td>
+                  <td>Φ11.2</td>
+                  <td>Φ3.2全貫通</td>
+                  <td>Φ8.0</td>
+                  <td>深さ5.0</td>
+                  <td>P.C.D 30</td>
+                  <td>Φ155.4</td>
+                  <td>83.1</td>
+                  <td>Φ122.3</td>
+                  <td>嵌め合い</td>
+                  <td>目視点検</td>
+                  <td>（参考値）</td>
                 </tr>
                 <tr>
                   <td>寸法公差</td>
@@ -649,7 +667,7 @@
           el.classList.add('no-print');
         });
 
-        // Hide the header row with column labels
+              // Hide the header row with column labels
         const headerRow = document.querySelector('.table thead tr:last-child');
         if (headerRow) {
           headerRow.classList.add('no-print');
@@ -657,80 +675,24 @@
           headerRow.style.display = 'none';
         }
         
-        // Enhanced table border fix
+        // Fix table borders
         const tables = document.querySelectorAll('table');
         tables.forEach(table => {
-          // Add a temporary wrapper with border to ensure top border is visible
-          const wrapper = document.createElement('div');
-          wrapper.style.border = '1px solid #000';
-          wrapper.style.borderBottom = 'none'; // Remove bottom border from wrapper
-          table.parentNode.insertBefore(wrapper, table);
-          wrapper.appendChild(table);
-          
-          // Apply strong border styles directly to table elements
+          // Add border styles for consistent appearance
           table.style.borderCollapse = 'collapse';
           table.style.border = '1px solid #000';
           
-          // Apply borders to all cells
-          const allCells = table.querySelectorAll('th, td');
-          allCells.forEach(cell => {
-            cell.style.border = '1px solid #000';
-          });
-          
-          // Specifically target thead and first row
-          const thead = table.querySelector('thead');
-          if (thead) {
-            thead.style.borderBottom = '2px solid #000';
-            const theadRows = thead.querySelectorAll('tr');
-            theadRows.forEach(row => {
-              row.style.borderTop = '1px solid #000';
-              row.style.borderBottom = '1px solid #000';
-            });
-          }
-          
-          // Ensure first body row has top border
-          const firstBodyRow = table.querySelector('tbody tr:first-child');
-          if (firstBodyRow) {
-            firstBodyRow.style.borderTop = '2px solid #000 !important';
-            
-            // Add extra emphasis to cells in the first row
-            const firstRowCells = firstBodyRow.querySelectorAll('td');
-            firstRowCells.forEach(cell => {
-              cell.style.borderTop = '2px solid #000';
-            });
+          // Ensure top border is present
+          const firstRow = table.querySelector('tbody tr:first-child');
+          if (firstRow) {
+            firstRow.style.borderTop = '1px solid #000';
           }
         });
-        
-        // Apply additional styles to force print rendering
-        const style = document.createElement('style');
-        style.textContent = `
-          @media print {
-            table { border-collapse: collapse !important; border: 2px solid #000 !important; }
-            table * { border-collapse: collapse !important; }
-            thead { border-bottom: 2px solid #000 !important; }
-            tbody tr:first-child { border-top: 2px solid #000 !important; }
-            th, td { border: 1px solid #000 !important; }
-          }
-        `;
-        document.head.appendChild(style);
         
         // Small delay to ensure styles are applied
         setTimeout(() => {
           window.print();
-          
-          // Clean up the wrapper and style after printing
-          setTimeout(() => {
-            tables.forEach(table => {
-              if (table.parentNode.tagName.toLowerCase() === 'div' && 
-                  table.parentNode.style.border === '1px solid #000') {
-                const wrapper = table.parentNode;
-                wrapper.parentNode.insertBefore(table, wrapper);
-                wrapper.parentNode.removeChild(wrapper);
-              }
-            });
-            document.head.removeChild(style);
-          }, 1000);
-        }, 300);
+        }, 200);
       }
     </script>
   </body>
