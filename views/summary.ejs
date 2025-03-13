@@ -86,30 +86,40 @@
         padding: 0.2rem !important; /* Reduced from 1rem */
         margin: 0 !important;
         max-height: 150px !important; /* Force max height to reduce space */
+        margin-bottom: -10px !important;
       }
+
 
       /* UPDATED: Minimized header-info spacing */
       .header-info {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin: 0 !important; /* Changed from 0.3px */
-        padding: 0 !important; /* Changed from 0.2px */
-        height: auto !important; /* Control height */
-        max-height: 30px !important; /* Limit height */
+        margin: 2px 0 !important; /* Small margin instead of 0 */
+        padding: 1px 0 !important; /* Small padding instead of 0 */
+        line-height: 1.3 !important; /* Increased for readability */
       }
 
+
+      .header-info div[style="white-space: nowrap"] {
+       flex-shrink: 0;
+      }
       .header-info:nth-child(3) {
         position: relative;
-        top: -20px; /* Move up by 10px */
-        margin-bottom: -20px !important; /* Compensate for the space */
+        top: -10px; /* Move up by 10px */
+        margin-bottom: -10px !important; /* Compensate for the space */
+      }
+
+      .header-info strong, .header-info span {
+        margin-right: 3px !important; /* Add some space between elements */
       }
 
       .company-info {
         font-weight: bold;
         font-size: 1.2em;
         position: relative;
-        top: -20px; /* Move up by 10px */
+        top: -5px; /* Move up by 10px */
+        margin-bottom: 0 !important;
       }
 
       .editable {
@@ -142,18 +152,14 @@
       .unit-note {
         text-align: right;
         font-weight: bold;
-        margin: 0 !important;
-        padding: 0 !important;
-        position: relative;
-        top: -20px; /* Move up by 10px */
-        margin-bottom: -20px !important; /* Compensate for the space */
+        margin: 2px 0 !important;
+        line-height: 1.3 !important;
       }
       
       /* UPDATED: Reduced environment-note spacing */
       .environment-note {
-        margin: 0 !important;
-        padding: 0 !important;
-        line-height: 1.2 !important; /* Reduced line height */
+        margin: 3px 0 !important;
+        line-height: 1.3 !important; /* Better readability */
       }
 
       /* Table styles */
@@ -276,9 +282,8 @@
 
       /* UPDATED: Reduced page title spacing */
       h2.text-center {
-        margin: 0 0 2px 0 !important; /* Reduced margins */
-        padding: 0 !important;
-        line-height: 1.2 !important; /* Reduced line height */
+        margin: 3px 0 5px 0 !important; /* Maintain some space for readability */
+        line-height: 1.3 !important;
       }
 
       /* Add this to the existing style section */
@@ -315,11 +320,34 @@
       }
       
       /* Force minimal spacing between content-section and table */
-      .content-section + .container {
-        margin-top: 0 !important;
-        padding-top: 0 !important;
+      .content-section {
+        padding: 5px !important; /* Small padding instead of 0 */
+        margin: 0 !important;
       }
-      
+
+      div[style="white-space: nowrap"] {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 3px; /* Add small gaps between elements */
+      }
+
+      strong {
+        margin-right: 2px !important;
+        margin-left: 4px !important; /* Add more space before new labels */
+      }
+
+      /* Specific adjustment for the button section */
+      .header-info:last-of-type {
+        height: 20px !important; /* Limit height but keep button visible */
+        margin-bottom: 0 !important;
+      }
+
+      /* Quick approve button adjustment */
+      #quickApproveButton {
+        position: relative;
+        top: -5px;
+      }
+            
       /* Print-specific styles */
       @media print {
         /* Page setup with margin for content */
