@@ -132,11 +132,14 @@
 
       /* UPDATED: Minimized unit-note spacing */
       .unit-note {
-        text-align: right;
-        font-weight: bold;
-        margin: 0 !important; /* Added zero margin */
-        padding: 0 !important; /* Added zero padding */
-      }
+  text-align: right;
+  font-weight: bold;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: relative;
+  top: -10px; /* Move up by 10px */
+  margin-bottom: -10px !important; /* Compensate for the space */
+}
       
       /* UPDATED: Reduced environment-note spacing */
       .environment-note {
