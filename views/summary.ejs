@@ -322,6 +322,15 @@
         padding-bottom: 5px !important;
         position: relative;
       }
+
+      /* Always hide the column labels row (Filename, A, B, C...) */
+      .table thead tr:last-child, 
+      .column-labels-row,
+      tr.print-hide {
+        display: none !important;
+      }
+
+
       
       /* Print-specific styles */
       @media print {
