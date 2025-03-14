@@ -1067,16 +1067,16 @@ app.get('/export-pdf', async (req, res) => {
     const deliveryDate = req.query.deliveryDate || '';
     
     let client;
-    let query;
-    let params;
-    let filesResult;
-    
+
     try {
       client = await pool.connect();
       
-      // Same file selection logic as in summary route
+      // File selection logic (keep this part as is)
+      let query;
+      let params;
+      
       if (minFile && maxFile) {
-        // Use the file number range query
+        // Use file number range query (keep this part as is)
         query = `
           SELECT f.id, f.filename, fw.weight, f.uploaded_at
           FROM files f
@@ -1096,7 +1096,7 @@ app.get('/export-pdf', async (req, res) => {
         `;
         params = [minFile, maxFile];
       } else if (selectedFiles) {
-        // Handle individually selected files
+        // Handle individually selected files (keep this part as is)
         const selectedFileArray = selectedFiles.split(",").filter((id) => id);
         if (selectedFileArray.length > 0) {
           const placeholders = selectedFileArray
@@ -1116,21 +1116,17 @@ app.get('/export-pdf', async (req, res) => {
           `;
           params = selectedFileArray;
         } else {
-          // No files selected
           return res.status(400).send('ファイルが選択されていません');
         }
       } else {
-        // No selection criteria provided
         return res.status(400).send('ファイルが選択されていません');
       }
       
-      filesResult = await client.query(query, params);
+      const filesResult = await client.query(query, params);
       
       if (filesResult.rows.length === 0) {
-        // No files found
         return res.status(404).send('該当するファイルが見つかりません');
       }
-      
       // Define the highlighted cells with UPDATED coordinates (same as in summary route)
       const cellCoordinates = [
         { row: 2, col: 4, label: "A" },
@@ -1333,6 +1329,11 @@ app.get('/export-pdf', async (req, res) => {
       
       // Send the PDF
       res.send(pdfBuffer);
+
+      return res.status(400).json({
+        error: "PDFサーバー生成は現在利用できません。ブラウザのPDF印刷機能を使用してください。",
+        suggestion: "ブラウザで「印刷」ボタンを使用してPDFに保存してください。"
+      });
       
     } catch (err) {
       console.error("Error generating PDF:", err);

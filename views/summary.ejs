@@ -797,7 +797,8 @@
         }, 200);
       }
 
-      // Add this in the script section at the bottom of summary.ejs
+            // This code should replace the exportPDF function in your summary.ejs file
+
       function exportPDF() {
         // Show loading indicator
         const loadingEl = document.createElement("div");
@@ -814,38 +815,106 @@
         loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
         document.body.appendChild(loadingEl);
 
-        // Get all relevant parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const queryParams = {};
-        
-        // Copy all existing query parameters
-        for (const [key, value] of urlParams.entries()) {
-          queryParams[key] = value;
-        }
-        
-        // Add the inspector name
-        queryParams.inspector = document.getElementById('inspector').textContent;
-        
-        // Add the delivery date if it exists
-        const deliveryDateEl = document.getElementById('deliveryDatePicker');
-        if (deliveryDateEl && deliveryDateEl.value) {
-          queryParams.deliveryDate = deliveryDateEl.value;
-        }
-        
-        // Create query string
-        const queryString = Object.keys(queryParams)
-          .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(queryParams[key])}`)
-          .join('&');
-        
-        // Request PDF from server
-        window.location.href = `/export-pdf?${queryString}`;
-        
-        // Remove loading indicator after a short delay
-        setTimeout(() => {
-          if (document.body.contains(loadingEl)) {
+        try {
+          // Prepare the document before generating PDF
+          prepareForPDF();
+          
+          // Create an instance of jsPDF
+          const pdf = new jspdf.jsPDF({
+            orientation: 'landscape',
+            unit: 'mm',
+            format: 'a4'
+          });
+          
+          // Add Japanese font support
+          addJapaneseFontSupport(pdf);
+          
+          // Get the content container
+          const element = document.getElementById('pdf-container');
+          
+          // Generate PDF with html2canvas
+          html2canvas(element, {
+            scale: 2, // Higher scale for better quality
+            useCORS: true,
+            logging: false,
+            allowTaint: true,
+            backgroundColor: '#ffffff'
+          }).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            
+            // Add image to PDF (A4 landscape dimensions: 297mm x 210mm)
+            const imgWidth = 287; // leaving some margin
+            const imgHeight = canvas.height * imgWidth / canvas.width;
+            
+            pdf.addImage(imgData, 'PNG', 5, 5, imgWidth, imgHeight);
+            
+            // Save the PDF
+            const today = new Date();
+            const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+            pdf.save(`水平ノズル検査成績書_${dateStr}.pdf`);
+            
+            // Restore the document after PDF generation
+            restoreAfterPDF();
+            
+            // Remove loading indicator
             document.body.removeChild(loadingEl);
+          });
+        } catch (error) {
+          console.error("Error generating PDF:", error);
+          alert("PDF生成中にエラーが発生しました。ブラウザのコンソールで詳細を確認してください。");
+          document.body.removeChild(loadingEl);
+        }
+      }
+
+      // Prepare the document for PDF export
+      function prepareForPDF() {
+        // Hide elements not needed in PDF
+        document.querySelectorAll('.no-print').forEach(el => {
+          el.style.display = 'none';
+        });
+        
+        // Hide column labels row
+        const headerRow = document.querySelector('.table thead tr:last-child');
+        if (headerRow) {
+          headerRow.style.display = 'none';
+        }
+        
+        // Ensure table borders are visible
+        document.querySelectorAll('table, th, td').forEach(el => {
+          el.style.border = '1px solid #000';
+        });
+        
+        // Make sure the content container has a white background
+        const container = document.getElementById('pdf-container');
+        if (container) {
+          container.style.backgroundColor = 'white';
+        }
+      }
+
+      // Restore the document after PDF export
+      function restoreAfterPDF() {
+        // Restore hidden elements
+        document.querySelectorAll('.no-print').forEach(el => {
+          el.style.display = '';
+        });
+        
+        // Restore column labels row
+        const headerRow = document.querySelector('.table thead tr:last-child');
+        if (headerRow) {
+          headerRow.style.display = '';
+        }
+      }
+
+      // Add Japanese font support to the PDF
+      function addJapaneseFontSupport(pdf) {
+        try {
+          // Use the Japanese font support from the imported library
+          if (typeof japaneseFont !== 'undefined') {
+            japaneseFont.addFontToDocument(pdf);
           }
-        }, 3000);
+        } catch (error) {
+          console.warn("Japanese font support not available:", error);
+        }
       }
     </script>
   </body>
