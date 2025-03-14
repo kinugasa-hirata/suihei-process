@@ -865,180 +865,180 @@
       // This code should replace the exportPDF function in your summary.ejs file
 
       function exportPDF() {
-        // Show loading indicator
-        const loadingEl = document.createElement("div");
-        loadingEl.style.position = "fixed";
-        loadingEl.style.top = "0";
-        loadingEl.style.left = "0";
-        loadingEl.style.width = "100%";
-        loadingEl.style.height = "100%";
-        loadingEl.style.backgroundColor = "rgba(255,255,255,0.8)";
-        loadingEl.style.display = "flex";
-        loadingEl.style.justifyContent = "center";
-        loadingEl.style.alignItems = "center";
-        loadingEl.style.zIndex = "9999";
-        loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
-        document.body.appendChild(loadingEl);
+  // Show loading indicator
+  const loadingEl = document.createElement("div");
+  loadingEl.style.position = "fixed";
+  loadingEl.style.top = "0";
+  loadingEl.style.left = "0";
+  loadingEl.style.width = "100%";
+  loadingEl.style.height = "100%";
+  loadingEl.style.backgroundColor = "rgba(255,255,255,0.8)";
+  loadingEl.style.display = "flex";
+  loadingEl.style.justifyContent = "center";
+  loadingEl.style.alignItems = "center";
+  loadingEl.style.zIndex = "9999";
+  loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
+  document.body.appendChild(loadingEl);
 
-        try {
-          // Prepare the document for PDF
-          prepareForPDF();
+  try {
+    // Prepare the document for PDF
+    prepareForPDF();
+    
+    // Get content containers
+    const headerContainer = document.querySelector('.content-section');
+    const tableContainer = document.querySelector('.table-responsive');
+    
+    if (!headerContainer || !tableContainer) {
+      throw new Error("Required content elements not found");
+    }
+    
+    // Create an instance of jsPDF
+    const pdf = new jspdf.jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
+    });
+    
+    // Add Japanese font support if available
+    addJapaneseFontSupport(pdf);
+    
+    // Generate the header part
+    html2canvas(headerContainer, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      allowTaint: true,
+      backgroundColor: '#ffffff'
+    }).then(headerCanvas => {
+      // Add header to first page
+      const headerImgData = headerCanvas.toDataURL('image/png');
+      const headerWidth = 287; // A4 landscape width with margins
+      const headerHeight = headerCanvas.height * headerWidth / headerCanvas.width;
+      
+      pdf.addImage(headerImgData, 'PNG', 5, 5, headerWidth, headerHeight);
+      
+      // Get the table element
+      const tableElement = tableContainer.querySelector('table');
+      if (!tableElement) {
+        throw new Error("Table element not found");
+      }
+      
+      // Split the table into rows
+      const rows = Array.from(tableElement.querySelectorAll('tbody tr'));
+      const headerRows = Array.from(tableElement.querySelectorAll('thead tr'));
+      
+      // Constants for PDF generation
+      const pageHeight = 210; // A4 landscape height in mm
+      const startY = headerHeight + 10; // Start below header with some padding
+      const availableHeight = pageHeight - startY - 15; // Available height on first page
+      const rowsPerPage = 20; // Approximate number of rows per page
+      
+      // Clone the table to create a paginated version
+      function createPageTable(rowsToInclude) {
+        const table = tableElement.cloneNode(false);
+        
+        // Create header
+        const thead = document.createElement('thead');
+        headerRows.forEach(row => {
+          thead.appendChild(row.cloneNode(true));
+        });
+        table.appendChild(thead);
+        
+        // Create body with specific rows
+        const tbody = document.createElement('tbody');
+        rowsToInclude.forEach(row => {
+          tbody.appendChild(row.cloneNode(true));
+        });
+        table.appendChild(tbody);
+        
+        return table;
+      }
+      
+      // Function to process batches of rows
+      async function processRowBatches() {
+        let currentPage = 0;
+        
+        for (let i = 0; i < rows.length; i += rowsPerPage) {
+          const rowBatch = rows.slice(i, i + rowsPerPage);
+          const pageTable = createPageTable(rowBatch);
           
-          // Get content containers
-          const headerContainer = document.querySelector('.content-section');
-          const tableContainer = document.querySelector('.table-responsive');
+          // Create a temporary container
+          const tempContainer = document.createElement('div');
+          tempContainer.style.position = 'absolute';
+          tempContainer.style.left = '-9999px';
+          tempContainer.style.width = '1200px'; // Match the original container width
+          tempContainer.appendChild(pageTable);
+          document.body.appendChild(tempContainer);
           
-          if (!headerContainer || !tableContainer) {
-            throw new Error("Required content elements not found");
-          }
-          
-          // Create an instance of jsPDF
-          const pdf = new jspdf.jsPDF({
-            orientation: 'landscape',
-            unit: 'mm',
-            format: 'a4'
-          });
-          
-          // Add Japanese font support if available
-          addJapaneseFontSupport(pdf);
-          
-          // Generate the header part
-          html2canvas(headerContainer, {
+          // Generate canvas for this batch
+          const canvas = await html2canvas(tempContainer, {
             scale: 2,
             useCORS: true,
             logging: false,
             allowTaint: true,
             backgroundColor: '#ffffff'
-          }).then(headerCanvas => {
-            // Add header to first page
-            const headerImgData = headerCanvas.toDataURL('image/png');
-            const headerWidth = 287; // A4 landscape width with margins
-            const headerHeight = headerCanvas.height * headerWidth / headerCanvas.width;
-            
-            pdf.addImage(headerImgData, 'PNG', 5, 5, headerWidth, headerHeight);
-            
-            // Get the table element
-            const tableElement = tableContainer.querySelector('table');
-            if (!tableElement) {
-              throw new Error("Table element not found");
-            }
-            
-            // Split the table into rows
-            const rows = Array.from(tableElement.querySelectorAll('tbody tr'));
-            const headerRows = Array.from(tableElement.querySelectorAll('thead tr'));
-            
-            // Constants for PDF generation
-            const pageHeight = 210; // A4 landscape height in mm
-            const startY = headerHeight + 10; // Start below header with some padding
-            const availableHeight = pageHeight - startY - 15; // Available height on first page
-            const rowsPerPage = 20; // Approximate number of rows per page
-            
-            // Clone the table to create a paginated version
-            function createPageTable(rowsToInclude) {
-              const table = tableElement.cloneNode(false);
-              
-              // Create header
-              const thead = document.createElement('thead');
-              headerRows.forEach(row => {
-                thead.appendChild(row.cloneNode(true));
-              });
-              table.appendChild(thead);
-              
-              // Create body with specific rows
-              const tbody = document.createElement('tbody');
-              rowsToInclude.forEach(row => {
-                tbody.appendChild(row.cloneNode(true));
-              });
-              table.appendChild(tbody);
-              
-              return table;
-            }
-            
-            // Function to process batches of rows
-            async function processRowBatches() {
-              let currentPage = 0;
-              
-              for (let i = 0; i < rows.length; i += rowsPerPage) {
-                const rowBatch = rows.slice(i, i + rowsPerPage);
-                const pageTable = createPageTable(rowBatch);
-                
-                // Create a temporary container
-                const tempContainer = document.createElement('div');
-                tempContainer.style.position = 'absolute';
-                tempContainer.style.left = '-9999px';
-                tempContainer.style.width = '1200px'; // Match the original container width
-                tempContainer.appendChild(pageTable);
-                document.body.appendChild(tempContainer);
-                
-                // Generate canvas for this batch
-                const canvas = await html2canvas(tempContainer, {
-                  scale: 2,
-                  useCORS: true,
-                  logging: false,
-                  allowTaint: true,
-                  backgroundColor: '#ffffff'
-                });
-                
-                // Remove temporary container
-                document.body.removeChild(tempContainer);
-                
-                // Add new page if not first batch
-                if (i > 0) {
-                  pdf.addPage();
-                  // Add header again on subsequent pages
-                  pdf.addImage(headerImgData, 'PNG', 5, 5, headerWidth, headerHeight);
-                }
-                
-                // Add table batch to PDF
-                const imgData = canvas.toDataURL('image/png');
-                const imgWidth = 287;
-                const imgHeight = canvas.height * imgWidth / canvas.width;
-                
-                pdf.addImage(imgData, 'PNG', 5, startY, imgWidth, imgHeight);
-                
-                currentPage++;
-              }
-              
-              // Save the PDF
-              const today = new Date();
-              const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
-              pdf.save(`水平ノズル検査成績書_${dateStr}.pdf`);
-              
-              // Restore the document
-              restoreAfterPDF();
-              
-              // Remove loading indicator
-              if (document.body.contains(loadingEl)) {
-                document.body.removeChild(loadingEl);
-              }
-            }
-            
-            // Start processing rows
-            processRowBatches().catch(error => {
-              console.error("Error in batch processing:", error);
-              alert("PDF生成中にエラーが発生しました: " + error.message);
-              restoreAfterPDF();
-              if (document.body.contains(loadingEl)) {
-                document.body.removeChild(loadingEl);
-              }
-            });
-          }).catch(error => {
-            console.error("Error generating header:", error);
-            alert("PDF生成中にエラーが発生しました: " + error.message);
-            restoreAfterPDF();
-            if (document.body.contains(loadingEl)) {
-              document.body.removeChild(loadingEl);
-            }
           });
-        } catch (error) {
-          console.error("Error preparing PDF:", error);
-          alert("PDF生成の準備中にエラーが発生しました: " + error.message);
-          restoreAfterPDF();
-          if (document.body.contains(loadingEl)) {
-            document.body.removeChild(loadingEl);
+          
+          // Remove temporary container
+          document.body.removeChild(tempContainer);
+          
+          // Add new page if not first batch
+          if (i > 0) {
+            pdf.addPage();
+            // Add header again on subsequent pages
+            pdf.addImage(headerImgData, 'PNG', 5, 5, headerWidth, headerHeight);
           }
+          
+          // Add table batch to PDF
+          const imgData = canvas.toDataURL('image/png');
+          const imgWidth = 287;
+          const imgHeight = canvas.height * imgWidth / canvas.width;
+          
+          pdf.addImage(imgData, 'PNG', 5, startY, imgWidth, imgHeight);
+          
+          currentPage++;
+        }
+        
+        // Save the PDF
+        const today = new Date();
+        const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+        pdf.save(`水平ノズル検査成績書_${dateStr}.pdf`);
+        
+        // Restore the document
+        restoreAfterPDF();
+        
+        // Remove loading indicator
+        if (document.body.contains(loadingEl)) {
+          document.body.removeChild(loadingEl);
         }
       }
+      
+      // Start processing rows
+      processRowBatches().catch(error => {
+        console.error("Error in batch processing:", error);
+        alert("PDF生成中にエラーが発生しました: " + error.message);
+        restoreAfterPDF();
+        if (document.body.contains(loadingEl)) {
+          document.body.removeChild(loadingEl);
+        }
+      });
+    }).catch(error => {
+      console.error("Error generating header:", error);
+      alert("PDF生成中にエラーが発生しました: " + error.message);
+      restoreAfterPDF();
+      if (document.body.contains(loadingEl)) {
+        document.body.removeChild(loadingEl);
+      }
+    });
+  } catch (error) {
+    console.error("Error preparing PDF:", error);
+    alert("PDF生成の準備中にエラーが発生しました: " + error.message);
+    restoreAfterPDF();
+    if (document.body.contains(loadingEl)) {
+      document.body.removeChild(loadingEl);
+    }
+  }
+}
 
       // Prepare the document for PDF export
       function prepareForPDF() {
