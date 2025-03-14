@@ -797,7 +797,72 @@
         }, 200);
       }
 
-            // This code should replace the exportPDF function in your summary.ejs file
+       const loadingEl = document.createElement("div");
+        loadingEl.style.position = "fixed";
+        loadingEl.style.top = "0";
+        loadingEl.style.left = "0";
+        loadingEl.style.width = "100%";
+        loadingEl.style.height = "100%";
+        loadingEl.style.backgroundColor = "rgba(255,255,255,0.8)";
+        loadingEl.style.display = "flex";
+        loadingEl.style.justifyContent = "center";
+        loadingEl.style.alignItems = "center";
+        loadingEl.style.zIndex = "9999";
+        loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
+        document.body.appendChild(loadingEl);
+
+        try {
+          // Prepare the document before generating PDF
+          prepareForPDF();
+          
+          // Create an instance of jsPDF
+          const pdf = new jspdf.jsPDF({
+            orientation: 'landscape',
+            unit: 'mm',
+            format: 'a4'
+          });
+          
+          // Add Japanese font support
+          addJapaneseFontSupport(pdf);
+          
+          // Get the content container
+          const element = document.getElementById('pdf-container');
+          
+          // Generate PDF with html2canvas
+          html2canvas(element, {
+            scale: 2, // Higher scale for better quality
+            useCORS: true,
+            logging: false,
+            allowTaint: true,
+            backgroundColor: '#ffffff'
+          }).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            
+            // Add image to PDF (A4 landscape dimensions: 297mm x 210mm)
+            const imgWidth = 287; // leaving some margin
+            const imgHeight = canvas.height * imgWidth / canvas.width;
+            
+            pdf.addImage(imgData, 'PNG', 5, 5, imgWidth, imgHeight);
+            
+            // Save the PDF
+            const today = new Date();
+            const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+            pdf.save(`水平ノズル検査成績書_${dateStr}.pdf`);
+            
+            // Restore the document after PDF generation
+            restoreAfterPDF();
+            
+            // Remove loading indicator
+            document.body.removeChild(loadingEl);
+          });
+        } catch (error) {
+          console.error("Error generating PDF:", error);
+          alert("PDF生成中にエラーが発生しました。ブラウザのコンソールで詳細を確認してください。");
+          document.body.removeChild(loadingEl);
+        }
+
+      // Prepare the document for PDF export
+      // This code should replace the exportPDF function in your summary.ejs file
 
       function exportPDF() {
         // Show loading indicator
@@ -889,6 +954,19 @@
         if (container) {
           container.style.backgroundColor = 'white';
         }
+        
+        // Remove borders from editable fields for inspector and delivery date
+        const inspectorElement = document.getElementById('inspector');
+        if (inspectorElement) {
+          inspectorElement.style.border = 'none';
+          inspectorElement.style.borderBottom = 'none';
+        }
+        
+        const deliveryDateInput = document.getElementById('deliveryDatePicker');
+        if (deliveryDateInput) {
+          deliveryDateInput.style.border = 'none';
+          deliveryDateInput.style.backgroundColor = 'transparent';
+        }
       }
 
       // Restore the document after PDF export
@@ -902,6 +980,19 @@
         const headerRow = document.querySelector('.table thead tr:last-child');
         if (headerRow) {
           headerRow.style.display = '';
+        }
+        
+        // Restore borders for editable fields
+        const inspectorElement = document.getElementById('inspector');
+        if (inspectorElement) {
+          inspectorElement.style.border = '';
+          inspectorElement.style.borderBottom = '';
+        }
+        
+        const deliveryDateInput = document.getElementById('deliveryDatePicker');
+        if (deliveryDateInput) {
+          deliveryDateInput.style.border = '';
+          deliveryDateInput.style.backgroundColor = '';
         }
       }
 
