@@ -5,6 +5,7 @@ require("dotenv").config();
 
 const express = require("express");
 const multer = require("multer");
+const puppeteer = require('puppeteer');
 const path = require("path");
 const fs = require("fs");
 const { Pool } = require("pg");
@@ -1055,4 +1056,293 @@ app.post("/import-weights", async (req, res) => {
   }
 });
 
+// Add this route before module.exports = app;
+app.get('/export-pdf', async (req, res) => {
+  try {
+    // Get parameters from query string
+    const minFile = req.query.minFile;
+    const maxFile = req.query.maxFile;
+    const selectedFiles = req.query.selectedFiles;
+    const inspector = req.query.inspector || '';
+    const deliveryDate = req.query.deliveryDate || '';
+    
+    let client;
+    let query;
+    let params;
+    let filesResult;
+    
+    try {
+      client = await pool.connect();
+      
+      // Same file selection logic as in summary route
+      if (minFile && maxFile) {
+        // Use the file number range query
+        query = `
+          SELECT f.id, f.filename, fw.weight, f.uploaded_at
+          FROM files f
+          LEFT JOIN file_weights fw ON f.id = fw.file_id
+          WHERE 
+            CASE 
+              WHEN f.filename ~ '^[0-9]+' THEN 
+                CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
+              ELSE 0
+            END BETWEEN $1 AND $2
+          ORDER BY 
+            CASE 
+              WHEN f.filename ~ '^[0-9]+' THEN 
+                CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
+              ELSE 0
+            END ASC
+        `;
+        params = [minFile, maxFile];
+      } else if (selectedFiles) {
+        // Handle individually selected files
+        const selectedFileArray = selectedFiles.split(",").filter((id) => id);
+        if (selectedFileArray.length > 0) {
+          const placeholders = selectedFileArray
+            .map((_, index) => `$${index + 1}`)
+            .join(",");
+          query = `
+            SELECT f.id, f.filename, fw.weight, f.uploaded_at
+            FROM files f
+            LEFT JOIN file_weights fw ON f.id = fw.file_id
+            WHERE f.id IN (${placeholders})
+            ORDER BY 
+              CASE 
+                WHEN f.filename ~ '^[0-9]+' THEN 
+                  CAST(substring(f.filename from '^[0-9]+') AS INTEGER)
+                ELSE 0
+              END ASC
+          `;
+          params = selectedFileArray;
+        } else {
+          // No files selected
+          return res.status(400).send('ファイルが選択されていません');
+        }
+      } else {
+        // No selection criteria provided
+        return res.status(400).send('ファイルが選択されていません');
+      }
+      
+      filesResult = await client.query(query, params);
+      
+      if (filesResult.rows.length === 0) {
+        // No files found
+        return res.status(404).send('該当するファイルが見つかりません');
+      }
+      
+      // Define the highlighted cells with UPDATED coordinates (same as in summary route)
+      const cellCoordinates = [
+        { row: 2, col: 4, label: "A" },
+        { row: 19, col: 11, label: "B" },
+        { row: 14, col: 5, label: "C" },
+        { row: 10, col: 4, label: "D" },
+        { row: null, col: null, label: "E" },
+        { row: null, col: null, label: "F" },
+        { row: 20, col: 11, label: "G1" },
+        { row: 21, col: 11, label: "G2" },
+        { row: 22, col: 11, label: "G3" },
+        { row: 23, col: 11, label: "G4" },
+        { row: 6, col: 4, label: "H" },
+        { row: 25, col: 11, label: "I" },
+        { row: 15, col: 11, label: "J" },
+        { row: 5, col: 4, label: "K" },
+        { row: 24, col: 11, label: "L" },
+        { row: null, col: null, label: "M" },
+        { row: null, col: null, label: "N" },
+      ];
+      
+      // Update validation ranges to handle G1-G4 (same as in summary route)
+      const validationRanges = {
+        A: { min: 8.0, max: 8.4 },
+        B: { min: 37.2, max: 37.8 },
+        C: { min: 15.7, max: 16.1 },
+        D: { min: 23.9, max: 24.3 },
+        E: { min: 11.2, max: 11.4 },
+        F: { min: 3.1, max: 3.3 },
+        G1: { min: 7.8, max: 8.2 },
+        G2: { min: 7.8, max: 8.2 },
+        G3: { min: 7.8, max: 8.2 },
+        G4: { min: 7.8, max: 8.2 },
+        H: { min: 4.9, max: 5.1 },
+        I: { min: 29.8, max: 30.2 },
+        J: { min: 154.9, max: 155.9 },
+        K: { min: 82.8, max: 83.4 },
+        L: { min: 121.8, max: 122.8 },
+      };
+      
+      // Add this function to check if a value is within range
+      function isValueValid(label, value) {
+        if (!validationRanges[label]) return true; // No validation range defined
+        if (value === null || value === undefined || isNaN(value)) return false;
+  
+        const range = validationRanges[label];
+        const numValue = parseFloat(value);
+        return numValue >= range.min && numValue <= range.max;
+      }
+  
+      // Create the fileData structure
+      const fileData = {};
+  
+      // Process each file
+      for (const file of filesResult.rows) {
+        const fileId = file.id;
+        fileData[fileId] = {};
+  
+        try {
+          // Get all data for this file
+          const dataResult = await client.query(
+            `SELECT * FROM file_data WHERE file_id = $1 ORDER BY index, id`,
+            [fileId]
+          );
+  
+          // Extract values for each coordinate
+          for (const coord of cellCoordinates) {
+            const label = coord.label;
+  
+            // Handle empty coordinates
+            if (coord.row === null || coord.col === null) {
+              fileData[fileId][label] = { value: "-", isValid: true };
+              continue;
+            }
+  
+            const rowIdx = coord.row;
+            const colIdx = coord.col;
+  
+            // Skip if row doesn't exist
+            if (rowIdx >= dataResult.rows.length) {
+              fileData[fileId][label] = { value: "N/A", isValid: false };
+              continue;
+            }
+  
+            // Get the data row
+            const dataRow = dataResult.rows[rowIdx];
+            if (!dataRow) {
+              fileData[fileId][label] = { value: "N/A", isValid: false };
+              continue;
+            }
+  
+            // Extract and format the value
+            let value;
+            if (colIdx === 3) {
+              value = dataRow.x !== null ? Math.abs(parseFloat(dataRow.x)) : null;
+            } else if (colIdx === 4) {
+              value = dataRow.y !== null ? Math.abs(parseFloat(dataRow.y)) : null;
+            } else if (colIdx === 5) {
+              value = dataRow.z !== null ? Math.abs(parseFloat(dataRow.z)) : null;
+            } else if (colIdx === 11) {
+              value = dataRow.tolerance !== null ? parseFloat(dataRow.tolerance) : null;
+            } else {
+              value = null;
+            }
+  
+            // Format and validate the value
+            if (value !== null && !isNaN(value)) {
+              const formattedValue = value.toFixed(2);
+              // Add validation status to the data
+              fileData[fileId][label] = {
+                value: formattedValue,
+                isValid: isValueValid(label, value),
+              };
+            } else {
+              fileData[fileId][label] = {
+                value: "N/A",
+                isValid: false,
+              };
+            }
+          }
+        } catch (err) {
+          console.error(`Error processing file ${fileId}:`, err);
+          // Set all labels to N/A for this file
+          for (const coord of cellCoordinates) {
+            fileData[fileId][coord.label] = { value: "Error", isValid: false };
+          }
+        }
+      }
+      
+      // Generate a PDF using Puppeteer
+      // Launch Puppeteer browser instance
+      const browser = await puppeteer.launch({
+        headless: 'new',
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      });
+      
+      // Create a new page
+      const page = await browser.newPage();
+      
+      // Generate HTML for the PDF
+      // We're using EJS to render the template
+      const renderData = {
+        files: filesResult.rows,
+        fileData,
+        minFile: minFile || "",
+        maxFile: maxFile || "",
+        inspectorName: inspector,
+        username: 'pdf-export', // Non-interactive
+        validationRanges,
+        error: null
+      };
+      
+      // Render the ejs template
+      const renderedHtml = await new Promise((resolve, reject) => {
+        app.render('summary_pdf', renderData, (err, html) => {
+          if (err) reject(err);
+          else resolve(html);
+        });
+      });
+      
+      // Set the HTML content of the page
+      await page.setContent(renderedHtml, {
+        waitUntil: 'networkidle0'
+      });
+      
+      // Set page dimensions for A4 landscape
+      await page.setViewport({
+        width: 1684,  // approximately A4 width at 160 DPI
+        height: 1190  // approximately A4 height at 160 DPI
+      });
+      
+      // Generate the PDF file with pagination support
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        landscape: true,
+        printBackground: true,
+        margin: {
+          top: '10mm',
+          right: '10mm',
+          bottom: '10mm',
+          left: '10mm'
+        },
+        headerTemplate: '',
+        footerTemplate: '<div style="width: 100%; text-align: right; font-size: 8px; margin-right: 10mm;">ページ <span class="pageNumber"></span> / <span class="totalPages"></span></div>',
+        displayHeaderFooter: true,
+        preferCSSPageSize: false
+      });
+      
+      // Close the browser
+      await browser.close();
+      
+      // Set response headers for PDF download
+      const today = new Date();
+      const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+      const filename = `水平ノズル検査成績書_${dateStr}.pdf`;
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      
+      // Send the PDF
+      res.send(pdfBuffer);
+      
+    } catch (err) {
+      console.error("Error generating PDF:", err);
+      res.status(500).send("PDF生成中にエラーが発生しました: " + err.message);
+    } finally {
+      if (client) client.release();
+    }
+  } catch (error) {
+    console.error("Error in PDF export route:", error);
+    res.status(500).send("PDFエクスポート中にエラーが発生しました: " + error.message);
+  }
+});
 module.exports = app;

@@ -722,6 +722,7 @@
       <div class="button-container no-print">
         <a href="/" class="button-home">ホーム</a>
         <button onclick="printReport()" class="button-print">印刷</button>
+        <button onclick="exportPDF()" class="button-export-pdf" style="background-color: #8a2be2; color: white; border: none;">PDF</button>
       </div>
     </div>
 
@@ -794,6 +795,57 @@
         setTimeout(() => {
           window.print();
         }, 200);
+      }
+
+      // Add this in the script section at the bottom of summary.ejs
+      function exportPDF() {
+        // Show loading indicator
+        const loadingEl = document.createElement("div");
+        loadingEl.style.position = "fixed";
+        loadingEl.style.top = "0";
+        loadingEl.style.left = "0";
+        loadingEl.style.width = "100%";
+        loadingEl.style.height = "100%";
+        loadingEl.style.backgroundColor = "rgba(255,255,255,0.8)";
+        loadingEl.style.display = "flex";
+        loadingEl.style.justifyContent = "center";
+        loadingEl.style.alignItems = "center";
+        loadingEl.style.zIndex = "9999";
+        loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
+        document.body.appendChild(loadingEl);
+
+        // Get all relevant parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryParams = {};
+        
+        // Copy all existing query parameters
+        for (const [key, value] of urlParams.entries()) {
+          queryParams[key] = value;
+        }
+        
+        // Add the inspector name
+        queryParams.inspector = document.getElementById('inspector').textContent;
+        
+        // Add the delivery date if it exists
+        const deliveryDateEl = document.getElementById('deliveryDatePicker');
+        if (deliveryDateEl && deliveryDateEl.value) {
+          queryParams.deliveryDate = deliveryDateEl.value;
+        }
+        
+        // Create query string
+        const queryString = Object.keys(queryParams)
+          .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(queryParams[key])}`)
+          .join('&');
+        
+        // Request PDF from server
+        window.location.href = `/export-pdf?${queryString}`;
+        
+        // Remove loading indicator after a short delay
+        setTimeout(() => {
+          if (document.body.contains(loadingEl)) {
+            document.body.removeChild(loadingEl);
+          }
+        }, 3000);
       }
     </script>
   </body>
