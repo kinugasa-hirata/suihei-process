@@ -810,7 +810,13 @@
                 firstRow.style.borderTop = '1px solid #000';
               }
             });
-            
+
+            // Set delivery date input background to transparent for printing
+            const deliveryDateInput = document.getElementById('deliveryDatePicker');
+            if (deliveryDateInput) {
+              deliveryDateInput.style.backgroundColor = 'transparent';
+            }
+
             // Small delay to ensure styles are applied
             setTimeout(() => {
               window.print();
