@@ -17,12 +17,8 @@ const port = process.env.PORT || 3000;
 
 // Set up PostgreSQL connection
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production" ? {
-    rejectUnauthorized: false,
-    checkServerIdentity: () => undefined
-  } : false,
-  max: 1,
+  connectionString: process.env.POSTGRES_URL_NO_SSL || process.env.DATABASE_URL,
+  max: 1, // Single connection for serverless
   connectionTimeoutMillis: 10000,
   idleTimeoutMillis: 30000,
 });
