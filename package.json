@@ -19,7 +19,7 @@
     "express-session": "^1.x.x",
     "geoip-lite": "^1.4.10",
     "multer": "^1.x.x",
-    "pg": "^8.x.x"
+    "pg": "^8.13.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
