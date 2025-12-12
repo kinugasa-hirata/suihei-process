@@ -1,8 +1,4 @@
-Based on my examination of the codebase, here's a significantly revised and more accurate README:
-
----
-
-# 水平ノズル検査成績書システム (Horizontal Nozzle Inspection Report System)
+# 検査成績書システム (Inspection Report System)
 
 A web-based quality control inspection system for processing and validating horizontal nozzle measurement data. The application parses TXT files containing coordinate measurements, validates them against tolerance specifications, and generates professional inspection reports in PDF format.
 
