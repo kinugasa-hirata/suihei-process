@@ -103,8 +103,6 @@ The system validates measurements at 17 labeled checkpoints with the following t
    Open your browser and navigate to `http://localhost:3000`
 
 6. **Login credentials:**
-   - Username: `hinkan`, `naemura`, or `iwatsuki`
-   - Password: Any 4-digit number
 
 ## Deployment to Vercel
 
