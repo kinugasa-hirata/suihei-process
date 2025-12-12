@@ -1,7 +1,7 @@
 {
   "name": "suihei-process",
-  "version": "1.0.0",
-  "description": "An application to process TXT files to JSON and store in Postgres",
+  "version": "2.0.0",
+  "description": "Horizontal Nozzle Inspection System with Appwrite Backend",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
@@ -19,7 +19,7 @@
     "express-session": "^1.x.x",
     "geoip-lite": "^1.4.10",
     "multer": "^1.x.x",
-    "pg": "8.7.1"
+    "node-appwrite": "^14.1.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
