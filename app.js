@@ -402,10 +402,14 @@ app.get("/summary", async (req, res) => {
       }
     }
 
+    // Extract files array for template compatibility
+    const files = filesData.map(fd => fd.file);
+
     res.render("summary", {
       filesData: filesData,
+      files: files, // Add files array
       username: DEFAULT_USERNAME,
-      inspectorName: DEFAULT_USERNAME, // Add missing inspector name
+      inspectorName: DEFAULT_USERNAME,
     });
   } catch (error) {
     console.error("Error generating summary:", error);
