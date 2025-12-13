@@ -158,7 +158,7 @@ app.get("/", async (req, res) => {
 });
 
 // Upload handler
-app.post("/upload", upload.single("files"), async (req, res) => {
+app.post("/upload", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).send("No file uploaded");
@@ -354,6 +354,62 @@ app.get("/export-pdf", (req, res) => {
   res.json({
     message: "Please use your browser's Print function (Ctrl+P) to save as PDF",
   });
+});
+
+// Summary page - Multiple files report
+app.get("/summary", async (req, res) => {
+  try {
+    const selectedFilesParam = req.query.selectedFiles || "";
+    const fileIds = selectedFilesParam
+      .split(",")
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0);
+
+    if (fileIds.length === 0) {
+      return res.redirect("/");
+    }
+
+    const filesData = [];
+
+    // Fetch each file and its data
+    for (const fileId of fileIds) {
+      try {
+        // Get file info
+        const file = await databases.getDocument(
+          DATABASE_ID,
+          COLLECTION_FILES,
+          fileId
+        );
+
+        // Get file data
+        const dataResponse = await databases.listDocuments(
+          DATABASE_ID,
+          COLLECTION_FILE_DATA,
+          [
+            Query.equal("file_id", fileId),
+            Query.orderAsc("index"),
+            Query.limit(1000),
+          ]
+        );
+
+        filesData.push({
+          file: file,
+          data: dataResponse.documents,
+        });
+      } catch (error) {
+        console.error(`Error fetching file ${fileId}:`, error);
+        // Continue with other files even if one fails
+      }
+    }
+
+    res.render("summary", {
+      filesData: filesData,
+      username: DEFAULT_USERNAME,
+    });
+  } catch (error) {
+    console.error("Error generating summary:", error);
+    res.status(500).send("Error generating summary");
+  }
 });
 
 // ======================
