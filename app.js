@@ -1,4 +1,4 @@
-// app.js - Appwrite Version with Measurement Processing Integration
+// app.js - FINAL VERSION with all fixes
 // 水平ノズル検査成績書システム with Appwrite Backend
 
 const express = require("express");
@@ -190,6 +190,32 @@ function processFileDataForMeasurements(dataPoints) {
 }
 
 /**
+ * Check G1-G4 values and return display value
+ * If all valid, return G1 value
+ * If any invalid, return which ones are invalid (e.g., "G2,G4")
+ */
+function processGValues(measurements) {
+  const gKeys = ['G1', 'G2', 'G3', 'G4'];
+  const invalid = [];
+  
+  for (const key of gKeys) {
+    if (measurements[key] && !measurements[key].isValid && measurements[key].value !== '-') {
+      invalid.push(key);
+    }
+  }
+  
+  if (invalid.length > 0) {
+    return {
+      value: invalid.join(','),
+      isValid: false
+    };
+  }
+  
+  // All valid, return G1 value
+  return measurements['G1'];
+}
+
+/**
  * Get highlighting information for fileData view
  */
 function getHighlightMapping() {
@@ -237,6 +263,13 @@ function capitalizeField(field) {
     'note': 'Note'
   };
   return fieldMap[field] || field;
+}
+
+/**
+ * Extract filename without extension
+ */
+function getFilenameWithoutExtension(filename) {
+  return filename.replace(/\.txt$/i, '');
 }
 
 // ======================
@@ -435,14 +468,20 @@ app.get("/files/:id", async (req, res) => {
   }
 });
 
-// Update weight
+// Update weight - FIXED VERSION
 app.post("/files/:id/update-weight", async (req, res) => {
   try {
     const fileId = req.params.id;
     const weight = parseFloat(req.body.weight);
 
-    if (isNaN(weight)) {
-      return res.redirect(`/files/${fileId}`);
+    console.log('Update weight request:', { fileId, weight, body: req.body });
+
+    if (isNaN(weight) || !weight) {
+      console.log('Invalid weight value');
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid weight value' 
+      });
     }
 
     await databases.updateDocument(
@@ -452,14 +491,167 @@ app.post("/files/:id/update-weight", async (req, res) => {
       { weight: weight }
     );
 
+    console.log('Weight updated successfully');
+    
+    // Return JSON response for AJAX call
+    if (req.headers['content-type']?.includes('application/json')) {
+      return res.json({ success: true, weight: weight });
+    }
+    
+    // Redirect for form submission
     res.redirect(`/files/${fileId}`);
   } catch (error) {
     console.error("Error updating weight:", error);
+    
+    if (req.headers['content-type']?.includes('application/json')) {
+      return res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+    
     res.status(500).send("Error updating weight");
   }
 });
 
-// Delete file
+// Save weight from main page - NEW ROUTE
+app.post("/save-weight", async (req, res) => {
+  try {
+    const { fileId, weight } = req.body;
+    const weightValue = parseFloat(weight);
+
+    console.log('Save weight from main:', { fileId, weight: weightValue });
+
+    if (!fileId || isNaN(weightValue)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid file ID or weight value' 
+      });
+    }
+
+    await databases.updateDocument(
+      DATABASE_ID,
+      COLLECTION_FILES,
+      fileId,
+      { weight: weightValue }
+    );
+
+    res.json({ success: true, weight: weightValue });
+  } catch (error) {
+    console.error("Error saving weight:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Update weights - batch update from main page
+app.post("/update-weights", async (req, res) => {
+  try {
+    const { weights } = req.body;
+
+    if (!weights || !Array.isArray(weights)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid weights data' 
+      });
+    }
+
+    // Update each weight
+    for (const item of weights) {
+      const weightValue = parseFloat(item.weight);
+      
+      if (item.fileId && !isNaN(weightValue)) {
+        await databases.updateDocument(
+          DATABASE_ID,
+          COLLECTION_FILES,
+          item.fileId,
+          { weight: weightValue }
+        );
+      }
+    }
+
+    res.json({ success: true, count: weights.length });
+  } catch (error) {
+    console.error("Error updating weights:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Delete file from main page - NEW ROUTE
+app.post("/delete-file", async (req, res) => {
+  try {
+    const { fileId } = req.body;
+
+    if (!fileId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'File ID is required' 
+      });
+    }
+
+    // Delete all associated data points
+    const dataResponse = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_FILE_DATA,
+      [Query.equal("file_id", fileId), Query.limit(1000)]
+    );
+
+    for (const doc of dataResponse.documents) {
+      await databases.deleteDocument(
+        DATABASE_ID,
+        COLLECTION_FILE_DATA,
+        doc.$id
+      );
+    }
+
+    // Delete file record
+    await databases.deleteDocument(
+      DATABASE_ID,
+      COLLECTION_FILES,
+      fileId
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting file:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Export weights data
+app.get("/export-weights", async (req, res) => {
+  try {
+    const filesResponse = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_FILES,
+      [Query.orderAsc("filename"), Query.limit(1000)]
+    );
+
+    const weightsData = filesResponse.documents.map(file => ({
+      filename: file.filename.replace(/\.txt$/i, ''),
+      weight: file.weight || null,
+      uploaded_at: file.uploaded_at
+    }));
+
+    res.json(weightsData);
+  } catch (error) {
+    console.error("Error exporting weights:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Delete file - UPDATED to handle both POST and DELETE
 app.post("/files/:id/delete", async (req, res) => {
   try {
     const fileId = req.params.id;
@@ -486,9 +678,22 @@ app.post("/files/:id/delete", async (req, res) => {
       fileId
     );
 
+    // Return JSON for AJAX or redirect
+    if (req.headers['content-type']?.includes('application/json')) {
+      return res.json({ success: true });
+    }
+    
     res.redirect("/");
   } catch (error) {
     console.error("Error deleting file:", error);
+    
+    if (req.headers['content-type']?.includes('application/json')) {
+      return res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+    
     res.status(500).send("Error deleting file");
   }
 });
@@ -542,7 +747,7 @@ app.get("/export-pdf", (req, res) => {
   });
 });
 
-// Summary page - Multiple files report
+// Summary page - Multiple files report - UPDATED
 app.get("/summary", async (req, res) => {
   try {
     const selectedFilesParam = req.query.selectedFiles || "";
@@ -585,8 +790,16 @@ app.get("/summary", async (req, res) => {
         });
 
         // Process data using measurement processor
-        // This creates: { A: {value, isValid}, B: {value, isValid}, ... }
-        fileData[file.$id] = processFileDataForMeasurements(dataResponse.documents);
+        const measurements = processFileDataForMeasurements(dataResponse.documents);
+        
+        // Process G values (combine G1-G4 validation)
+        const gValue = processGValues(measurements);
+        
+        // Create final fileData structure for template
+        fileData[file.$id] = {
+          ...measurements,
+          'G': gValue  // Replace individual G1-G4 with combined G
+        };
         
       } catch (error) {
         console.error(`Error fetching file ${fileId}:`, error);

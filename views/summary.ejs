@@ -632,7 +632,7 @@
                   <td>測定値</td>
                   <td>測定値</td>
                   <td>測定値</td>
-                  <td>合否</td>
+                  <td>測定値</td>
                   <td>合否</td>
                   <td>合否</td>
                   <td>測定値</td>
@@ -660,53 +660,109 @@
               </thead>
               <tbody>
                 <% files.forEach(function(file) { %>
+                <%
+                // Remove .txt extension from filename
+                const displayFilename = file.filename.replace(/\.txt$/i, '');
+                %>
                 <tr>
                   <td class="filename-cell" data-file-id="<%= file.$id %>">
-                    <strong><%= file.filename %></strong>
+                    <strong><%= displayFilename %></strong>
                   </td>
-                  <% displayHeaders.forEach(function(header) { %> <% if (header
-                  === 'G') { %>
-                  <td
-                    class="<%= fileData[file.$id]['G1'].value !== '-' && (!fileData[file.$id]['G1'].isValid || !fileData[file.$id]['G2'].isValid || !fileData[file.$id]['G3'].isValid || !fileData[file.$id]['G4'].isValid) ? 'invalid-value' : '' %> highlight-cell data-cell g-value-cell"
-                    title="G1: <%= fileData[file.$id]['G1'].value %>&#13;
-                           G2: <%= fileData[file.$id]['G2'].value %>&#13;
-                           G3: <%= fileData[file.$id]['G3'].value %>&#13;
-                           G4: <%= fileData[file.$id]['G4'].value %>"
-                  >
-                    <%= fileData[file.$id]['G1'].value %> <% const invalidCount =
-                    ['G2', 'G3', 'G4'].filter(g => fileData[file.$id][g].value
-                    !== '-' && !fileData[file.$id][g].isValid ).length; if
-                    (invalidCount > 0) { %>
-                    <span
-                      class="hidden-g-warning"
-                      title="他の <%= invalidCount %> 箇所の G 値が範囲外です"
-                    >
-                      <%= invalidCount %>
-                    </span>
+                  
+                  <!-- Column A: 測定値 -->
+                  <td class="<%= fileData[file.$id]['A'].value !== '-' && !fileData[file.$id]['A'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
+                    <%= fileData[file.$id]['A'].value %>
+                  </td>
+
+                  <!-- Column B: 測定値 -->
+                  <td class="<%= fileData[file.$id]['B'].value !== '-' && !fileData[file.$id]['B'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
+                    <%= fileData[file.$id]['B'].value %>
+                  </td>
+
+                  <!-- Column C: 測定値 -->
+                  <td class="<%= fileData[file.$id]['C'].value !== '-' && !fileData[file.$id]['C'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
+                    <%= fileData[file.$id]['C'].value %>
+                  </td>
+
+                  <!-- Column D: 測定値 -->
+                  <td class="<%= fileData[file.$id]['D'].value !== '-' && !fileData[file.$id]['D'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
+                    <%= fileData[file.$id]['D'].value %>
+                  </td>
+
+                  <!-- Column E: 合否 -->
+                  <td class="highlight-cell data-cell">
+                    <% if (fileData[file.$id]['E'].value !== '-') {
+                      if (fileData[file.$id]['E'].isValid) { %>
+                        合
+                      <% } else { %>
+                        <span class="invalid-value">否</span>
+                      <% }
+                    } else { %>
+                      -
                     <% } %>
                   </td>
-                  <% } else { %>
-                  <td
-                    class="<%= fileData[file.$id][header].value !== '-' && !fileData[file.$id][header].isValid ? 'invalid-value' : '' %> highlight-cell data-cell"
-                    <% if (fileData[file.$id][header].value !== '-') { %>
-                      title="Allowed range: <%= validationRanges[header] ? validationRanges[header].min + ' - ' + validationRanges[header].max : 'No range' %>"
+
+                  <!-- Column F: 合否 -->
+                  <td class="highlight-cell data-cell">
+                    <% if (fileData[file.$id]['F'].value !== '-') {
+                      if (fileData[file.$id]['F'].isValid) { %>
+                        合
+                      <% } else { %>
+                        <span class="invalid-value">否</span>
+                      <% }
+                    } else { %>
+                      -
                     <% } %>
-                  >
-                    <%= fileData[file.$id][header].value %>
                   </td>
-                  <% } %> <% }); %>
+
+                  <!-- Column G: Combined G1-G4 check -->
+                  <td class="<%= fileData[file.$id]['G'].value !== '-' && !fileData[file.$id]['G'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell g-value-cell"
+                      title="G1: <%= fileData[file.$id]['G1'].value %>&#13;G2: <%= fileData[file.$id]['G2'].value %>&#13;G3: <%= fileData[file.$id]['G3'].value %>&#13;G4: <%= fileData[file.$id]['G4'].value %>">
+                    <%= fileData[file.$id]['G'].value %>
+                  </td>
+
+                  <!-- Column H: 測定値 -->
+                  <td class="<%= fileData[file.$id]['H'].value !== '-' && !fileData[file.$id]['H'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
+                    <%= fileData[file.$id]['H'].value %>
+                  </td>
+
+                  <!-- Column I: 測定値 -->
+                  <td class="<%= fileData[file.$id]['I'].value !== '-' && !fileData[file.$id]['I'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
+                    <%= fileData[file.$id]['I'].value %>
+                  </td>
+
+                  <!-- Column J: 測定値 -->
+                  <td class="<%= fileData[file.$id]['J'].value !== '-' && !fileData[file.$id]['J'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
+                    <%= fileData[file.$id]['J'].value %>
+                  </td>
+
+                  <!-- Column K: 測定値 -->
+                  <td class="<%= fileData[file.$id]['K'].value !== '-' && !fileData[file.$id]['K'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
+                    <%= fileData[file.$id]['K'].value %>
+                  </td>
+
+                  <!-- Column L: 測定値 -->
+                  <td class="<%= fileData[file.$id]['L'].value !== '-' && !fileData[file.$id]['L'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
+                    <%= fileData[file.$id]['L'].value %>
+                  </td>
+
+                  <!-- Column M: 合否 -->
+                  <td class="highlight-cell data-cell">
+                    -
+                  </td>
+
+                  <!-- Column N: 合否 -->
+                  <td class="highlight-cell data-cell">
+                    -
+                  </td>
+
+                  <!-- Weight column -->
                   <td>
-                    <% if (file.weight) { %> <%=
-                    (parseFloat(file.weight)).toFixed(1) %> <% } else { %> <% if
-                    (username !== 'hinkan') { %>
-                    <span
-                      class="text-muted weight-editable"
-                      data-file-id="<%= file.$id %>"
-                      >Not set</span
-                    >
+                    <% if (file.weight) { %>
+                      <%= (parseFloat(file.weight)).toFixed(1) %>
                     <% } else { %>
-                    <span class="text-muted">Not set</span>
-                    <% } %> <% } %>
+                      -
+                    <% } %>
                   </td>
                 </tr>
                 <% }); %>
