@@ -1,4 +1,4 @@
-<!-- views/fileData.ejs -->
+<!-- views/fileData.ejs - UPDATED with server-side highlighting -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -30,8 +30,29 @@
       }
       .highlight {
         background-color: #fff3cd !important;
-        border: 2px solid #fd7e14 !important;
-        font-weight: bold;
+        border: 2px solid #ff6b35 !important;
+        font-weight: 700;
+        position: relative;
+      }
+      .highlight::after {
+        content: attr(data-key);
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        background: #ff6b35;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: 700;
+      }
+      .highlight-average {
+        background-color: #d4edda !important;
+        border: 2px solid #28a745 !important;
+        font-weight: 700;
+      }
+      .highlight-average::after {
+        background: #28a745;
       }
       .data-type-CIRCLE {
         color: #198754;
@@ -50,8 +71,41 @@
         font-weight: bold;
       }
       .invalid-value {
-        color: #dc3545; /* Red color for invalid values */
+        color: #dc3545;
         font-weight: bold;
+      }
+      .legend {
+        margin-top: 20px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        font-size: 13px;
+      }
+      .legend h3 {
+        margin-top: 0;
+        margin-bottom: 10px;
+        font-size: 14px;
+      }
+      .legend-item {
+        display: inline-block;
+        margin-right: 20px;
+        margin-bottom: 5px;
+      }
+      .legend-box {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 2px solid #000;
+        margin-right: 5px;
+        vertical-align: middle;
+      }
+      .legend-highlight {
+        background: #fff3cd;
+        border-color: #ff6b35;
+      }
+      .legend-average {
+        background: #d4edda;
+        border-color: #28a745;
       }
     </style>
   </head>
@@ -85,12 +139,12 @@
 
             <% if (username !== 'hinkan') { %>
             <form
-              action="/files/<%= file.id %>/update-weight"
+              action="/files/<%= file.$id %>/update-weight"
               method="post"
               id="weightForm"
             >
               <div class="input-group" style="max-width: 300px">
-                <input type="hidden" name="fileId" value="<%= file.id %>" />
+                <input type="hidden" name="fileId" value="<%= file.$id %>" />
                 <input
                   type="text"
                   class="form-control text-end"
@@ -110,8 +164,9 @@
       </div>
       <% } %> <% if (typeof message !== 'undefined' && message) { %>
       <div class="alert alert-info"><%= message %></div>
-      <% } %> <% if (typeof data !== 'undefined' && data && data.length > 0) {
-      %>
+      <% } %> 
+      
+      <% if (typeof data !== 'undefined' && data && data.length > 0) { %>
       <h3>測定結果</h3>
       <div class="table-responsive">
         <table class="table table-striped table-bordered" id="dataTable">
@@ -132,77 +187,97 @@
             </tr>
           </thead>
           <tbody>
+            <% 
+            // Field name mapping
+            const fieldMap = {
+              'X': 'x',
+              'Y': 'y',
+              'Z': 'z',
+              'Rot X': 'rot_x',
+              'Rot Y': 'rot_y',
+              'Rot Z': 'rot_z',
+              'Note': 'note',
+              'Diameter': 'diameter',
+              'Tolerance': 'tolerance'
+            };
+            
+            // Helper function to check if cell should be highlighted
+            function getCellHighlight(point, fieldName) {
+              if (!highlights) return null;
+              
+              for (const h of highlights) {
+                if (h.index === point.index && 
+                    h.type === point.data_type && 
+                    h.field === fieldName) {
+                  return h;
+                }
+              }
+              return null;
+            }
+            %>
+            
             <% data.forEach(function(point, rowIndex) { %>
             <tr data-index="<%= rowIndex %>">
-              <td><%= point.id %></td>
+              <td><%= point.$id || point.id %></td>
               <td><%= point.index %></td>
               <td class="data-type-<%= point.data_type %>">
                 <%= point.data_type %>
               </td>
-              <td>
-                <% if(point.x !== null && point.x !== undefined) { %><%= typeof
-                point.x === 'number' ? point.x.toFixed(3) : ((point.x === 'NaN'
-                || point.x === 'NAN') ? 'NaN' : (parseFloat(point.x) ?
-                parseFloat(point.x).toFixed(3) : point.x)) %><% } else { %>-<% }
-                %>
+              
+              <% 
+              // Define fields to display in order
+              const fields = ['X', 'Y', 'Z', 'Rot X', 'Rot Y', 'Rot Z', 'Note', 'Diameter', 'Tolerance'];
+              
+              fields.forEach(field => {
+                const fieldKey = fieldMap[field];
+                const value = point[fieldKey];
+                const highlight = getCellHighlight(point, field);
+                
+                let classes = '';
+                let dataKey = '';
+                
+                if (highlight) {
+                  classes = highlight.isAverage ? 'highlight-average' : 'highlight';
+                  dataKey = highlight.key;
+                }
+              %>
+              
+              <td class="<%= classes %>" <%= dataKey ? `data-key="${dataKey}"` : '' %>>
+                <% if(value !== null && value !== undefined && value !== '' && value !== '-') { %>
+                  <%= typeof value === 'number' ? value.toFixed(3) : 
+                      ((value === 'NaN' || value === 'NAN') ? 'NaN' : 
+                      (parseFloat(value) ? parseFloat(value).toFixed(3) : value)) %>
+                <% } else { %>
+                  -
+                <% } %>
               </td>
-              <td>
-                <% if(point.y !== null && point.y !== undefined) { %><%= typeof
-                point.y === 'number' ? point.y.toFixed(3) : ((point.y === 'NaN'
-                || point.y === 'NAN') ? 'NaN' : (parseFloat(point.y) ?
-                parseFloat(point.y).toFixed(3) : point.y)) %><% } else { %>-<% }
-                %>
-              </td>
-              <td>
-                <% if(point.z !== null && point.z !== undefined) { %><%= typeof
-                point.z === 'number' ? point.z.toFixed(3) : ((point.z === 'NaN'
-                || point.z === 'NAN') ? 'NaN' : (parseFloat(point.z) ?
-                parseFloat(point.z).toFixed(3) : point.z)) %><% } else { %>-<% }
-                %>
-              </td>
-              <td>
-                <% if(point.rot_x !== null && point.rot_x !== undefined) { %><%=
-                typeof point.rot_x === 'number' ? point.rot_x.toFixed(3) :
-                ((point.rot_x === 'NaN' || point.rot_x === 'NAN') ? 'NaN' :
-                (parseFloat(point.rot_x) ? parseFloat(point.rot_x).toFixed(3) :
-                point.rot_x)) %><% } else { %>-<% } %>
-              </td>
-              <td>
-                <% if(point.rot_y !== null && point.rot_y !== undefined) { %><%=
-                typeof point.rot_y === 'number' ? point.rot_y.toFixed(3) :
-                ((point.rot_y === 'NaN' || point.rot_y === 'NAN') ? 'NaN' :
-                (parseFloat(point.rot_y) ? parseFloat(point.rot_y).toFixed(3) :
-                point.rot_y)) %><% } else { %>-<% } %>
-              </td>
-              <td>
-                <% if(point.rot_z !== null && point.rot_z !== undefined) { %><%=
-                typeof point.rot_z === 'number' ? point.rot_z.toFixed(3) :
-                ((point.rot_z === 'NaN' || point.rot_z === 'NAN') ? 'NaN' :
-                (parseFloat(point.rot_z) ? parseFloat(point.rot_z).toFixed(3) :
-                point.rot_z)) %><% } else { %>-<% } %>
-              </td>
-              <td><%= point.note || '-' %></td>
-              <td>
-                <% if(point.diameter !== null && point.diameter !== undefined) {
-                %><%= typeof point.diameter === 'number' ?
-                point.diameter.toFixed(3) : ((point.diameter === 'NaN' ||
-                point.diameter === 'NAN') ? 'NaN' : (parseFloat(point.diameter)
-                ? parseFloat(point.diameter).toFixed(3) : point.diameter)) %><%
-                } else { %>-<% } %>
-              </td>
-              <td>
-                <% if(point.tolerance !== null && point.tolerance !== undefined)
-                { %><%= typeof point.tolerance === 'number' ?
-                point.tolerance.toFixed(3) : ((point.tolerance === 'NaN' ||
-                point.tolerance === 'NAN') ? 'NaN' :
-                (parseFloat(point.tolerance) ?
-                parseFloat(point.tolerance).toFixed(3) : point.tolerance)) %><%
-                } else { %>-<% } %>
-              </td>
+              
+              <% }); %>
             </tr>
             <% }); %>
           </tbody>
         </table>
+      </div>
+      
+      <div class="legend">
+        <h3>凡例 (Legend)</h3>
+        <div class="legend-item">
+          <span class="legend-box legend-highlight"></span>
+          <span>Export to Inspection Sheet (検査表に出力される値)</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-box legend-average"></span>
+          <span>Used for Average Calculation F (F平均計算に使用)</span>
+        </div>
+        <div class="legend-item">
+          <span class="data-type-CIRCLE">● CIRCLE</span>
+        </div>
+        <div class="legend-item">
+          <span class="data-type-PT-COMP">● PT-COMP</span>
+        </div>
+        <div class="legend-item">
+          <span class="data-type-DISTANCE">● DISTANCE</span>
+        </div>
       </div>
       <% } %>
     </div>
@@ -220,44 +295,6 @@
               event.preventDefault();
               if (this.value) {
                 weightForm.submit();
-              }
-            }
-          });
-        }
-
-        // Table highlighting code
-        const table = document.getElementById("dataTable");
-        if (table) {
-          const cellsToHighlight = [
-            [2, 4],
-            [19, 11],
-            [14, 5],
-            [10, 4],
-            ["-", "-"],
-            ["-", "-"],
-            [20, 11],
-            [21, 11],
-            [22, 11],
-            [23, 11],
-            [6, 4],
-            [25, 11],
-            [15, 11],
-            [5, 4],
-            [24, 11],
-            ["-", "-"],
-            ["-", "-"],
-          ];
-
-          const rows = table.querySelectorAll("tbody tr");
-          cellsToHighlight.forEach(([rowIndex, colIndex]) => {
-            if (
-              rowIndex !== "-" &&
-              colIndex !== "-" &&
-              rowIndex < rows.length
-            ) {
-              const row = rows[rowIndex];
-              if (colIndex < row.cells.length) {
-                row.cells[colIndex].classList.add("highlight");
               }
             }
           });

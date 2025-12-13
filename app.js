@@ -1,4 +1,4 @@
-// app.js - Appwrite Version (NO AUTHENTICATION)
+// app.js - Appwrite Version with Measurement Processing Integration
 // 水平ノズル検査成績書システム with Appwrite Backend
 
 const express = require("express");
@@ -13,6 +13,61 @@ const { Client, Databases, Query, ID } = require("node-appwrite");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// ======================
+// MEASUREMENT CONFIGURATION
+// ======================
+
+// Validation ranges for measurements A-N
+const validationRanges = {
+  'A': { min: 8.0, max: 8.4 },        // 8.2 ±0.2
+  'B': { min: 37.2, max: 37.8 },      // 37.5 ±0.3
+  'C': { min: 15.7, max: 16.1 },      // 15.9 ±0.2
+  'D': { min: 23.9, max: 24.3 },      // 24.1 ±0.2
+  'E': { min: 11.2, max: 11.4 },      // Φ11.2 +0.2/0
+  'F': { min: 3.1, max: 3.3 },        // Φ3.2 ±0.1
+  'G1': { min: 7.8, max: 8.2 },       // Φ8.0 ±0.2
+  'G2': { min: 7.8, max: 8.2 },
+  'G3': { min: 7.8, max: 8.2 },
+  'G4': { min: 7.8, max: 8.2 },
+  'H': { min: 4.9, max: 5.1 },        // 深さ5.0 ±0.1
+  'I': { min: 29.8, max: 30.2 },      // P.C.D 30 ±0.2
+  'J': { min: 154.9, max: 155.9 },    // Φ155.4 ±0.5
+  'K': { min: 82.8, max: 83.4 },      // 83.1 ±0.3
+  'L': { min: 121.8, max: 122.8 },    // Φ122.3 ±0.5
+  'M': null,                           // 嵌め合い - Pass/Fail
+  'N': null                            // 目視点検 - Pass/Fail
+};
+
+// Measurement mapping - defines which data point goes to which column
+const measurementMapping = {
+  'A': { index: 1, type: 'PT-COMP', field: 'x', absolute: true },
+  'B': { index: 9, type: 'CIRCLE', field: 'diameter', absolute: false },
+  'C': { index: 1, type: 'DISTANCE', field: 'y', absolute: true },
+  'D': { index: 4, type: 'PT-COMP', field: 'x', absolute: true },
+  'E': { index: 8, type: 'CIRCLE', field: 'diameter', absolute: false },
+  'F': { 
+    type: 'AVERAGE', 
+    indices: [
+      { index: 2, type: 'CIRCLE', field: 'diameter' },
+      { index: 4, type: 'CIRCLE', field: 'diameter' },
+      { index: 5, type: 'CIRCLE', field: 'diameter' },
+      { index: 6, type: 'CIRCLE', field: 'diameter' }
+    ],
+    absolute: false
+  },
+  'G1': { index: 10, type: 'CIRCLE', field: 'diameter', absolute: false },
+  'G2': { index: 11, type: 'CIRCLE', field: 'diameter', absolute: false },
+  'G3': { index: 12, type: 'CIRCLE', field: 'diameter', absolute: false },
+  'G4': { index: 13, type: 'CIRCLE', field: 'diameter', absolute: false },
+  'H': { index: 2, type: 'DISTANCE', field: 'y', absolute: true },
+  'I': { index: 15, type: 'CIRCLE', field: 'diameter', absolute: false },
+  'J': { index: 7, type: 'CIRCLE', field: 'diameter', absolute: false },
+  'K': { index: 2, type: 'PT-COMP', field: 'y', absolute: true },
+  'L': { index: 14, type: 'CIRCLE', field: 'diameter', absolute: false },
+  'M': { type: 'MANUAL', field: 'PassFail' },  // Manual input
+  'N': { type: 'VISUAL', field: 'PassFail' }   // Visual inspection
+};
 
 // ======================
 // APPWRITE CONFIGURATION
@@ -56,6 +111,133 @@ const upload = multer({
     }
   },
 });
+
+// ======================
+// MEASUREMENT PROCESSING FUNCTIONS
+// ======================
+
+/**
+ * Get value from data array based on index, type, and field
+ */
+function getValue(dataPoints, index, type, field) {
+  const point = dataPoints.find(p => p.index === index && p.data_type === type);
+  if (!point) return null;
+  
+  const value = point[field];
+  if (value === null || value === undefined || value === '-') return null;
+  
+  return parseFloat(value);
+}
+
+/**
+ * Extract a single measurement value
+ */
+function extractValue(dataPoints, mapping) {
+  if (mapping.type === 'AVERAGE') {
+    // Calculate average
+    const values = [];
+    for (const config of mapping.indices) {
+      const value = getValue(dataPoints, config.index, config.type, config.field);
+      if (value !== null) {
+        values.push(value);
+      }
+    }
+    if (values.length === 0) return null;
+    return values.reduce((sum, v) => sum + v, 0) / values.length;
+  }
+  
+  if (mapping.type === 'MANUAL' || mapping.type === 'VISUAL') {
+    return null; // These are filled manually
+  }
+  
+  let value = getValue(dataPoints, mapping.index, mapping.type, mapping.field);
+  if (value === null) return null;
+  
+  // Apply absolute value if specified
+  if (mapping.absolute) {
+    value = Math.abs(value);
+  }
+  
+  return value;
+}
+
+/**
+ * Process file data to extract measurements A-N
+ * Returns object with structure: { A: {value, isValid}, B: {value, isValid}, ... }
+ */
+function processFileDataForMeasurements(dataPoints) {
+  const result = {};
+  
+  Object.keys(measurementMapping).forEach(key => {
+    const mapping = measurementMapping[key];
+    const value = extractValue(dataPoints, mapping);
+    const range = validationRanges[key];
+    
+    let isValid = true;
+    if (range && value !== null) {
+      isValid = value >= range.min && value <= range.max;
+    } else if (value === null) {
+      isValid = true; // Null values are considered "valid" (just not filled)
+    }
+    
+    result[key] = {
+      value: value !== null ? value.toFixed(3) : '-',
+      isValid: isValid
+    };
+  });
+  
+  return result;
+}
+
+/**
+ * Get highlighting information for fileData view
+ */
+function getHighlightMapping() {
+  const highlights = [];
+  
+  Object.entries(measurementMapping).forEach(([key, mapping]) => {
+    if (mapping.type === 'AVERAGE') {
+      // For average, highlight all constituent cells
+      mapping.indices.forEach(config => {
+        highlights.push({
+          key: key,
+          index: config.index,
+          type: config.type,
+          field: capitalizeField(config.field),
+          isAverage: true
+        });
+      });
+    } else if (mapping.type !== 'MANUAL' && mapping.type !== 'VISUAL') {
+      highlights.push({
+        key: key,
+        index: mapping.index,
+        type: mapping.type,
+        field: capitalizeField(mapping.field),
+        isAverage: false
+      });
+    }
+  });
+  
+  return highlights;
+}
+
+/**
+ * Helper to capitalize field names for display
+ */
+function capitalizeField(field) {
+  const fieldMap = {
+    'x': 'X',
+    'y': 'Y',
+    'z': 'Z',
+    'rot_x': 'Rot X',
+    'rot_y': 'Rot Y',
+    'rot_z': 'Rot Z',
+    'diameter': 'Diameter',
+    'tolerance': 'Tolerance',
+    'note': 'Note'
+  };
+  return fieldMap[field] || field;
+}
 
 // ======================
 // HELPER FUNCTIONS
@@ -237,9 +419,13 @@ app.get("/files/:id", async (req, res) => {
       [Query.equal("file_id", fileId), Query.orderAsc("index"), Query.limit(1000)]
     );
 
+    // Get highlight information
+    const highlights = getHighlightMapping();
+
     res.render("fileData", {
       file: file,
       data: dataResponse.documents,
+      highlights: highlights,
       username: DEFAULT_USERNAME,
       message: null,
     });
@@ -371,17 +557,6 @@ app.get("/summary", async (req, res) => {
 
     const filesData = [];
     const fileData = {}; // Processed data for template
-    const validationRanges = {
-      // Define validation ranges for each measurement type
-      diameter: { min: -0.5, max: 0.5 },
-      tolerance: { min: -0.01, max: 0.01 },
-      x: { min: -50, max: 50 },
-      y: { min: -50, max: 50 },
-      z: { min: -50, max: 50 },
-      rot_x: { min: 0, max: 360 },
-      rot_y: { min: 0, max: 360 },
-      rot_z: { min: 0, max: 360 },
-    };
 
     // Fetch each file and its data
     for (const fileId of fileIds) {
@@ -409,33 +584,10 @@ app.get("/summary", async (req, res) => {
           data: dataResponse.documents,
         });
 
-        // Process data for template
-        fileData[file.$id] = {};
+        // Process data using measurement processor
+        // This creates: { A: {value, isValid}, B: {value, isValid}, ... }
+        fileData[file.$id] = processFileDataForMeasurements(dataResponse.documents);
         
-        dataResponse.documents.forEach((row) => {
-          // Create entries for each data field
-          const fields = ['x', 'y', 'z', 'rot_x', 'rot_y', 'rot_z', 'diameter', 'tolerance', 'note'];
-          
-          fields.forEach((field) => {
-            const key = `${row.data_type}_${row.index}_${field}`;
-            const value = row[field];
-            
-            // Determine if value is valid based on ranges
-            let isValid = true;
-            if (value !== null && value !== '-' && validationRanges[field]) {
-              const numValue = parseFloat(value);
-              if (!isNaN(numValue)) {
-                isValid = numValue >= validationRanges[field].min && 
-                         numValue <= validationRanges[field].max;
-              }
-            }
-            
-            fileData[file.$id][key] = {
-              value: value === null ? '-' : value,
-              isValid: isValid
-            };
-          });
-        });
       } catch (error) {
         console.error(`Error fetching file ${fileId}:`, error);
         // Continue with other files even if one fails
@@ -448,8 +600,8 @@ app.get("/summary", async (req, res) => {
     res.render("summary", {
       filesData: filesData,
       files: files,
-      fileData: fileData, // Add processed fileData
-      validationRanges: validationRanges, // Add validation ranges
+      fileData: fileData,
+      validationRanges: validationRanges,
       username: DEFAULT_USERNAME,
       inspectorName: DEFAULT_USERNAME,
     });
@@ -480,6 +632,7 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Database: Appwrite`);
   console.log(`Authentication: DISABLED`);
+  console.log(`Measurement processor: ENABLED`);
 });
 
 module.exports = app;
