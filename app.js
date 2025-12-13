@@ -158,7 +158,7 @@ app.get("/", async (req, res) => {
 });
 
 // Upload handler
-app.post("/upload", upload.single("file"), async (req, res) => {
+app.post("/upload", upload.single("files"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).send("No file uploaded");
