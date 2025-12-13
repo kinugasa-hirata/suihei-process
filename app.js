@@ -370,6 +370,18 @@ app.get("/summary", async (req, res) => {
     }
 
     const filesData = [];
+    const fileData = {}; // Processed data for template
+    const validationRanges = {
+      // Define validation ranges for each measurement type
+      diameter: { min: -0.5, max: 0.5 },
+      tolerance: { min: -0.01, max: 0.01 },
+      x: { min: -50, max: 50 },
+      y: { min: -50, max: 50 },
+      z: { min: -50, max: 50 },
+      rot_x: { min: 0, max: 360 },
+      rot_y: { min: 0, max: 360 },
+      rot_z: { min: 0, max: 360 },
+    };
 
     // Fetch each file and its data
     for (const fileId of fileIds) {
@@ -396,6 +408,34 @@ app.get("/summary", async (req, res) => {
           file: file,
           data: dataResponse.documents,
         });
+
+        // Process data for template
+        fileData[file.$id] = {};
+        
+        dataResponse.documents.forEach((row) => {
+          // Create entries for each data field
+          const fields = ['x', 'y', 'z', 'rot_x', 'rot_y', 'rot_z', 'diameter', 'tolerance', 'note'];
+          
+          fields.forEach((field) => {
+            const key = `${row.data_type}_${row.index}_${field}`;
+            const value = row[field];
+            
+            // Determine if value is valid based on ranges
+            let isValid = true;
+            if (value !== null && value !== '-' && validationRanges[field]) {
+              const numValue = parseFloat(value);
+              if (!isNaN(numValue)) {
+                isValid = numValue >= validationRanges[field].min && 
+                         numValue <= validationRanges[field].max;
+              }
+            }
+            
+            fileData[file.$id][key] = {
+              value: value === null ? '-' : value,
+              isValid: isValid
+            };
+          });
+        });
       } catch (error) {
         console.error(`Error fetching file ${fileId}:`, error);
         // Continue with other files even if one fails
@@ -407,7 +447,9 @@ app.get("/summary", async (req, res) => {
 
     res.render("summary", {
       filesData: filesData,
-      files: files, // Add files array
+      files: files,
+      fileData: fileData, // Add processed fileData
+      validationRanges: validationRanges, // Add validation ranges
       username: DEFAULT_USERNAME,
       inspectorName: DEFAULT_USERNAME,
     });

@@ -661,21 +661,21 @@
               <tbody>
                 <% files.forEach(function(file) { %>
                 <tr>
-                  <td class="filename-cell" data-file-id="<%= file.id %>">
+                  <td class="filename-cell" data-file-id="<%= file.$id %>">
                     <strong><%= file.filename %></strong>
                   </td>
                   <% displayHeaders.forEach(function(header) { %> <% if (header
                   === 'G') { %>
                   <td
-                    class="<%= fileData[file.id]['G1'].value !== '-' && (!fileData[file.id]['G1'].isValid || !fileData[file.id]['G2'].isValid || !fileData[file.id]['G3'].isValid || !fileData[file.id]['G4'].isValid) ? 'invalid-value' : '' %> highlight-cell data-cell g-value-cell"
-                    title="G1: <%= fileData[file.id]['G1'].value %>&#13;
-                           G2: <%= fileData[file.id]['G2'].value %>&#13;
-                           G3: <%= fileData[file.id]['G3'].value %>&#13;
-                           G4: <%= fileData[file.id]['G4'].value %>"
+                    class="<%= fileData[file.$id]['G1'].value !== '-' && (!fileData[file.$id]['G1'].isValid || !fileData[file.$id]['G2'].isValid || !fileData[file.$id]['G3'].isValid || !fileData[file.$id]['G4'].isValid) ? 'invalid-value' : '' %> highlight-cell data-cell g-value-cell"
+                    title="G1: <%= fileData[file.$id]['G1'].value %>&#13;
+                           G2: <%= fileData[file.$id]['G2'].value %>&#13;
+                           G3: <%= fileData[file.$id]['G3'].value %>&#13;
+                           G4: <%= fileData[file.$id]['G4'].value %>"
                   >
-                    <%= fileData[file.id]['G1'].value %> <% const invalidCount =
-                    ['G2', 'G3', 'G4'].filter(g => fileData[file.id][g].value
-                    !== '-' && !fileData[file.id][g].isValid ).length; if
+                    <%= fileData[file.$id]['G1'].value %> <% const invalidCount =
+                    ['G2', 'G3', 'G4'].filter(g => fileData[file.$id][g].value
+                    !== '-' && !fileData[file.$id][g].isValid ).length; if
                     (invalidCount > 0) { %>
                     <span
                       class="hidden-g-warning"
@@ -687,12 +687,12 @@
                   </td>
                   <% } else { %>
                   <td
-                    class="<%= fileData[file.id][header].value !== '-' && !fileData[file.id][header].isValid ? 'invalid-value' : '' %> highlight-cell data-cell"
-                    <% if (fileData[file.id][header].value !== '-') { %>
+                    class="<%= fileData[file.$id][header].value !== '-' && !fileData[file.$id][header].isValid ? 'invalid-value' : '' %> highlight-cell data-cell"
+                    <% if (fileData[file.$id][header].value !== '-') { %>
                       title="Allowed range: <%= validationRanges[header] ? validationRanges[header].min + ' - ' + validationRanges[header].max : 'No range' %>"
                     <% } %>
                   >
-                    <%= fileData[file.id][header].value %>
+                    <%= fileData[file.$id][header].value %>
                   </td>
                   <% } %> <% }); %>
                   <td>
@@ -701,7 +701,7 @@
                     (username !== 'hinkan') { %>
                     <span
                       class="text-muted weight-editable"
-                      data-file-id="<%= file.id %>"
+                      data-file-id="<%= file.$id %>"
                       >Not set</span
                     >
                     <% } else { %>
