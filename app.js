@@ -1,13 +1,11 @@
-// app.js - Appwrite Version
+// app.js - Appwrite Version (NO AUTHENTICATION)
 // 水平ノズル検査成績書システム with Appwrite Backend
 
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const bodyParser = require("body-parser");
-const session = require("express-session");
 const fs = require("fs");
-const geoip = require("geoip-lite");
 require("dotenv").config();
 
 // Appwrite SDK
@@ -43,20 +41,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static("public"));
 
-// Session configuration
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "your-secret-key",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === 'production', // Only use secure cookies in production
-      httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      sameSite: 'lax' // Important for Vercel
-    }
-  })
-);
+// Default username for all requests (no auth)
+const DEFAULT_USERNAME = "test-user";
 
 // Multer configuration for file uploads
 const storage = multer.memoryStorage();
@@ -70,38 +56,6 @@ const upload = multer({
     }
   },
 });
-
-// Authentication middleware
-// Authentication middleware - DISABLED FOR TESTING
-function isAuthenticated(req, res, next) {
-  req.session = { user: "test-user" }; // Fake user for now
-  return next();
-}
-// Authentication middleware - DISABLED FOR TESTING
-function isAuthenticated(req, res, next) {
-  req.session = { user: "test-user" }; // Fake user for now
-  return next();
-}
-// Authentication middleware - DISABLED FOR TESTING
-function isAuthenticated(req, res, next) {
-  req.session = { user: "test-user" }; // Fake user for now
-  return next();
-}
-// Authentication middleware - DISABLED FOR TESTING
-function isAuthenticated(req, res, next) {
-  req.session = { user: "test-user" }; // Fake user for now
-  return next();
-}
-// Authentication middleware - DISABLED FOR TESTING
-function isAuthenticated(req, res, next) {
-  req.session = { user: "test-user" }; // Fake user for now
-  return next();
-}
-// Authentication middleware - DISABLED FOR TESTING
-function isAuthenticated(req, res, next) {
-  req.session = { user: "test-user" }; // Fake user for now
-  return next();
-}
 
 // ======================
 // HELPER FUNCTIONS
@@ -162,63 +116,26 @@ function parseTxtFile(content) {
   return dataPoints;
 }
 
-// Log login attempts
-async function logLoginAttempt(username, ip, success) {
-  try {
-    await databases.createDocument(
-      DATABASE_ID,
-      COLLECTION_LOGIN_LOGS,
-      ID.unique(),
-      {
-        username: username,
-        login_time: new Date().toISOString(),
-        ip_address: ip,
-      }
-    );
-  } catch (error) {
-    console.error("Failed to log login attempt:", error);
-  }
-}
-
 // ======================
 // ROUTES
 // ======================
 
-// Login page
+// Redirect login to home (no auth needed)
 app.get("/login", (req, res) => {
-  res.render("login", { error: null });
+  res.redirect("/");
 });
 
-// Login handler
-// Login handler
-app.post("/login", async (req, res) => {
-  const { username, password } = req.body;
-  const ip = req.ip || req.connection.remoteAddress;
-
-  // Shared 4-digit password for all users
-  const SHARED_PASSWORD = "1234";  // ← Change this to your preferred 4-digit code
-  
-  // Valid usernames
-  const validUsernames = ["hirata", "hinkan", "naemura", "iwatsuki"];
-
-  if (validUsernames.includes(username) && password === SHARED_PASSWORD) {
-    req.session.user = username;
-    await logLoginAttempt(username, ip, true);
-    res.redirect("/");
-  } else {
-    await logLoginAttempt(username, ip, false);
-    res.render("login", { error: "Invalid username or password" });
-  }
+app.post("/login", (req, res) => {
+  res.redirect("/");
 });
 
-// Logout
+// Logout redirect
 app.get("/logout", (req, res) => {
-  req.session.destroy();
-  res.redirect("/login");
+  res.redirect("/");
 });
 
-// Home page - Protected
-app.get("/", isAuthenticated, async (req, res) => {
+// Home page - NO AUTH REQUIRED
+app.get("/", async (req, res) => {
   try {
     // Get all files
     const response = await databases.listDocuments(
@@ -229,19 +146,19 @@ app.get("/", isAuthenticated, async (req, res) => {
 
     res.render("index", {
       files: response.documents,
-      username: req.session.user,
+      username: DEFAULT_USERNAME,
     });
   } catch (error) {
     console.error("Error fetching files:", error);
     res.render("index", {
       files: [],
-      username: req.session.user,
+      username: DEFAULT_USERNAME,
     });
   }
 });
 
 // Upload handler
-app.post("/upload", isAuthenticated, upload.single("file"), async (req, res) => {
+app.post("/upload", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).send("No file uploaded");
@@ -302,7 +219,7 @@ app.post("/upload", isAuthenticated, upload.single("file"), async (req, res) => 
 });
 
 // View file data
-app.get("/files/:id", isAuthenticated, async (req, res) => {
+app.get("/files/:id", async (req, res) => {
   try {
     const fileId = req.params.id;
 
@@ -323,7 +240,7 @@ app.get("/files/:id", isAuthenticated, async (req, res) => {
     res.render("fileData", {
       file: file,
       data: dataResponse.documents,
-      username: req.session.user,
+      username: DEFAULT_USERNAME,
       message: null,
     });
   } catch (error) {
@@ -333,7 +250,7 @@ app.get("/files/:id", isAuthenticated, async (req, res) => {
 });
 
 // Update weight
-app.post("/files/:id/update-weight", isAuthenticated, async (req, res) => {
+app.post("/files/:id/update-weight", async (req, res) => {
   try {
     const fileId = req.params.id;
     const weight = parseFloat(req.body.weight);
@@ -357,7 +274,7 @@ app.post("/files/:id/update-weight", isAuthenticated, async (req, res) => {
 });
 
 // Delete file
-app.post("/files/:id/delete", isAuthenticated, async (req, res) => {
+app.post("/files/:id/delete", async (req, res) => {
   try {
     const fileId = req.params.id;
 
@@ -391,7 +308,7 @@ app.post("/files/:id/delete", isAuthenticated, async (req, res) => {
 });
 
 // Data export (JSON)
-app.get("/export-data", isAuthenticated, async (req, res) => {
+app.get("/export-data", async (req, res) => {
   try {
     // Get all files
     const filesResponse = await databases.listDocuments(
@@ -433,7 +350,7 @@ app.get("/health", (req, res) => {
 });
 
 // PDF export route (simplified - browser print)
-app.get("/export-pdf", isAuthenticated, (req, res) => {
+app.get("/export-pdf", (req, res) => {
   res.json({
     message: "Please use your browser's Print function (Ctrl+P) to save as PDF",
   });
@@ -459,7 +376,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Database: Appwrite`);
-  console.log(`Project: ${process.env.APPWRITE_PROJECT_ID}`);
+  console.log(`Authentication: DISABLED`);
 });
 
 module.exports = app;
