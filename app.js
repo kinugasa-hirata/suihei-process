@@ -165,17 +165,18 @@ app.get("/login", (req, res) => {
 });
 
 // Login handler
+// Login handler
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
   const ip = req.ip || req.connection.remoteAddress;
 
-  // Simple authentication (consider using proper auth in production)
-  const validUsers = {
-    hirata: "hirata",
-    hinkan: "hinkan",
-  };
+  // Shared 4-digit password for all users
+  const SHARED_PASSWORD = "1234";  // ← Change this to your preferred 4-digit code
+  
+  // Valid usernames
+  const validUsernames = ["hirata", "hinkan", "naemura", "iwatsuki"];
 
-  if (validUsers[username] && validUsers[username] === password) {
+  if (validUsernames.includes(username) && password === SHARED_PASSWORD) {
     req.session.user = username;
     await logLoginAttempt(username, ip, true);
     res.redirect("/");
