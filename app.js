@@ -405,6 +405,7 @@ app.get("/summary", async (req, res) => {
     res.render("summary", {
       filesData: filesData,
       username: DEFAULT_USERNAME,
+      inspectorName: DEFAULT_USERNAME, // Add missing inspector name
     });
   } catch (error) {
     console.error("Error generating summary:", error);
