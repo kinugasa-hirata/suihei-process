@@ -225,3 +225,5 @@ MIT License - See LICENSE file for details
 ---
 
 **Note**: This system is specifically designed for horizontal nozzle inspection processes and includes Japanese language interface elements for manufacturing quality control operations.
+
+# Migrated to Appwrite Database
