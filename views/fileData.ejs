@@ -89,6 +89,16 @@
                 <strong>Weight:</strong> <span class="text-muted">Not set</span>
               <% } %>
             </p>
+            <p>
+              <strong>生産ロット:</strong> 
+              <% if (file.lot) { %>
+                <span style="background: #e3f2fd; padding: 4px 12px; border-radius: 4px; font-weight: 500;">
+                  <%= file.lot %>
+                </span>
+              <% } else { %>
+                <span class="text-muted">未設定</span>
+              <% } %>
+            </p>
 
             <% if (canEditWeights) { %>
               <form action="/files/<%= file.$id %>/update-weight" method="post" id="weightForm">

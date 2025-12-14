@@ -514,6 +514,9 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
       return res.status(400).send("No files uploaded");
     }
 
+    // Get lot number from request body
+    const lotNumber = req.body.lot || null;
+
     for (const file of req.files) {
       const filename = file.originalname;
       const content = file.buffer.toString("utf8");
@@ -531,6 +534,7 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
           filename: filename,
           uploaded_at: new Date().toISOString(),
           weight: null,
+          lot: lotNumber,  // ← ADD THIS
         }
       );
 

@@ -107,9 +107,10 @@
         <div class="column-middle">
           <div class="upload-form">
             <h4 class="mb-3">測定データアップロード</h4>
-            <form action="/upload" method="post" enctype="multipart/form-data">
-              <input type="file" id="files" name="files" accept=".txt" multiple required style="display: none" onchange="this.form.submit()" />
-              <input type="hidden" name="overwriteAction" value="overwrite" />
+            <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
+              <input type="file" id="files" name="files" accept=".txt" multiple required style="display: none" 
+                onchange="showLotDialog()" />
+              <input type="hidden" name="lot" id="lotInput" value="" />
               <label for="files" class="btn btn-primary d-flex align-items-center justify-content-center">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-upload me-2" viewBox="0 0 16 16">
                   <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
@@ -118,6 +119,19 @@
                 アップロード
               </label>
             </form>
+          </div>
+        </div>
+
+        <!-- Lot Dialog Modal -->
+        <div id="lotModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+          <div style="background: white; padding: 30px; border-radius: 10px; max-width: 400px; width: 90%;">
+            <h4 style="margin-bottom: 20px;">📦 生産ロット番号を入力</h4>
+            <p style="color: #666; margin-bottom: 15px;">このバッチのファイルのロット番号を入力してください</p>
+            <input type="text" id="lotNumberInput" class="form-control" placeholder="例: LOT-2025-001" style="margin-bottom: 20px;" />
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+              <button onclick="cancelLotDialog()" class="btn btn-secondary">キャンセル</button>
+              <button onclick="confirmLot()" class="btn btn-primary">確認</button>
+            </div>
           </div>
         </div>
 
@@ -373,6 +387,39 @@
           updateSummaryForm();
         }
 
+        function showLotDialog() {
+          const filesInput = document.getElementById('files');
+          if (filesInput.files.length > 0) {
+            document.getElementById('lotModal').style.display = 'flex';
+            document.getElementById('lotNumberInput').focus();
+          }
+        }
+
+        function cancelLotDialog() {
+          document.getElementById('lotModal').style.display = 'none';
+          document.getElementById('files').value = '';
+          document.getElementById('lotNumberInput').value = '';
+        }
+
+        function confirmLot() {
+          const lotNumber = document.getElementById('lotNumberInput').value.trim();
+          if (!lotNumber) {
+            alert('ロット番号を入力してください');
+            return;
+          }
+          
+          document.getElementById('lotInput').value = lotNumber;
+          document.getElementById('lotModal').style.display = 'none';
+          document.getElementById('uploadForm').submit();
+        }
+
+        // Allow Enter key to confirm
+        document.getElementById('lotNumberInput').addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            confirmLot();
+          }
+        });
+        
         window.selectFileRange = function (event) {
           event.preventDefault();
           const startFile = parseInt(document.getElementById("startFile").value);
