@@ -1222,13 +1222,30 @@ function proceedToPrint() {
     return;
   }
   
-  closeValidationModal();
-  
   // Show choice: Print or PDF
   if (confirm('印刷しますか？\n\nOK = 印刷\nキャンセル = PDF保存')) {
-    printReport();
+    // User chose Print
+    
+    // Add event listener to detect when print dialog is closed
+    const afterPrintHandler = function() {
+      closeValidationModal();
+      window.removeEventListener('afterprint', afterPrintHandler);
+    };
+    
+    window.addEventListener('afterprint', afterPrintHandler);
+    
+    // Small delay to ensure event listener is attached
+    setTimeout(() => {
+      printReport();
+    }, 100);
   } else {
-    exportPDF();
+    // User chose PDF - close validation modal before export
+    closeValidationModal();
+    
+    // Small delay to ensure modal is closed
+    setTimeout(() => {
+      exportPDF();
+    }, 100);
   }
 }
     </script>
