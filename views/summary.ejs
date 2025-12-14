@@ -1216,26 +1216,32 @@
         document.getElementById('validationModal').style.display = 'none';
       }
 
-      function proceedToPrint() {
+      async function proceedToPrint() {
         if (!validationPassed) {
           alert('エラーを修正してから印刷してください。');
           return;
         }
         
-        // Close the validation modal FIRST
+        // Step 1: Close validation modal
         closeValidationModal();
         
-        // Small delay to ensure modal closes smoothly
-        setTimeout(() => {
-          // THEN ask: Print or PDF?
-          if (confirm('印刷しますか？\n\nOK = 印刷\nキャンセル = PDF保存')) {
-            // User chose Print
-            printReport();
-          } else {
-            // User chose PDF
-            exportPDF();
-          }
-        }, 200);
+        // Step 2: Wait for modal to fully close (longer delay)
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Step 3: Show confirmation dialog
+        const shouldPrint = confirm('印刷しますか？\n\nOK = 印刷\nキャンセル = PDF保存');
+        
+        // Step 4: Wait before executing action
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Step 5: Execute action based on user choice
+        if (shouldPrint) {
+          // User chose Print
+          printReport();
+        } else {
+          // User chose PDF
+          exportPDF();
+        }
       }
       </script>
   </body>
