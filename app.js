@@ -74,7 +74,7 @@ const measurementMapping = {
   'H': { index: 2, type: 'DISTANCE', field: 'y', absolute: true },
   'I': { index: 15, type: 'CIRCLE', field: 'diameter', absolute: false },
   'J': { index: 7, type: 'CIRCLE', field: 'diameter', absolute: false },
-  'K': { index: 2, type: 'PT-COMP', field: 'y', absolute: true },
+  'K': { index: 2, type: 'PT-COMP', field: 'x', absolute: true },
   'L': { index: 14, type: 'CIRCLE', field: 'diameter', absolute: false },
   'M': { type: 'MANUAL', field: 'PassFail' },
   'N': { type: 'VISUAL', field: 'PassFail' }
