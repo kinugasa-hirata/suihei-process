@@ -1,10 +1,8 @@
-<!-- views/fileData.ejs - UPDATED with server-side highlighting -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Vercel Analytics script -->
     <script defer src="/_vercel/insights/script.js"></script>
     <title>測定データ詳細</title>
     <link
@@ -107,11 +105,58 @@
         background: #d4edda;
         border-color: #28a745;
       }
+      .user-info-banner {
+        background: #e3f2fd;
+        padding: 12px 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border: 1px solid #90caf9;
+      }
+      .user-info-left {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+      .auth-badge {
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .badge-edit {
+        background: #d4edda;
+        color: #155724;
+      }
+      .badge-readonly {
+        background: #e2e3e5;
+        color: #383d41;
+      }
     </style>
   </head>
   <body>
     <div class="container">
       <h1 class="mb-4">ファイルデータ詳細</h1>
+
+      <!-- User Info Banner -->
+      <div class="user-info-banner">
+        <div class="user-info-left">
+          <div>
+            <span style="font-size: 16px;">👤</span>
+            <strong><%= username %></strong>
+          </div>
+          
+          <% if (canEditWeights) { %>
+            <span class="auth-badge badge-edit">✓ 重量編集可</span>
+          <% } else { %>
+            <span class="auth-badge badge-readonly">📖 閲覧のみ</span>
+          <% } %>
+        </div>
+        
+        <a href="/logout" class="btn btn-sm btn-outline-danger">ログアウト</a>
+      </div>
 
       <div class="nav-links">
         <a href="/" class="btn btn-primary">Home</a>
@@ -129,40 +174,47 @@
           </div>
           <div class="col-md-6">
             <p>
-              <% if (typeof file.weight !== 'undefined' && file.weight !== null)
-              { %>
-              <strong>Weight:</strong> <%= Number(file.weight).toFixed(1) %> g
-              <% } else { %> <strong>Weight:</strong>
-              <span class="text-muted">Not set</span>
+              <% if (typeof file.weight !== 'undefined' && file.weight !== null) { %>
+                <strong>Weight:</strong> <%= Number(file.weight).toFixed(1) %> g
+              <% } else { %>
+                <strong>Weight:</strong>
+                <span class="text-muted">Not set</span>
               <% } %>
             </p>
 
-            <% if (username !== 'hinkan') { %>
-            <form
-              action="/files/<%= file.$id %>/update-weight"
-              method="post"
-              id="weightForm"
-            >
-              <div class="input-group" style="max-width: 300px">
-                <input type="hidden" name="fileId" value="<%= file.$id %>" />
-                <input
-                  type="text"
-                  class="form-control text-end"
-                  name="weight"
-                  value="<%= file.weight !== null ? Number(file.weight).toFixed(1) : '' %>"
-                  placeholder="Enter weight (g)"
-                  inputmode="decimal"
-                />
-                <button type="submit" class="btn btn-primary">
-                  Update Weight
-                </button>
-              </div>
-            </form>
+            <!-- Weight Update Form - Only for Authorized Users -->
+            <% if (canEditWeights) { %>
+              <form
+                action="/files/<%= file.$id %>/update-weight"
+                method="post"
+                id="weightForm"
+              >
+                <div class="input-group" style="max-width: 300px">
+                  <input type="hidden" name="fileId" value="<%= file.$id %>" />
+                  <input
+                    type="text"
+                    class="form-control text-end"
+                    name="weight"
+                    value="<%= file.weight !== null ? Number(file.weight).toFixed(1) : '' %>"
+                    placeholder="Enter weight (g)"
+                    inputmode="decimal"
+                  />
+                  <button type="submit" class="btn btn-primary">
+                    Update Weight
+                  </button>
+                </div>
+              </form>
+            <% } else { %>
+              <p class="text-muted" style="font-size: 14px; margin-top: 10px;">
+                <em>💡 重量の編集は <strong>naemura</strong> と <strong>iwatsuki</strong> のみ可能です</em>
+              </p>
             <% } %>
           </div>
         </div>
       </div>
-      <% } %> <% if (typeof message !== 'undefined' && message) { %>
+      <% } %> 
+      
+      <% if (typeof message !== 'undefined' && message) { %>
       <div class="alert alert-info"><%= message %></div>
       <% } %> 
       
@@ -189,7 +241,7 @@
           <tbody>
             <% 
             // Field name mapping
-            const fieldMap = {
+            var fieldMap = {
               'X': 'x',
               'Y': 'y',
               'Z': 'z',
@@ -205,7 +257,8 @@
             function getCellHighlight(point, fieldName) {
               if (!highlights) return null;
               
-              for (const h of highlights) {
+              for (var i = 0; i < highlights.length; i++) {
+                var h = highlights[i];
                 if (h.index === point.index && 
                     h.type === point.data_type && 
                     h.field === fieldName) {
@@ -226,15 +279,15 @@
               
               <% 
               // Define fields to display in order
-              const fields = ['X', 'Y', 'Z', 'Rot X', 'Rot Y', 'Rot Z', 'Note', 'Diameter', 'Tolerance'];
+              var fields = ['X', 'Y', 'Z', 'Rot X', 'Rot Y', 'Rot Z', 'Note', 'Diameter', 'Tolerance'];
               
-              fields.forEach(field => {
-                const fieldKey = fieldMap[field];
-                const value = point[fieldKey];
-                const highlight = getCellHighlight(point, field);
+              fields.forEach(function(field) {
+                var fieldKey = fieldMap[field];
+                var value = point[fieldKey];
+                var highlight = getCellHighlight(point, field);
                 
-                let classes = '';
-                let dataKey = '';
+                var classes = '';
+                var dataKey = '';
                 
                 if (highlight) {
                   classes = highlight.isAverage ? 'highlight-average' : 'highlight';
@@ -242,7 +295,7 @@
                 }
               %>
               
-              <td class="<%= classes %>" <%= dataKey ? `data-key="${dataKey}"` : '' %>>
+              <td class="<%= classes %>" <%= dataKey ? 'data-key="' + dataKey + '"' : '' %>>
                 <% if(value !== null && value !== undefined && value !== '' && value !== '-') { %>
                   <%= typeof value === 'number' ? value.toFixed(3) : 
                       ((value === 'NaN' || value === 'NAN') ? 'NaN' : 
@@ -286,8 +339,8 @@
 
     <script>
       document.addEventListener("DOMContentLoaded", function () {
-        const weightInput = document.querySelector('input[name="weight"]');
-        const weightForm = document.getElementById("weightForm");
+        var weightInput = document.querySelector('input[name="weight"]');
+        var weightForm = document.getElementById("weightForm");
 
         if (weightInput && weightForm) {
           weightInput.addEventListener("keydown", function (event) {

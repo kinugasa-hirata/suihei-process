@@ -1,10 +1,11 @@
-// app.js - FINAL VERSION with all fixes
+// app.js - WITH LOGIN AND AUTHORIZATION
 // 水平ノズル検査成績書システム with Appwrite Backend
 
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const bodyParser = require("body-parser");
+const session = require("express-session");
 const fs = require("fs");
 require("dotenv").config();
 
@@ -15,31 +16,43 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ======================
+// USER CONFIGURATION
+// ======================
+
+// Authorized users who can edit/save weights
+const AUTHORIZED_USERS = ['naemura', 'iwatsuki'];
+
+// Simple password validation (any 4 digits)
+function isValidPassword(password) {
+  return /^\d{4}$/.test(password);
+}
+
+// ======================
 // MEASUREMENT CONFIGURATION
 // ======================
 
 // Validation ranges for measurements A-N
 const validationRanges = {
-  'A': { min: 8.0, max: 8.4 },        // 8.2 ±0.2
-  'B': { min: 37.2, max: 37.8 },      // 37.5 ±0.3
-  'C': { min: 15.7, max: 16.1 },      // 15.9 ±0.2
-  'D': { min: 23.9, max: 24.3 },      // 24.1 ±0.2
-  'E': { min: 11.2, max: 11.4 },      // Φ11.2 +0.2/0
-  'F': { min: 3.1, max: 3.3 },        // Φ3.2 ±0.1
-  'G1': { min: 7.8, max: 8.2 },       // Φ8.0 ±0.2
+  'A': { min: 8.0, max: 8.4 },
+  'B': { min: 37.2, max: 37.8 },
+  'C': { min: 15.7, max: 16.1 },
+  'D': { min: 23.9, max: 24.3 },
+  'E': { min: 11.2, max: 11.4 },
+  'F': { min: 3.1, max: 3.3 },
+  'G1': { min: 7.8, max: 8.2 },
   'G2': { min: 7.8, max: 8.2 },
   'G3': { min: 7.8, max: 8.2 },
   'G4': { min: 7.8, max: 8.2 },
-  'H': { min: 4.9, max: 5.1 },        // 深さ5.0 ±0.1
-  'I': { min: 29.8, max: 30.2 },      // P.C.D 30 ±0.2
-  'J': { min: 154.9, max: 155.9 },    // Φ155.4 ±0.5
-  'K': { min: 82.8, max: 83.4 },      // 83.1 ±0.3
-  'L': { min: 121.8, max: 122.8 },    // Φ122.3 ±0.5
-  'M': null,                           // 嵌め合い - Pass/Fail
-  'N': null                            // 目視点検 - Pass/Fail
+  'H': { min: 4.9, max: 5.1 },
+  'I': { min: 29.8, max: 30.2 },
+  'J': { min: 154.9, max: 155.9 },
+  'K': { min: 82.8, max: 83.4 },
+  'L': { min: 121.8, max: 122.8 },
+  'M': null,
+  'N': null
 };
 
-// Measurement mapping - defines which data point goes to which column
+// Measurement mapping
 const measurementMapping = {
   'A': { index: 1, type: 'PT-COMP', field: 'x', absolute: true },
   'B': { index: 9, type: 'CIRCLE', field: 'diameter', absolute: false },
@@ -65,8 +78,8 @@ const measurementMapping = {
   'J': { index: 7, type: 'CIRCLE', field: 'diameter', absolute: false },
   'K': { index: 2, type: 'PT-COMP', field: 'y', absolute: true },
   'L': { index: 14, type: 'CIRCLE', field: 'diameter', absolute: false },
-  'M': { type: 'MANUAL', field: 'PassFail' },  // Manual input
-  'N': { type: 'VISUAL', field: 'PassFail' }   // Visual inspection
+  'M': { type: 'MANUAL', field: 'PassFail' },
+  'N': { type: 'VISUAL', field: 'PassFail' }
 };
 
 // ======================
@@ -80,7 +93,6 @@ const client = new Client()
 
 const databases = new Databases(client);
 
-// Environment variables for collections
 const DATABASE_ID = process.env.APPWRITE_DATABASE_ID;
 const COLLECTION_FILES = process.env.APPWRITE_COLLECTION_FILES_ID;
 const COLLECTION_FILE_DATA = process.env.APPWRITE_COLLECTION_FILE_DATA_ID;
@@ -96,10 +108,18 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static("public"));
 
-// Default username for all requests (no auth)
-const DEFAULT_USERNAME = "test-user";
+// Session configuration
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { 
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    secure: process.env.NODE_ENV === 'production' // HTTPS only in production
+  }
+}));
 
-// Multer configuration for file uploads
+// Multer configuration
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -113,12 +133,37 @@ const upload = multer({
 });
 
 // ======================
+// AUTHENTICATION MIDDLEWARE
+// ======================
+
+// Check if user is logged in
+function requireAuth(req, res, next) {
+  if (req.session && req.session.username) {
+    return next();
+  }
+  res.redirect('/login');
+}
+
+// Check if user can edit weights
+function canEditWeights(username) {
+  return AUTHORIZED_USERS.includes(username);
+}
+
+// Middleware to check weight editing permission
+function requireWeightEditAuth(req, res, next) {
+  if (req.session && req.session.username && canEditWeights(req.session.username)) {
+    return next();
+  }
+  return res.status(403).json({ 
+    success: false, 
+    error: 'Not authorized to edit weights. Only naemura and iwatsuki can edit weights.' 
+  });
+}
+
+// ======================
 // MEASUREMENT PROCESSING FUNCTIONS
 // ======================
 
-/**
- * Get value from data array based on index, type, and field
- */
 function getValue(dataPoints, index, type, field) {
   const point = dataPoints.find(p => p.index === index && p.data_type === type);
   if (!point) return null;
@@ -129,12 +174,8 @@ function getValue(dataPoints, index, type, field) {
   return parseFloat(value);
 }
 
-/**
- * Extract a single measurement value
- */
 function extractValue(dataPoints, mapping) {
   if (mapping.type === 'AVERAGE') {
-    // Calculate average
     const values = [];
     for (const config of mapping.indices) {
       const value = getValue(dataPoints, config.index, config.type, config.field);
@@ -147,13 +188,12 @@ function extractValue(dataPoints, mapping) {
   }
   
   if (mapping.type === 'MANUAL' || mapping.type === 'VISUAL') {
-    return null; // These are filled manually
+    return null;
   }
   
   let value = getValue(dataPoints, mapping.index, mapping.type, mapping.field);
   if (value === null) return null;
   
-  // Apply absolute value if specified
   if (mapping.absolute) {
     value = Math.abs(value);
   }
@@ -161,10 +201,6 @@ function extractValue(dataPoints, mapping) {
   return value;
 }
 
-/**
- * Process file data to extract measurements A-N
- * Returns object with structure: { A: {value, isValid}, B: {value, isValid}, ... }
- */
 function processFileDataForMeasurements(dataPoints) {
   const result = {};
   
@@ -177,7 +213,7 @@ function processFileDataForMeasurements(dataPoints) {
     if (range && value !== null) {
       isValid = value >= range.min && value <= range.max;
     } else if (value === null) {
-      isValid = true; // Null values are considered "valid" (just not filled)
+      isValid = true;
     }
     
     result[key] = {
@@ -189,11 +225,6 @@ function processFileDataForMeasurements(dataPoints) {
   return result;
 }
 
-/**
- * Check G1-G4 values and return display value
- * If all valid, return G1 value
- * If any invalid, return which ones are invalid (e.g., "G2,G4")
- */
 function processGValues(measurements) {
   const gKeys = ['G1', 'G2', 'G3', 'G4'];
   const invalid = [];
@@ -211,19 +242,14 @@ function processGValues(measurements) {
     };
   }
   
-  // All valid, return G1 value
   return measurements['G1'];
 }
 
-/**
- * Get highlighting information for fileData view
- */
 function getHighlightMapping() {
   const highlights = [];
   
   Object.entries(measurementMapping).forEach(([key, mapping]) => {
     if (mapping.type === 'AVERAGE') {
-      // For average, highlight all constituent cells
       mapping.indices.forEach(config => {
         highlights.push({
           key: key,
@@ -247,9 +273,6 @@ function getHighlightMapping() {
   return highlights;
 }
 
-/**
- * Helper to capitalize field names for display
- */
 function capitalizeField(field) {
   const fieldMap = {
     'x': 'X',
@@ -265,18 +288,6 @@ function capitalizeField(field) {
   return fieldMap[field] || field;
 }
 
-/**
- * Extract filename without extension
- */
-function getFilenameWithoutExtension(filename) {
-  return filename.replace(/\.txt$/i, '');
-}
-
-// ======================
-// HELPER FUNCTIONS
-// ======================
-
-// Parse TXT file content
 function parseTxtFile(content) {
   const lines = content.split("\n").filter((line) => line.trim() !== "");
   const dataPoints = [];
@@ -287,7 +298,6 @@ function parseTxtFile(content) {
 
     const index = parseInt(parts[0]);
     const dataType = parts[1].trim();
-    const spaces = parts[2].trim();
 
     let dataPoint = {
       index: index,
@@ -303,7 +313,6 @@ function parseTxtFile(content) {
       tolerance: null,
     };
 
-    // Parse based on data type
     if (dataType.includes("CIRCLE") || dataType === "PLANE") {
       dataPoint.x = parseFloat(parts[3]) || null;
       dataPoint.y = parseFloat(parts[4]) || null;
@@ -332,27 +341,62 @@ function parseTxtFile(content) {
 }
 
 // ======================
-// ROUTES
+// ROUTES - LOGIN/LOGOUT
 // ======================
 
-// Redirect login to home (no auth needed)
+// Login page
 app.get("/login", (req, res) => {
-  res.redirect("/");
+  res.render("login", { error: null });
 });
 
-app.post("/login", (req, res) => {
-  res.redirect("/");
-});
+// Login handler
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
 
-// Logout redirect
-app.get("/logout", (req, res) => {
-  res.redirect("/");
-});
+  if (!username || !password) {
+    return res.render("login", { error: "Username and password are required" });
+  }
 
-// Home page - NO AUTH REQUIRED
-app.get("/", async (req, res) => {
+  // Validate password (any 4 digits)
+  if (!isValidPassword(password)) {
+    return res.render("login", { error: "Password must be 4 digits" });
+  }
+
+  // Set session
+  req.session.username = username;
+  req.session.canEditWeights = canEditWeights(username);
+
+  // Log login to database
   try {
-    // Get all files
+    await databases.createDocument(
+      DATABASE_ID,
+      COLLECTION_LOGIN_LOGS,
+      ID.unique(),
+      {
+        username: username,
+        login_time: new Date().toISOString()
+      }
+    );
+  } catch (error) {
+    console.error("Error logging login:", error);
+  }
+
+  res.redirect("/");
+});
+
+// Logout
+app.get("/logout", (req, res) => {
+  req.session.destroy();
+  res.redirect("/login");
+});
+
+// ======================
+// ROUTES - MAIN APP
+// ======================
+
+// Home page - REQUIRES AUTH
+app.get("/", requireAuth, async (req, res) => {
+  try {
     const response = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_FILES,
@@ -361,19 +405,21 @@ app.get("/", async (req, res) => {
 
     res.render("index", {
       files: response.documents,
-      username: DEFAULT_USERNAME,
+      username: req.session.username,
+      canEditWeights: req.session.canEditWeights
     });
   } catch (error) {
     console.error("Error fetching files:", error);
     res.render("index", {
       files: [],
-      username: DEFAULT_USERNAME,
+      username: req.session.username,
+      canEditWeights: req.session.canEditWeights
     });
   }
 });
 
-// Upload handler
-app.post("/upload", upload.single("file"), async (req, res) => {
+// Upload handler - REQUIRES AUTH
+app.post("/upload", requireAuth, upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).send("No file uploaded");
@@ -381,15 +427,12 @@ app.post("/upload", upload.single("file"), async (req, res) => {
 
     const filename = req.file.originalname;
     const content = req.file.buffer.toString("utf8");
-
-    // Parse the TXT file
     const dataPoints = parseTxtFile(content);
 
     if (dataPoints.length === 0) {
       return res.status(400).send("No valid data found in file");
     }
 
-    // Create file record
     const fileDoc = await databases.createDocument(
       DATABASE_ID,
       COLLECTION_FILES,
@@ -403,7 +446,6 @@ app.post("/upload", upload.single("file"), async (req, res) => {
 
     const fileId = fileDoc.$id;
 
-    // Insert data points
     for (const point of dataPoints) {
       await databases.createDocument(
         DATABASE_ID,
@@ -433,33 +475,31 @@ app.post("/upload", upload.single("file"), async (req, res) => {
   }
 });
 
-// View file data
-app.get("/files/:id", async (req, res) => {
+// View file data - REQUIRES AUTH
+app.get("/files/:id", requireAuth, async (req, res) => {
   try {
     const fileId = req.params.id;
 
-    // Get file info
     const file = await databases.getDocument(
       DATABASE_ID,
       COLLECTION_FILES,
       fileId
     );
 
-    // Get file data
     const dataResponse = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_FILE_DATA,
       [Query.equal("file_id", fileId), Query.orderAsc("index"), Query.limit(1000)]
     );
 
-    // Get highlight information
     const highlights = getHighlightMapping();
 
     res.render("fileData", {
       file: file,
       data: dataResponse.documents,
       highlights: highlights,
-      username: DEFAULT_USERNAME,
+      username: req.session.username,
+      canEditWeights: req.session.canEditWeights,
       message: null,
     });
   } catch (error) {
@@ -468,16 +508,13 @@ app.get("/files/:id", async (req, res) => {
   }
 });
 
-// Update weight - FIXED VERSION
-app.post("/files/:id/update-weight", async (req, res) => {
+// Update weight - REQUIRES WEIGHT EDIT AUTH
+app.post("/files/:id/update-weight", requireWeightEditAuth, async (req, res) => {
   try {
     const fileId = req.params.id;
     const weight = parseFloat(req.body.weight);
 
-    console.log('Update weight request:', { fileId, weight, body: req.body });
-
     if (isNaN(weight) || !weight) {
-      console.log('Invalid weight value');
       return res.status(400).json({ 
         success: false, 
         error: 'Invalid weight value' 
@@ -490,15 +527,11 @@ app.post("/files/:id/update-weight", async (req, res) => {
       fileId,
       { weight: weight }
     );
-
-    console.log('Weight updated successfully');
     
-    // Return JSON response for AJAX call
     if (req.headers['content-type']?.includes('application/json')) {
       return res.json({ success: true, weight: weight });
     }
     
-    // Redirect for form submission
     res.redirect(`/files/${fileId}`);
   } catch (error) {
     console.error("Error updating weight:", error);
@@ -514,40 +547,8 @@ app.post("/files/:id/update-weight", async (req, res) => {
   }
 });
 
-// Save weight from main page - NEW ROUTE
-app.post("/save-weight", async (req, res) => {
-  try {
-    const { fileId, weight } = req.body;
-    const weightValue = parseFloat(weight);
-
-    console.log('Save weight from main:', { fileId, weight: weightValue });
-
-    if (!fileId || isNaN(weightValue)) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Invalid file ID or weight value' 
-      });
-    }
-
-    await databases.updateDocument(
-      DATABASE_ID,
-      COLLECTION_FILES,
-      fileId,
-      { weight: weightValue }
-    );
-
-    res.json({ success: true, weight: weightValue });
-  } catch (error) {
-    console.error("Error saving weight:", error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
-    });
-  }
-});
-
-// Update weights - batch update from main page
-app.post("/update-weights", async (req, res) => {
+// Update weights - batch - REQUIRES WEIGHT EDIT AUTH
+app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
   try {
     const { weights } = req.body;
 
@@ -558,7 +559,6 @@ app.post("/update-weights", async (req, res) => {
       });
     }
 
-    // Update each weight
     for (const item of weights) {
       const weightValue = parseFloat(item.weight);
       
@@ -582,8 +582,8 @@ app.post("/update-weights", async (req, res) => {
   }
 });
 
-// Delete file from main page - NEW ROUTE
-app.post("/delete-file", async (req, res) => {
+// Delete file - REQUIRES AUTH
+app.post("/delete-file", requireAuth, async (req, res) => {
   try {
     const { fileId } = req.body;
 
@@ -594,7 +594,6 @@ app.post("/delete-file", async (req, res) => {
       });
     }
 
-    // Delete all associated data points
     const dataResponse = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_FILE_DATA,
@@ -609,7 +608,6 @@ app.post("/delete-file", async (req, res) => {
       );
     }
 
-    // Delete file record
     await databases.deleteDocument(
       DATABASE_ID,
       COLLECTION_FILES,
@@ -626,8 +624,8 @@ app.post("/delete-file", async (req, res) => {
   }
 });
 
-// Export weights data
-app.get("/export-weights", async (req, res) => {
+// Export weights - REQUIRES AUTH
+app.get("/export-weights", requireAuth, async (req, res) => {
   try {
     const filesResponse = await databases.listDocuments(
       DATABASE_ID,
@@ -651,57 +649,9 @@ app.get("/export-weights", async (req, res) => {
   }
 });
 
-// Delete file - UPDATED to handle both POST and DELETE
-app.post("/files/:id/delete", async (req, res) => {
+// Export data - REQUIRES AUTH
+app.get("/export-data", requireAuth, async (req, res) => {
   try {
-    const fileId = req.params.id;
-
-    // Delete all associated data points
-    const dataResponse = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTION_FILE_DATA,
-      [Query.equal("file_id", fileId), Query.limit(1000)]
-    );
-
-    for (const doc of dataResponse.documents) {
-      await databases.deleteDocument(
-        DATABASE_ID,
-        COLLECTION_FILE_DATA,
-        doc.$id
-      );
-    }
-
-    // Delete file record
-    await databases.deleteDocument(
-      DATABASE_ID,
-      COLLECTION_FILES,
-      fileId
-    );
-
-    // Return JSON for AJAX or redirect
-    if (req.headers['content-type']?.includes('application/json')) {
-      return res.json({ success: true });
-    }
-    
-    res.redirect("/");
-  } catch (error) {
-    console.error("Error deleting file:", error);
-    
-    if (req.headers['content-type']?.includes('application/json')) {
-      return res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
-    }
-    
-    res.status(500).send("Error deleting file");
-  }
-});
-
-// Data export (JSON)
-app.get("/export-data", async (req, res) => {
-  try {
-    // Get all files
     const filesResponse = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_FILES,
@@ -710,7 +660,6 @@ app.get("/export-data", async (req, res) => {
 
     const exportData = [];
 
-    // Get data for each file
     for (const file of filesResponse.documents) {
       const dataResponse = await databases.listDocuments(
         DATABASE_ID,
@@ -731,24 +680,8 @@ app.get("/export-data", async (req, res) => {
   }
 });
 
-// Health check / Status
-app.get("/health", (req, res) => {
-  res.json({
-    status: "OK",
-    database: "Appwrite",
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// PDF export route (simplified - browser print)
-app.get("/export-pdf", (req, res) => {
-  res.json({
-    message: "Please use your browser's Print function (Ctrl+P) to save as PDF",
-  });
-});
-
-// Summary page - Multiple files report - UPDATED
-app.get("/summary", async (req, res) => {
+// Summary page - REQUIRES AUTH
+app.get("/summary", requireAuth, async (req, res) => {
   try {
     const selectedFilesParam = req.query.selectedFiles || "";
     const fileIds = selectedFilesParam
@@ -761,19 +694,16 @@ app.get("/summary", async (req, res) => {
     }
 
     const filesData = [];
-    const fileData = {}; // Processed data for template
+    const fileData = {};
 
-    // Fetch each file and its data
     for (const fileId of fileIds) {
       try {
-        // Get file info
         const file = await databases.getDocument(
           DATABASE_ID,
           COLLECTION_FILES,
           fileId
         );
 
-        // Get file data
         const dataResponse = await databases.listDocuments(
           DATABASE_ID,
           COLLECTION_FILE_DATA,
@@ -789,25 +719,19 @@ app.get("/summary", async (req, res) => {
           data: dataResponse.documents,
         });
 
-        // Process data using measurement processor
         const measurements = processFileDataForMeasurements(dataResponse.documents);
-        
-        // Process G values (combine G1-G4 validation)
         const gValue = processGValues(measurements);
         
-        // Create final fileData structure for template
         fileData[file.$id] = {
           ...measurements,
-          'G': gValue  // Replace individual G1-G4 with combined G
+          'G': gValue
         };
         
       } catch (error) {
         console.error(`Error fetching file ${fileId}:`, error);
-        // Continue with other files even if one fails
       }
     }
 
-    // Extract files array for template compatibility
     const files = filesData.map(fd => fd.file);
 
     res.render("summary", {
@@ -815,13 +739,22 @@ app.get("/summary", async (req, res) => {
       files: files,
       fileData: fileData,
       validationRanges: validationRanges,
-      username: DEFAULT_USERNAME,
-      inspectorName: DEFAULT_USERNAME,
+      username: req.session.username,
+      inspectorName: req.session.username, // Changed to use logged-in username
     });
   } catch (error) {
     console.error("Error generating summary:", error);
     res.status(500).send("Error generating summary");
   }
+});
+
+// Health check
+app.get("/health", (req, res) => {
+  res.json({
+    status: "OK",
+    database: "Appwrite",
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // ======================
@@ -844,7 +777,8 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Database: Appwrite`);
-  console.log(`Authentication: DISABLED`);
+  console.log(`Authentication: ENABLED`);
+  console.log(`Authorized weight editors: ${AUTHORIZED_USERS.join(', ')}`);
   console.log(`Measurement processor: ENABLED`);
 });
 

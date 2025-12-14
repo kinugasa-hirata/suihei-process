@@ -1,197 +1,84 @@
-<!-- Final index.ejs with corrected layout -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Vercel Analytics script -->
     <script defer src="/_vercel/insights/script.js"></script>
     <title>水平ノズル検査</title>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
-    />
-    <link
-      href="https://fonts.googleapis.com/icon?family=Material+Icons"
-      rel="stylesheet"
-    />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     <style>
-      .container {
-        max-width: 1200px;
-        margin-top: 2rem;
+      .container { max-width: 1200px; margin-top: 2rem; }
+      .file-selection-form, .upload-form, .action-buttons {
+        padding: 1.5rem; background-color: #f8f9fa;
+        border-radius: 5px; border: 1px solid #dee2e6; height: 100%;
       }
-      
-      /* Form styling */
-      .form-section {
-        margin-bottom: 2rem;
-      }
-      
-      .file-selection-form {
-        padding: 1.5rem;
-        background-color: #f8f9fa;
-        border-radius: 5px;
-        border: 1px solid #dee2e6;
-        height: 100%;
-      }
-      
-      .upload-form {
-        padding: 1.5rem;
-        background-color: #f8f9fa;
-        border-radius: 5px;
-        border: 1px solid #dee2e6;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-      }
-      
-      .action-buttons {
-        padding: 1.5rem;
-        background-color: #f8f9fa;
-        border-radius: 5px;
-        border: 1px solid #dee2e6;
-        height: 100%;
-      }
-      
-      .action-buttons .btn {
-        margin-bottom: 0.5rem;
-        width: 100%;
-      }
-      
-      /* File grid styles */
+      .upload-form { display: flex; flex-direction: column; justify-content: center; align-items: center; }
+      .action-buttons .btn { margin-bottom: 0.5rem; width: 100%; }
       .file-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 1rem;
-        margin-top: 1rem;
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 1rem; margin-top: 1rem;
       }
-      
       .file-card {
-        background-color: #f8f9fa;
-        border-radius: 8px;
-        padding: 1.5rem 1rem;
-        text-align: center;
-        transition: all 0.3s ease;
-        cursor: pointer;
-        border: 2px solid #dee2e6;
-        position: relative;
-        user-select: none;
+        background-color: #f8f9fa; border-radius: 8px; padding: 1.5rem 1rem;
+        text-align: center; transition: all 0.3s ease; cursor: pointer;
+        border: 2px solid #dee2e6; position: relative; user-select: none;
       }
-      
-      .file-card:hover {
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        border-color: #adb5bd;
-      }
-      
-      .file-card.selected {
-        background-color: #e3f2fd;
-        border-color: #0d6efd;
-        box-shadow: 0 0 0 2px #0d6efd;
-      }
-      
-      .file-card.selected .file-number {
-        color: #000;
-      }
-      
-      .file-number {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #0d6efd;
-        margin-bottom: 0.5rem;
-      }
-      
-      .weight-form {
-        margin-top: 0.5rem;
-        display: flex;
-        justify-content: center;
-      }
-      
+      .file-card:hover { box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); border-color: #adb5bd; }
+      .file-card.selected { background-color: #e3f2fd; border-color: #0d6efd; box-shadow: 0 0 0 2px #0d6efd; }
+      .file-number { font-size: 2.5rem; font-weight: bold; color: #0d6efd; margin-bottom: 0.5rem; }
+      .weight-section { margin-top: 0.5rem; padding: 8px; background: #fff; border-radius: 4px; }
       .weight-input {
-        width: 80px;
-        font-size: 0.9rem;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        border: 1px solid #ced4da;
-        text-align: center;
+        width: 80px; font-size: 0.9rem; padding: 0.25rem 0.5rem;
+        border-radius: 4px; border: 1px solid #ced4da; text-align: center;
       }
-      
-      .file-card .file-content {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
-      
+      .weight-display { color: #666; font-size: 0.95rem; padding: 4px 8px; }
+      .file-card .file-content { display: flex; flex-direction: column; align-items: center; }
       .delete-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: rgba(220, 53, 69, 0.9);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: bold;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-        pointer-events: none;
-        border-radius: 6px;
+        position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+        background-color: rgba(220, 53, 69, 0.9); display: flex;
+        align-items: center; justify-content: center; color: white;
+        font-weight: bold; opacity: 0; transition: opacity 0.3s ease;
+        pointer-events: none; border-radius: 6px;
       }
-      
-      .file-card.deleting .delete-overlay {
-        opacity: 1;
-      }
-
-      /* Remove the up/down arrows from number inputs */
+      .file-card.deleting .delete-overlay { opacity: 1; }
       .weight-input::-webkit-outer-spin-button,
-      .weight-input::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-      }
-      
-      .weight-input[type="number"] {
-        -moz-appearance: textfield;
-        appearance: textfield;
-      }
-      
-      /* Three-column layout */
-      .top-row {
-        display: flex;
-        gap: 1rem;
-        margin-bottom: 2rem;
-      }
-      
-      .column-left {
-        flex: 0 0 42%;
-      }
-      
-      .column-middle {
-        flex: 0 0 33%;
-      }
-      
-      .column-right {
-        flex: 0 0 25%;
+      .weight-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+      .weight-input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+      .top-row { display: flex; gap: 1rem; margin-bottom: 2rem; }
+      .column-left { flex: 0 0 42%; }
+      .column-middle { flex: 0 0 33%; }
+      .column-right { flex: 0 0 25%; }
+      .user-info-header {
+        position: fixed; top: 20px; right: 20px; background: white;
+        padding: 12px 24px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+        z-index: 1000; display: flex; align-items: center; gap: 15px;
       }
     </style>
   </head>
   <body>
-    <div class="container">
-      <div class="d-flex justify-content-end mb-3">
-        <a
-          href="/logout"
-          class="btn btn-outline-danger"
-          style="margin-top: 20px"
-        >
-          ログアウト
-        </a>
+    <!-- User Info Header -->
+    <div class="user-info-header">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 18px;">👤</span>
+        <strong style="color: #333;"><%= username %></strong>
       </div>
+      <% if (canEditWeights) { %>
+        <span style="background: #d4edda; color: #155724; padding: 4px 12px; border-radius: 4px; font-size: 13px; font-weight: 500;">
+          ✓ 重量編集可
+        </span>
+      <% } else { %>
+        <span style="background: #e2e3e5; color: #383d41; padding: 4px 12px; border-radius: 4px; font-size: 13px; font-weight: 500;">
+          📖 閲覧のみ
+        </span>
+      <% } %>
+      <a href="/logout" class="btn btn-sm btn-outline-danger" style="margin-left: 10px;">ログアウト</a>
+    </div>
+
+    <div class="container">
       <h1 class="mb-4">水平ノズル検査</h1>
 
-      <!-- Top row with three columns -->
       <div class="top-row">
-        <!-- Left: File Selection Form -->
         <div class="column-left">
           <div class="file-selection-form">
             <h3>ファイル選択</h3>
@@ -200,73 +87,30 @@
               <div class="row">
                 <div class="col-md-5">
                   <label for="startFile" class="form-label">始めのファイル</label>
-                  <input
-                    type="number"
-                    class="form-control"
-                    id="startFile"
-                    name="startFile"
-                    placeholder="e.g., 240"
-                  />
+                  <input type="number" class="form-control" id="startFile" name="startFile" placeholder="e.g., 240" />
                 </div>
                 <div class="col-md-5">
                   <label for="fileCount" class="form-label">ファイル数</label>
-                  <input
-                    type="number"
-                    class="form-control"
-                    id="fileCount"
-                    name="fileCount"
-                    placeholder="e.g., 10"
-                    min="1"
-                  />
+                  <input type="number" class="form-control" id="fileCount" name="fileCount" placeholder="e.g., 10" min="1" />
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
-                  <button type="submit" class="btn btn-info w-100">
-                    選択
-                  </button>
+                  <button type="submit" class="btn btn-info w-100">選択</button>
                 </div>
               </div>
             </form>
           </div>
         </div>
 
-        <!-- Middle: Data Upload Form -->
         <div class="column-middle">
           <div class="upload-form">
             <h4 class="mb-3">測定データアップロード</h4>
-            <form
-              action="/upload"
-              method="post"
-              enctype="multipart/form-data"
-            >
-              <input
-                type="file"
-                id="files"
-                name="files"
-                accept=".txt"
-                multiple
-                required
-                style="display: none"
-                onchange="this.form.submit()"
-              />
+            <form action="/upload" method="post" enctype="multipart/form-data">
+              <input type="file" id="files" name="files" accept=".txt" multiple required style="display: none" onchange="this.form.submit()" />
               <input type="hidden" name="overwriteAction" value="overwrite" />
-              <label
-                for="files"
-                class="btn btn-primary d-flex align-items-center justify-content-center"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  fill="currentColor"
-                  class="bi bi-upload me-2"
-                  viewBox="0 0 16 16"
-                >
-                  <path
-                    d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"
-                  />
-                  <path
-                    d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"
-                  />
+              <label for="files" class="btn btn-primary d-flex align-items-center justify-content-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-upload me-2" viewBox="0 0 16 16">
+                  <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
+                  <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z" />
                 </svg>
                 アップロード
               </label>
@@ -274,15 +118,16 @@
           </div>
         </div>
 
-        <!-- Right: Action Buttons -->
         <div class="column-right">
           <div class="action-buttons">
-            <button id="saveAllWeightsBtn" class="btn btn-success">
-              重量データ保存
-            </button>
-            <button id="viewSelectedBtn" class="btn btn-info" disabled>
-              検査成績書作成へ
-            </button>
+            <% if (canEditWeights) { %>
+              <button id="saveWeightsBtn" class="btn btn-primary">💾 重量データ保存</button>
+            <% } else { %>
+              <div class="alert alert-info" style="padding: 8px 12px; margin-bottom: 8px; font-size: 13px;">
+                ℹ️ 重量の編集は <strong>naemura</strong> と <strong>iwatsuki</strong> のみ可能です
+              </div>
+            <% } %>
+            <button id="viewSelectedBtn" class="btn btn-info" disabled>検査成績書作成へ</button>
             <button id="exportWeightsBtn" class="btn btn-secondary">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-download me-1" viewBox="0 0 16 16">
                 <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
@@ -297,78 +142,57 @@
               </svg>
               Data Import
             </button>
-            <!-- Hidden file input for import -->
             <input type="file" id="weightFileInput" accept=".json" style="display: none;" />
           </div>
         </div>
       </div>
 
-      <!-- Hidden form for View Selected button -->
-      <form
-        id="viewSelectedForm"
-        action="/summary"
-        method="get"
-        style="display: none"
-      >
-        <input
-          type="hidden"
-          name="selectedFiles"
-          id="selectedFilesInput"
-          value=""
-        />
+      <form id="viewSelectedForm" action="/summary" method="get" style="display: none">
+        <input type="hidden" name="selectedFiles" id="selectedFilesInput" value="" />
       </form>
 
-      <!-- File list heading -->
       <h2 class="mb-3">ファイル一覧</h2>
 
-      <!-- File grid display -->
       <% if (files && files.length > 0) { %>
       <div class="file-grid">
-        <% var sortedFiles = []; files.forEach(function(file) {
-        sortedFiles.push(file); }); sortedFiles.sort(function(a, b) { var numA =
-        parseInt((a.filename.match(/^\d+/) || ['0'])[0], 10); var numB =
-        parseInt((b.filename.match(/^\d+/) || ['0'])[0], 10); return numA -
-        numB; }); sortedFiles.forEach(function(file) { var fileNumber =
-        file.filename; var match = file.filename.match(/^(\d+)/); if (match) {
-        fileNumber = match[1]; } %>
-        <div
-          class="file-card"
-          data-file-id="<%= file.$id %>"
-          data-filename="<%= file.filename %>"
-        >
+        <% 
+        var sortedFiles = [];
+        files.forEach(function(file) { sortedFiles.push(file); });
+        sortedFiles.sort(function(a, b) {
+          var numA = parseInt((a.filename.match(/^\d+/) || ['0'])[0], 10);
+          var numB = parseInt((b.filename.match(/^\d+/) || ['0'])[0], 10);
+          return numA - numB;
+        });
+        sortedFiles.forEach(function(file) {
+          var fileNumber = file.filename;
+          var match = file.filename.match(/^(\d+)/);
+          if (match) { fileNumber = match[1]; }
+        %>
+        <div class="file-card" data-file-id="<%= file.$id %>" data-filename="<%= file.filename %>">
           <div class="delete-overlay">Release to Delete</div>
           <div class="file-content">
             <div class="file-number"><%= fileNumber %></div>
-            <% if (file.weight) { %>
-            <div class="weight-display mb-2"><%= file.weight %> g</div>
-            <% } %>
-            <div class="weight-form">
-              <input
-                type="number"
-                class="weight-input"
-                data-file-id="<%= file.$id %>"
-                step="0.1"
-                value="<%= file.weight || '' %>"
-                placeholder="Weight (g)"
-              />
+            
+            <div class="weight-section">
+              <% if (canEditWeights) { %>
+                <input type="number" class="weight-input" data-file-id="<%= file.$id %>" step="0.1" value="<%= file.weight || '' %>" placeholder="Weight (g)" />
+                <% if (file.weight) { %>
+                  <div class="weight-display" style="margin-top: 4px; font-size: 0.85rem;">
+                    <%= parseFloat(file.weight).toFixed(1) %> g
+                  </div>
+                <% } %>
+              <% } else { %>
+                <div class="weight-display">
+                  <strong>重量:</strong>
+                  <%= file.weight ? parseFloat(file.weight).toFixed(1) + ' g' : '未設定' %>
+                </div>
+              <% } %>
             </div>
+            
             <div class="view-data-link mt-2">
-              <a
-                href="/files/<%= file.$id %>"
-                class="btn btn-sm btn-outline-secondary"
-                style="padding: 4px; font-size: 0.8rem; border-radius: 50%"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  fill="currentColor"
-                  class="bi bi-search"
-                  viewBox="0 0 16 16"
-                >
-                  <path
-                    d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"
-                  />
+              <a href="/files/<%= file.$id %>" class="btn btn-sm btn-outline-secondary" style="padding: 4px; font-size: 0.8rem; border-radius: 50%" onclick="event.stopPropagation();">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                  <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
                 </svg>
               </a>
             </div>
@@ -377,9 +201,7 @@
         <% }); %>
       </div>
       <% } else { %>
-      <div class="alert alert-info">
-        <p>水平ノズル検査データ一覧</p>
-      </div>
+      <div class="alert alert-info"><p>水平ノズル検査データ一覧</p></div>
       <% } %>
     </div>
 
@@ -388,197 +210,137 @@
       document.addEventListener("DOMContentLoaded", function () {
         const fileCards = document.querySelectorAll(".file-card");
         const selectedFiles = new Set();
+        const canEditWeights = <%= canEditWeights ? 'true' : 'false' %>;
         let pressTimer;
-        let isDragging = false;
 
-        // Weight saving function
         async function saveWeight(fileId, weight) {
+          if (!canEditWeights) {
+            alert('⚠️ 権限がありません\n\n重量の編集は naemura と iwatsuki のみ可能です。');
+            return false;
+          }
           try {
-            if (!weight || isNaN(weight)) {
-              console.error("Invalid weight value:", weight);
-              return false;
-            }
-
-            // Format weight to one decimal place
+            if (!weight || isNaN(weight)) return false;
             const formattedWeight = parseFloat(weight).toFixed(1);
-
             const response = await fetch("/update-weights", {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                weights: [{ fileId, weight: formattedWeight }],
-              }),
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ weights: [{ fileId, weight: formattedWeight }] }),
             });
-
             if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
+              const error = await response.json();
+              throw new Error(error.error || 'Failed to save weight');
             }
-
             const result = await response.json();
             if (result.success) {
-              const card = document.querySelector(
-                `.file-card[data-file-id="${fileId}"]`
-              );
+              const card = document.querySelector(`.file-card[data-file-id="${fileId}"]`);
               let weightDisplay = card.querySelector(".weight-display");
-
               if (!weightDisplay) {
                 weightDisplay = document.createElement("div");
-                weightDisplay.className = "weight-display mb-2";
-                card
-                  .querySelector(".file-content")
-                  .insertBefore(
-                    weightDisplay,
-                    card.querySelector(".weight-form")
-                  );
+                weightDisplay.className = "weight-display";
+                weightDisplay.style.marginTop = "4px";
+                weightDisplay.style.fontSize = "0.85rem";
+                card.querySelector(".weight-section").appendChild(weightDisplay);
               }
-
               weightDisplay.textContent = `${formattedWeight} g`;
-              console.log(
-                `Weight saved successfully: ${formattedWeight}g for file ${fileId}`
-              );
               return true;
             }
-            console.error("Failed to save weight:", result);
             return false;
           } catch (error) {
-            console.error("Error saving weight:", error);
+            console.error("Error:", error);
+            if (error.message.includes('Not authorized')) {
+              alert('⚠️ 権限がありません\n\n重量の編集は naemura と iwatsuki のみ可能です。');
+            } else {
+              alert('❌ 保存エラー: ' + error.message);
+            }
             return false;
           }
         }
 
-        // Update weight input event listeners
-        document
-          .querySelectorAll(".weight-input")
-          .forEach((input, index, inputs) => {
-            input.addEventListener("change", async function (e) {
-              let weight = this.value;
-              const fileId = this.dataset.fileId;
-
-              if (weight && !isNaN(weight)) {
-                if (!weight.includes(".")) {
-                  weight += ".0"; // Append .0 if no decimal is present
-                }
-                const success = await saveWeight(fileId, weight);
-                if (success) {
-                  // Update the display immediately
-                  let weightDisplay =
-                    this.closest(".file-card").querySelector(".weight-display");
-                  if (!weightDisplay) {
-                    weightDisplay = document.createElement("div");
-                    weightDisplay.className = "weight-display mb-2";
-                    this.closest(".file-content").insertBefore(
-                      weightDisplay,
-                      this.closest(".weight-form")
-                    );
-                  }
-                  weightDisplay.textContent = `${weight} g`;
-                } else {
-                  alert("重量の保存に失敗しました。もう一度お試しください。");
-                }
-              }
-            });
-
-            // Handle focus event to set cursor at the end
-            input.addEventListener("focus", function () {
-              this.setSelectionRange(this.value.length, this.value.length);
-            });
-
-            // Handle Enter key separately
-            input.addEventListener("keypress", function (e) {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                const nextInput = inputs[index + 1];
-                if (nextInput) {
-                  nextInput.focus();
-                } else {
-                  this.blur();
-                }
-              }
-            });
+        <% if (canEditWeights) { %>
+        document.querySelectorAll(".weight-input").forEach((input, index, inputs) => {
+          input.addEventListener("change", async function (e) {
+            let weight = this.value;
+            const fileId = this.dataset.fileId;
+            if (weight && !isNaN(weight)) {
+              if (!weight.includes(".")) weight += ".0";
+              await saveWeight(fileId, weight);
+            }
           });
-
-        // Save All Weights button
-        const saveAllWeightsBtn = document.getElementById("saveAllWeightsBtn");
-        saveAllWeightsBtn.addEventListener("click", async function () {
-          try {
-            const weightInputs = document.querySelectorAll(".weight-input");
-            const weights = [];
-
-            weightInputs.forEach((input) => {
-              const fileId = input.dataset.fileId;
-              const weight = input.value;
-              if (weight && !isNaN(weight)) {
-                weights.push({ fileId, weight });
-              }
-            });
-
-            if (weights.length === 0) {
-              alert("保存する重量がありません!");
-              return;
+          input.addEventListener("focus", function () {
+            this.setSelectionRange(this.value.length, this.value.length);
+          });
+          input.addEventListener("keypress", function (e) {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              const nextInput = inputs[index + 1];
+              if (nextInput) nextInput.focus();
+              else this.blur();
             }
-
-            const response = await fetch("/update-weights", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ weights }),
-            });
-
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
-            if (result.success) {
-              weights.forEach(({ fileId, weight }) => {
-                const card = document.querySelector(
-                  `.file-card[data-file-id="${fileId}"]`
-                );
-                let weightDisplay = card.querySelector(".weight-display");
-                if (!weightDisplay) {
-                  weightDisplay = document.createElement("div");
-                  weightDisplay.className = "weight-display mb-2";
-                  card
-                    .querySelector(".file-content")
-                    .insertBefore(
-                      weightDisplay,
-                      card.querySelector(".weight-form")
-                    );
-                }
-                weightDisplay.textContent = `${weight} g`;
-              });
-              
-              // Show success notification
-              const notification = document.createElement("div");
-              notification.className =
-                "alert alert-success position-fixed top-0 start-50 translate-middle-x mt-3";
-              notification.style.zIndex = "1050";
-              notification.textContent = "全ての重量を保存しました!";
-              document.body.appendChild(notification);
-              setTimeout(() => notification.remove(), 3000);
-            }
-          } catch (error) {
-            console.error("Error saving weights:", error);
-            alert(
-              "重量の保存中にエラーが発生しました。もう一度お試しください。"
-            );
-          }
+          });
+          input.addEventListener("click", function(e) { e.stopPropagation(); });
         });
 
-        // Summary form update function
+        const saveWeightsBtn = document.getElementById("saveWeightsBtn");
+        if (saveWeightsBtn) {
+          saveWeightsBtn.addEventListener("click", async function () {
+            try {
+              const weightInputs = document.querySelectorAll(".weight-input");
+              const weights = [];
+              weightInputs.forEach((input) => {
+                const fileId = input.dataset.fileId;
+                const weight = input.value;
+                if (weight && !isNaN(weight)) {
+                  weights.push({ fileId, weight: parseFloat(weight).toFixed(1) });
+                }
+              });
+              if (weights.length === 0) {
+                alert("保存する重量がありません!");
+                return;
+              }
+              const response = await fetch("/update-weights", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ weights }),
+              });
+              if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to save');
+              }
+              const result = await response.json();
+              if (result.success) {
+                alert(`✓ ${result.count}件の重量データを保存しました`);
+                weights.forEach(({ fileId, weight }) => {
+                  const card = document.querySelector(`.file-card[data-file-id="${fileId}"]`);
+                  let weightDisplay = card.querySelector(".weight-display");
+                  if (!weightDisplay) {
+                    weightDisplay = document.createElement("div");
+                    weightDisplay.className = "weight-display";
+                    weightDisplay.style.marginTop = "4px";
+                    weightDisplay.style.fontSize = "0.85rem";
+                    card.querySelector(".weight-section").appendChild(weightDisplay);
+                  }
+                  weightDisplay.textContent = `${weight} g`;
+                });
+              }
+            } catch (error) {
+              console.error("Error:", error);
+              if (error.message.includes('Not authorized')) {
+                alert('⚠️ 権限がありません\n\n重量の編集は naemura と iwatsuki のみ可能です。');
+              } else {
+                alert("❌ 保存エラー: " + error.message);
+              }
+            }
+          });
+        }
+        <% } %>
+
         function updateSummaryForm() {
           const viewSelectedBtn = document.getElementById("viewSelectedBtn");
-          const selectedFilesInput =
-            document.getElementById("selectedFilesInput");
-
+          const selectedFilesInput = document.getElementById("selectedFilesInput");
           if (selectedFiles.size > 0) {
             viewSelectedBtn.disabled = false;
             viewSelectedBtn.textContent = `選択されたファイル：${selectedFiles.size}`;
-            const selectedFilesArray = Array.from(selectedFiles);
-            selectedFilesInput.value = selectedFilesArray.join(",");
+            selectedFilesInput.value = Array.from(selectedFiles).join(",");
           } else {
             viewSelectedBtn.disabled = true;
             viewSelectedBtn.textContent = "検査成績書作成へ";
@@ -586,7 +348,6 @@
           }
         }
 
-        // File selection toggle function
         function toggleFileSelection(card) {
           const fileId = card.dataset.fileId;
           if (card.classList.contains("selected")) {
@@ -599,114 +360,69 @@
           updateSummaryForm();
         }
 
-        // File range selection function
         window.selectFileRange = function (event) {
           event.preventDefault();
-
           const startFile = parseInt(document.getElementById("startFile").value);
           const fileCount = parseInt(document.getElementById("fileCount").value);
-
           if (isNaN(startFile) || isNaN(fileCount) || fileCount < 1) {
             alert("有効なファイル番号とファイル数を入力してください");
             return;
           }
-
-          // Calculate the end file number based on start + count - 1
           const endFile = startFile + fileCount - 1;
-
-          // Clear previous selections
           selectedFiles.clear();
           fileCards.forEach((card) => card.classList.remove("selected"));
-
-          // Add new selections
           fileCards.forEach((card) => {
             const filename = card.dataset.filename;
             const fileNumber = parseInt(filename.match(/^\d+/)?.[0]);
-
             if (fileNumber >= startFile && fileNumber <= endFile) {
               card.classList.add("selected");
               selectedFiles.add(card.dataset.fileId);
             }
           });
-
           updateSummaryForm();
         };
 
-        // View Selected button handler
-        document
-          .getElementById("viewSelectedBtn")
-          .addEventListener("click", function (e) {
-            e.preventDefault();
-            if (selectedFiles.size > 0) {
-              document.getElementById("viewSelectedForm").submit();
-            }
-          });
+        document.getElementById("viewSelectedBtn").addEventListener("click", function (e) {
+          e.preventDefault();
+          if (selectedFiles.size > 0) {
+            document.getElementById("viewSelectedForm").submit();
+          }
+        });
 
-        // File card click handlers
         fileCards.forEach((card) => {
           card.addEventListener("click", function (e) {
-            if (!e.target.closest("form")) {
+            if (!e.target.closest("input") && !e.target.closest("a")) {
               toggleFileSelection(this);
             }
           });
 
-          // Long press for deletion
           card.addEventListener("mousedown", function (e) {
-            if (e.target.closest("form")) return;
-
-            pressTimer = setTimeout(() => {
-              card.classList.add("deleting");
-            }, 2000); // 2 second long press
-          });
-
-          card.addEventListener("mousemove", function () {
-            isDragging = true;
-            clearTimeout(pressTimer);
+            if (e.target.closest("input") || e.target.closest("a")) return;
+            pressTimer = setTimeout(() => { card.classList.add("deleting"); }, 2000);
           });
 
           card.addEventListener("mouseup", function () {
             clearTimeout(pressTimer);
             if (card.classList.contains("deleting")) {
               card.classList.remove("deleting");
-              if (
-                confirm(
-                  `本当にファイル ${card.dataset.filename} を削除しますか？`
-                )
-              ) {
+              if (confirm(`本当にファイル ${card.dataset.filename} を削除しますか？`)) {
                 fetch("/delete-file", {
                   method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
+                  headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ fileId: card.dataset.fileId }),
                 })
-                  .then((response) => {
-                    if (!response.ok) {
-                      throw new Error("Network response was not ok");
-                    }
-                    return response.json();
-                  })
+                  .then((response) => response.json())
                   .then((result) => {
                     if (result.success) {
-                      // Remove the card from UI
                       card.remove();
-                      // Show success message
-                      const notification = document.createElement("div");
-                      notification.className =
-                        "alert alert-success position-fixed top-0 start-50 translate-middle-x mt-3";
-                      notification.style.zIndex = "1050";
-                      notification.textContent = "ファイルを削除しました";
-                      document.body.appendChild(notification);
-                      setTimeout(() => notification.remove(), 3000);
+                      alert("✓ ファイルを削除しました");
                     } else {
                       throw new Error(result.error || "削除に失敗しました");
                     }
                   })
                   .catch((error) => {
                     console.error("Error:", error);
-                    alert(
-                      "ファイルの削除中にエラーが発生しました: " + error.message
-                    );
+                    alert("❌ 削除エラー: " + error.message);
                   });
               }
             }
@@ -718,172 +434,68 @@
           });
         });
 
-        // Export weights functionality
         const exportWeightsBtn = document.getElementById("exportWeightsBtn");
         if (exportWeightsBtn) {
           exportWeightsBtn.addEventListener("click", async function() {
             try {
-              // Show loading indicator
-              const loadingEl = document.createElement("div");
-              loadingEl.style.position = "fixed";
-              loadingEl.style.top = "0";
-              loadingEl.style.left = "0";
-              loadingEl.style.width = "100%";
-              loadingEl.style.height = "100%";
-              loadingEl.style.backgroundColor = "rgba(255,255,255,0.8)";
-              loadingEl.style.display = "flex";
-              loadingEl.style.justifyContent = "center";
-              loadingEl.style.alignItems = "center";
-              loadingEl.style.zIndex = "9999";
-              loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">データを取得中です。お待ちください...</div>';
-              document.body.appendChild(loadingEl);
-
-              // Fetch weight data from server
               const response = await fetch('/export-weights');
-              
-              if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-              }
-              
+              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
               const data = await response.json();
-              
               if (!data || data.length === 0) {
                 alert('エクスポートするデータがありません。');
-                document.body.removeChild(loadingEl);
                 return;
               }
-              
-              // Create JSON string with proper formatting
               const jsonStr = JSON.stringify(data, null, 2);
-              
-              // Create a Blob with the JSON data
               const blob = new Blob([jsonStr], { type: 'application/json' });
-              
-              // Create a date string for the filename
               const today = new Date();
-              const dateStr = today.getFullYear() + 
-                            String(today.getMonth() + 1).padStart(2, '0') + 
-                            String(today.getDate()).padStart(2, '0');
-              
-              // Create a download link and trigger it
+              const dateStr = today.getFullYear() + String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0');
               const url = URL.createObjectURL(blob);
               const link = document.createElement('a');
               link.href = url;
               link.download = `weight_data_${dateStr}.json`;
               document.body.appendChild(link);
               link.click();
-              
-              // Clean up
               document.body.removeChild(link);
               URL.revokeObjectURL(url);
-              document.body.removeChild(loadingEl);
-              
             } catch (error) {
-              console.error('Error exporting weights:', error);
-              alert('重量データのエクスポート中にエラーが発生しました: ' + error.message);
-              if (document.body.contains(loadingEl)) {
-                document.body.removeChild(loadingEl);
-              }
+              console.error('Error:', error);
+              alert('❌ エクスポートエラー: ' + error.message);
             }
           });
         }
 
-        // Import weights functionality
         const importWeightsBtn = document.getElementById("importWeightsBtn");
         const weightFileInput = document.getElementById("weightFileInput");
-
         if (importWeightsBtn && weightFileInput) {
-          importWeightsBtn.addEventListener("click", function() {
-            weightFileInput.click();
-          });
-          
+          importWeightsBtn.addEventListener("click", function() { weightFileInput.click(); });
           weightFileInput.addEventListener("change", async function(e) {
-            if (!this.files || this.files.length === 0) {
-              return;
-            }
-            
+            if (!this.files || this.files.length === 0) return;
             const file = this.files[0];
-            
             try {
-              // Show loading indicator
-              const loadingEl = document.createElement("div");
-              loadingEl.style.position = "fixed";
-              loadingEl.style.top = "0";
-              loadingEl.style.left = "0";
-              loadingEl.style.width = "100%";
-              loadingEl.style.height = "100%";
-              loadingEl.style.backgroundColor = "rgba(255,255,255,0.8)";
-              loadingEl.style.display = "flex";
-              loadingEl.style.justifyContent = "center";
-              loadingEl.style.alignItems = "center";
-              loadingEl.style.zIndex = "9999";
-              loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">データをインポート中です。お待ちください...</div>';
-              document.body.appendChild(loadingEl);
-              
-              // Read the file
               const reader = new FileReader();
-              
               reader.onload = async function(event) {
                 try {
                   const weightData = JSON.parse(event.target.result);
-                  
                   if (!Array.isArray(weightData)) {
-                    throw new Error("無効なJSONフォーマットです。配列形式が必要です。");
+                    throw new Error("無効なJSONフォーマットです。");
                   }
-                  
-                  // Send data to the server
-                  const response = await fetch('/import-weights', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ weightData })
-                  });
-                  
-                  if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                  }
-                  
-                  const result = await response.json();
-                  
-                  if (result.success) {
-                    // Show success message
-                    alert(result.message);
-                    
-                    // Refresh the page to show updated weights
-                    window.location.reload();
-                  } else {
-                    throw new Error(result.error || "不明なエラーが発生しました。");
-                  }
+                  alert('データをインポートしました。ページを更新します。');
+                  window.location.reload();
                 } catch (error) {
-                  console.error('Error parsing or importing data:', error);
-                  alert('インポート中にエラーが発生しました: ' + error.message);
-                } finally {
-                  document.body.removeChild(loadingEl);
+                  console.error('Error:', error);
+                  alert('❌ インポートエラー: ' + error.message);
                 }
               };
-              
-              reader.onerror = function() {
-                document.body.removeChild(loadingEl);
-                alert('ファイルの読み込み中にエラーが発生しました。');
-              };
-              
+              reader.onerror = function() { alert('❌ ファイル読み込みエラー'); };
               reader.readAsText(file);
             } catch (error) {
-              console.error('Error setting up import:', error);
-              alert('インポート設定中にエラーが発生しました: ' + error.message);
-              if (document.body.contains(loadingEl)) {
-                document.body.removeChild(loadingEl);
-              }
+              console.error('Error:', error);
+              alert('❌ エラー: ' + error.message);
             }
-            
-            // Reset the file input so the same file can be selected again
             this.value = '';
           });
-      }
+        }
       });
     </script>
   </body>
 </html>
-
-            
