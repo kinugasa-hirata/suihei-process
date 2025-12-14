@@ -1,55 +1,43 @@
-<!-- Improved summary.ejs with proper spacing between notes and table -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Vercel Analytics script - only loads in browser, not print -->
     <script defer src="/_vercel/insights/script.js"></script>
     <link rel="icon" href="/favicon.ico" type="image/x-icon" />
     <title>水平ノズル全数検査成績書</title>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
-    />
-    <!-- Add jsPDF for PDF generation -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/jspdf-font@1.0.7/dist/japanese.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-      /* UPDATED: Reset all margins and paddings for better control */
       * {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
       }
       
-      /* UPDATED: Container styling with reduced spacing */
       .container {
         max-width: 1200px;
-        margin: 0 !important; /* Removed margin-top */
-        padding: 0 !important; /* Removed padding */
+        margin: 0 !important;
+        padding: 0 !important;
       }
       
-      /* UPDATED: Reduced table margins */
       .summary-table {
-        margin-top: 0.5rem !important; /* Reduced from 2rem */
+        margin-top: 0.5rem !important;
       }
       
       .nav-links {
-        margin-bottom: 1rem !important; /* Reduced from 2rem */
+        margin-bottom: 1rem !important;
       }
       
       .no-data {
-        padding: 1rem !important; /* Reduced from 2rem */
+        padding: 1rem !important;
         text-align: center;
         background-color: #f8f9fa;
         border-radius: 5px;
-        margin-bottom: 1rem !important; /* Reduced from 2rem */
+        margin-bottom: 1rem !important;
       }
       
       .highlight-cell {
@@ -57,23 +45,22 @@
         font-weight: bold;
       }
       
-      /* UPDATED: Add padding to table-responsive */
       .table-responsive {
         overflow-x: auto;
-        padding-top: 5px !important; /* Added padding */
-        margin: 0 !important; /* Force zero margin */
+        padding-top: 5px !important;
+        margin: 0 !important;
       }
       
       .file-filter-form {
         background-color: #e9ecef;
-        padding: 0.5rem !important; /* Reduced from 1rem */
+        padding: 0.5rem !important;
         border-radius: 5px;
-        margin-bottom: 0.5rem !important; /* Reduced from 1.5rem */
+        margin-bottom: 0.5rem !important;
       }
       
       .form-range-group {
         display: flex;
-        gap: 0.5rem !important; /* Reduced from 1rem */
+        gap: 0.5rem !important;
         align-items: end;
       }
       
@@ -81,41 +68,39 @@
         width: 120px;
       }
 
-      /* UPDATED: Added padding to content-section */
       .content-section {
         background-color: white;
-        padding: 0.2rem !important; /* Reduced from 1rem */
+        padding: 0.2rem !important;
         margin: 0 !important;
-        max-height: 175px !important; /* Increased from 150px to give more space */
+        max-height: 175px !important;
       }
 
-      /* UPDATED: Minimized header-info spacing */
       .header-info {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin: 0 !important; /* Changed from 0.3px */
-        padding: 0 !important; /* Changed from 0.2px */
-        height: auto !important; /* Control height */
-        max-height: 50px !important; /* Limit height */
+        margin: 0 !important;
+        padding: 0 !important;
+        height: auto !important;
+        max-height: 50px !important;
       }
 
       .header-info:nth-child(3) {
         position: relative;
-        top: -20px; /* Move up by 10px */
-        margin-bottom: -20px !important; /* Compensate for the space */
+        top: -20px;
+        margin-bottom: -20px !important;
       }
 
       .company-info {
         font-weight: bold;
         font-size: 1.2em;
         position: relative;
-        top: -20px; /* Move up by 10px */
+        top: -20px;
       }
 
       .editable {
         border-bottom: 1px solid #ccc;
-        padding: 0 2px !important; /* Reduced from 5px */
+        padding: 0 2px !important;
         min-width: 50px;
         display: inline-block;
       }
@@ -127,28 +112,26 @@
         appearance: none !important;
       }
       
-      /* UPDATED: Reduced note margins */
       .note {
-        margin: 5px 0 !important; /* Reduced from 15px */
+        margin: 5px 0 !important;
         font-size: 0.9em;
         color: #666;
-        padding-left: 2px !important; /* Reduced from 5px */
+        padding-left: 2px !important;
       }
 
       .note::before {
         content: "※";
-        margin-right: 2px !important; /* Reduced from 5px */
+        margin-right: 2px !important;
       }
 
-      /* UPDATED: Fixed unit-note and environment-note spacing */
       .unit-note {
         text-align: right;
         font-weight: bold;
-        margin: 5px 0 10px 0 !important; /* Match margins with environment-note */
+        margin: 5px 0 10px 0 !important;
         padding: 0 !important;
         clear: both;
         position: relative;
-        line-height: 1.2 !important; /* Match line-height with environment-note */
+        line-height: 1.2 !important;
       }
 
       .environment-note {
@@ -158,19 +141,18 @@
         clear: both;
       }
 
-      /* Table styles with added padding */
       .table {
         background-color: white;
         border-collapse: collapse;
-        margin: 5px 0 0 0 !important; /* Added top margin */
+        margin: 5px 0 0 0 !important;
         border: 1px solid #dee2e6;
       }
 
       .table td, .table th {
-        text-align: center; /* Center align all table cells */
+        text-align: center;
         vertical-align: middle;
         border: 1px solid #dee2e6;
-        padding: 2px !important; /* Reduced from 4px */
+        padding: 2px !important;
       }
 
       .table thead td {
@@ -182,16 +164,14 @@
       }
 
       .table thead tr:last-child {
-        /* Visible in normal view */
         display: table-row;
       }
 
       .table tbody td {
-        text-align: center; /* Ensure body cells are also centered */
+        text-align: center;
         border: 1px solid #dee2e6;
       }
 
-      /* Filename cell styles */
       .filename-cell {
         text-align: center;
         font-weight: bold;
@@ -231,64 +211,44 @@
         display: block;
       }
 
+      .button-confirm {
+        background-color: #ffc107;
+        color: white;
+        border: none;
+      }
+
       .button-print {
         background-color: #16862f;
         color: white;
         border: none;
       }
 
-      /* UPDATED: Reduced logs container margin */
-      .logs-container {
-        margin-top: 10px !important; /* Reduced from 20px */
-        border: 1px solid #ddd;
-        border-radius: 4px;
+      .button-print:disabled,
+      .button-export-pdf:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+        opacity: 0.5;
       }
 
-      .logs-header {
-        padding: 5px !important; /* Reduced from 10px */
-        background-color: #f8f9fa;
-        cursor: pointer;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      .logs-content {
-        padding: 5px !important; /* Reduced from 15px */
-        max-height: 300px;
-        overflow-y: auto;
-      }
-
-      .logs-content.hidden {
-        display: none;
-      }
-
-      .toggle-icon {
-        font-size: 12px;
-      }
-
-      /* UPDATED: Added spacing to PDF container */
       #pdf-container {
         width: 100%;
         max-width: 1200px;
         margin: 0 auto;
         background-color: white;
-        overflow: visible; /* Changed from hidden to allow scrolling */
-        padding: 0 5px !important; /* Reduced from 20px */
+        overflow: visible;
+        padding: 0 5px !important;
       }
 
-      /* UPDATED: Reduced page title spacing */
       h2.text-center {
-        margin: 0 0 2px 0 !important; /* Reduced margins */
+        margin: 0 0 2px 0 !important;
         padding: 0 !important;
-        line-height: 1.2 !important; /* Reduced line height */
+        line-height: 1.2 !important;
       }
 
-      /* Add this to the existing style section */
       .invalid-value {
-        color: #dc3545 !important;  /* Bootstrap's danger red */
+        color: #dc3545 !important;
         font-weight: bold;
-        background-color: rgba(220, 53, 69, 0.1);  /* Light red background */
+        background-color: rgba(220, 53, 69, 0.1);
         position: relative;
       }
 
@@ -307,50 +267,41 @@
         z-index: 1000;
       }
 
-      /* Ensure the highlight-cell class doesn't override invalid-value */
       .highlight-cell.invalid-value {
         background-color: rgba(220, 53, 69, 0.1) !important;
       }
 
-      /* Classes to hide URL and timestamp in print */
       .url-display, .timestamp {
         display: block;
       }
       
-      /* Add spacing between notes and table */
       .notes-container {
         margin-bottom: 10px !important;
         padding-bottom: 5px !important;
         position: relative;
       }
 
-      /* Always hide the column labels row (Filename, A, B, C...) */
       .table thead tr:last-child, 
       .column-labels-row,
       tr.print-hide {
         display: none !important;
       }
-
-
       
-      /* Print-specific styles */
       @media print {
-        /* Page setup with margin for content */
         @page {
           size: A4 landscape;
-          margin: 5mm; /* Reduced margin for printed output */
+          margin: 5mm;
         }
 
         body {
-          width: 297mm; /* A4 width */
-          height: 210mm; /* A4 height */
+          width: 297mm;
+          height: 210mm;
           margin: 0;
           padding: 0;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
 
-        /* Hide non-printable elements */
         .no-print, .button-container, .url-display, .timestamp {
           display: none !important;
         }
@@ -360,7 +311,6 @@
           border-bottom: none !important;
         }
         
-        /* Hide border and styling for date input when printing */
         .date-input, #deliveryDatePicker {
           border: none !important;
           background: transparent !important;
@@ -368,15 +318,13 @@
           appearance: none !important;
         }
 
-        /* Reset container styling for print */
         .container {
           width: 100%;
           max-width: none;
           margin: 0;
-          padding: 0 !important; /* Reduced from 2mm */
+          padding: 0 !important;
         }
 
-        /* Adjust table for printing */
         .table {
           font-size: 9pt;
           margin: 0;
@@ -388,7 +336,7 @@
 
         .table td,
         .table th {
-          padding: 1px 2px !important; /* Reduced from 2px 4px */
+          padding: 1px 2px !important;
           border: 1px solid #000 !important;
         }
 
@@ -403,13 +351,11 @@
           border-top: 1px solid #000 !important;
         }
 
-        /* Header adjustments */
         h2 {
           font-size: 14pt;
-          margin: 0 0 2mm 0 !important; /* Reduced from 5mm */
+          margin: 0 0 2mm 0 !important;
         }
 
-        /* Force show background colors and images in print */
         * {
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
@@ -420,15 +366,13 @@
           margin: 0 !important;
           background-color: white;
           box-shadow: none;
-          max-height: 130px !important; /* Limit height in print */
+          max-height: 130px !important;
         }
         
-        /* Ensure all table borders are visible and consistent */
         table, th, td, tr {
           border: 1px solid #000 !important;
         }
         
-        /* Fix for table top border */
         table {
           border-top: 1px solid #000 !important;
           border-collapse: collapse !important;
@@ -438,20 +382,17 @@
           border-top: 1px solid #000 !important;
         }
         
-        /* Maintain environment note spacing in print */
         .environment-note {
           margin: 3px 0 5px 0 !important;
           padding: 0 !important;
           line-height: 1.1 !important;
         }
         
-        /* Maintain unit note spacing in print */
         .unit-note {
           margin: 0 0 3px 0 !important; 
           padding: 0 !important;
         }
 
-        /* Ensure table has proper spacing */
         .table-responsive {
           padding-top: 5px !important;
         }
@@ -463,7 +404,6 @@
       <div id="pdf-container">
         <div class="content-section">
           <div class="container">
-            <!-- Page title - this will be visible in print -->
             <h2 class="text-center">水平ノズル全数検査成績書</h2>
             
             <div class="header-info">
@@ -471,26 +411,18 @@
                 <strong>品名:</strong> 水平ノズル
                 <strong>仕様書番号:</strong> KDMP-0434
                 <strong>担当者:</strong>
-                <span class="editable" contenteditable="true" id="inspector"
-                  ><%= displayName %></span
-                >
+                <span class="editable" contenteditable="true" id="inspector"><%= displayName %></span>
               </div>
             </div>
             <div style="height: 1px;"></div>
             <div class="header-info">
               <div style="white-space: nowrap">
-                <strong>図番:</strong> P2MM302000 <strong>数量:</strong
-                ><span id="fileCount"><%= files ? files.length : 0 %></span>個
-                <strong>検査方法:</strong> 全数検査 <strong>検査日:</strong> <%=
-                new Date().toLocaleDateString('ja-JP', { year: 'numeric', month:
-                '2-digit', day: '2-digit' }).replace(/\//g, '/') %>
+                <strong>図番:</strong> P2MM302000 
+                <strong>数量:</strong><span id="fileCount"><%= files ? files.length : 0 %></span>個
+                <strong>検査方法:</strong> 全数検査 
+                <strong>検査日:</strong> <%= new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/') %>
                 <strong>納期:</strong>
-                <input
-                  type="text"
-                  id="deliveryDatePicker"
-                  class="date-input flatpickr"
-                  placeholder="YYYY/MM/DD"
-                />
+                <input type="text" id="deliveryDatePicker" class="date-input flatpickr" placeholder="YYYY/MM/DD" />
               </div>
               <div class="company-info">㈱平田商店</div>
             </div>
@@ -514,7 +446,6 @@
               </div>
             </div>
 
-            <!-- Notes container with proper spacing -->
             <div class="notes-container">
               <div class="environment-note">
                 当社検査における環境は室温20℃±5℃、湿度40%±25%で管理された部屋で実施しております。
@@ -531,12 +462,12 @@
         <div class="container">
           <% if (typeof error !== 'undefined' && error) { %>
           <div class="alert alert-danger"><%= error %></div>
-          <% } %> <% if (typeof files !== 'undefined' && files && files.length > 0) { %>
-          <!-- Summary table with proper structure -->
+          <% } %> 
+          
+          <% if (typeof files !== 'undefined' && files && files.length > 0) { %>
           <div class="table-responsive">
             <table class="table table-bordered table-hover">
               <thead>
-                <!-- Specification rows -->
                 <tr>
                   <td>図面寸法</td>
                   <td>8.2</td>
@@ -645,104 +576,81 @@
                   <td>合否</td>
                   <td>重量(g)</td>
                 </tr>
-                <!-- Original header row -->
                 <tr class="column-labels-row print-hide">
                   <th>Filename</th>
-                  <% var displayHeaders = ['A', 'B', 'C', 'D', 'E', 'F', 'G',
-                  'H', 'I', 'J', 'K', 'L', 'M', 'N']; %> <% var internalHeaders
-                  = ['A', 'B', 'C', 'D', 'E', 'F', 'G1', 'G2', 'G3', 'G4', 'H',
-                  'I', 'J', 'K', 'L', 'M', 'N']; %> <%
-                  displayHeaders.forEach(function(header) { %>
+                  <% var displayHeaders = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N']; %>
+                  <% displayHeaders.forEach(function(header) { %>
                   <th><%= header %></th>
                   <% }); %>
                   <th>質量 (g)</th>
                 </tr>
               </thead>
               <tbody>
-                <% files.forEach(function(file) { %>
-                <%
-                // Remove .txt extension from filename
-                const displayFilename = file.filename.replace(/\.txt$/i, '');
+                <% files.forEach(function(file) { 
+                  const displayFilename = file.filename.replace(/\.txt$/i, '');
                 %>
                 <tr>
                   <td class="filename-cell" data-file-id="<%= file.$id %>">
                     <strong><%= displayFilename %></strong>
                   </td>
                   
-                  <!-- Column A: 測定値 -->
                   <td class="<%= fileData[file.$id]['A'].value !== '-' && !fileData[file.$id]['A'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
                     <%= fileData[file.$id]['A'].value %>
                   </td>
 
-                  <!-- Column B: 測定値 -->
                   <td class="<%= fileData[file.$id]['B'].value !== '-' && !fileData[file.$id]['B'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
                     <%= fileData[file.$id]['B'].value %>
                   </td>
 
-                  <!-- Column C: 測定値 -->
                   <td class="<%= fileData[file.$id]['C'].value !== '-' && !fileData[file.$id]['C'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
                     <%= fileData[file.$id]['C'].value %>
                   </td>
 
-                  <!-- Column D: 測定値 -->
                   <td class="<%= fileData[file.$id]['D'].value !== '-' && !fileData[file.$id]['D'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
                     <%= fileData[file.$id]['D'].value %>
                   </td>
 
-                  <!-- Column E: 合否 -->
-                  <!-- Column E: 合否 -->
                   <td class="highlight-cell data-cell">
                     -
                   </td>
 
-                  <!-- Column F: 合否 -->
-                  <!-- Column E: 合否 -->
                   <td class="highlight-cell data-cell">
                     -
                   </td>
 
-                  <!-- Column G: Combined G1-G4 check -->
                   <td class="<%= fileData[file.$id]['G'].value !== '-' && !fileData[file.$id]['G'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell g-value-cell"
                       title="G1: <%= fileData[file.$id]['G1'].value %>&#13;G2: <%= fileData[file.$id]['G2'].value %>&#13;G3: <%= fileData[file.$id]['G3'].value %>&#13;G4: <%= fileData[file.$id]['G4'].value %>">
                     <%= fileData[file.$id]['G'].value %>
                   </td>
 
-                  <!-- Column H: 測定値 -->
                   <td class="<%= fileData[file.$id]['H'].value !== '-' && !fileData[file.$id]['H'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
                     <%= fileData[file.$id]['H'].value %>
                   </td>
 
-                  <!-- Column I: 測定値 -->
                   <td class="<%= fileData[file.$id]['I'].value !== '-' && !fileData[file.$id]['I'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
                     <%= fileData[file.$id]['I'].value %>
                   </td>
 
-                  <!-- Column J: 測定値 -->
                   <td class="<%= fileData[file.$id]['J'].value !== '-' && !fileData[file.$id]['J'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
                     <%= fileData[file.$id]['J'].value %>
                   </td>
 
-                  <!-- Column K: 測定値 -->
                   <td class="<%= fileData[file.$id]['K'].value !== '-' && !fileData[file.$id]['K'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
                     <%= fileData[file.$id]['K'].value %>
                   </td>
 
-                  <!-- Column L: 測定値 -->
                   <td class="<%= fileData[file.$id]['L'].value !== '-' && !fileData[file.$id]['L'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
                     <%= fileData[file.$id]['L'].value %>
                   </td>
 
-                  <!-- Column M: 合否 -->
                   <td class="highlight-cell data-cell">
                     -
                   </td>
 
-                  <!-- Column N: 合否 -->
                   <td class="highlight-cell data-cell">
                     -
                   </td>
 
-                  <!-- Weight column -->
                   <td>
                     <% if (file.weight) { %>
                       <%= (parseFloat(file.weight)).toFixed(1) %>
@@ -761,21 +669,19 @@
           <% } else { %>
           <div class="no-data">
             <h3>No Data Available</h3>
-            <p class="text-muted">
-              No files match your current filter criteria.
-            </p>
+            <p class="text-muted">No files match your current filter criteria.</p>
             <a href="/" class="btn btn-primary">Go to Upload Page</a>
           </div>
           <% } %>
         </div>
       </div>
 
-      <!-- Buttons positioned at the side of the page - These will be hidden when printing -->
-      <!-- Buttons positioned at the side of the page - These will be hidden when printing -->
+      <!-- Buttons with new "確認" button -->
       <div class="button-container no-print">
         <a href="/" class="button-home">ホーム</a>
-        <button onclick="validateBeforePrint()" class="button-print">印刷</button>
-        <button onclick="validateBeforePrint()" class="button-export-pdf" style="background-color: #8a2be2; color: white; border: none;">PDF</button>
+        <button onclick="showValidation()" class="button-confirm">確認</button>
+        <button id="printBtn" onclick="printReport()" class="button-print" disabled>印刷</button>
+        <button id="pdfBtn" onclick="exportPDF()" class="button-export-pdf" style="background-color: #8a2be2; color: white; border: none;" disabled>PDF</button>
       </div>
 
       <!-- Validation Dialog Modal -->
@@ -788,11 +694,12 @@
           </div>
           
           <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
-            <button onclick="closeValidationModal()" class="btn btn-secondary">キャンセル</button>
-            <button id="proceedPrintBtn" onclick="proceedToPrint()" class="btn btn-success" disabled>印刷を続ける</button>
+            <button onclick="closeValidationModal()" class="btn btn-secondary">閉じる</button>
+            <button id="enablePrintBtn" onclick="enablePrintPdf()" class="btn btn-success" style="display: none;">印刷/PDF を有効化</button>
           </div>
         </div>
       </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -800,250 +707,43 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/jspdf-font@1.0.7/dist/japanese.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-          // Initialize Flatpickr
-          flatpickr("#deliveryDatePicker", {
-            dateFormat: "Y/m/d",
-            locale: "ja",
-            allowInput: true,
-          });
-
-          // Quick approve button logic
-          document.getElementById("quickApproveButton").addEventListener("click", function () {
-            const rows = document.querySelectorAll("tbody tr");
-            rows.forEach((row) => {
-              // Target columns E, F, M, N (columns 6, 7, 14, 15)
-              const cells = row.querySelectorAll(
-                "td:nth-child(6), td:nth-child(7), td:nth-child(14), td:nth-child(15)"
-              );
-              cells.forEach((cell) => {
-                if (cell.textContent.trim() === "-" || cell.textContent.trim() === "") {
-                  cell.classList.remove("invalid-value");
-                  cell.textContent = "合";
-                }
-              });
-            });
-          });
-
-          // Print button event handler
-          document.querySelector('.button-print').addEventListener('click', printReport);
-          
-          // PDF export button event handler
-          document.querySelector('.button-export-pdf').addEventListener('click', exportPDF);
-
-          /**
-          * Enhanced printing function that ensures proper formatting
-          */
-          function printReport() {
-            // Hide URLs and timestamps before printing
-            const urlElements = document.querySelectorAll('.url-display, .timestamp');
-            urlElements.forEach(el => {
-              el.classList.add('no-print');
-            });
-
-            // Hide the header row with column labels
-            const headerRow = document.querySelector('.table thead tr:last-child');
-            if (headerRow) {
-              headerRow.classList.add('no-print');
-              // Add backup style in case class doesn't work
-              headerRow.style.display = 'none';
-            }
-            
-            // Fix table borders
-            const tables = document.querySelectorAll('table');
-            tables.forEach(table => {
-              // Add border styles for consistent appearance
-              table.style.borderCollapse = 'collapse';
-              table.style.border = '1px solid #000';
-              
-              // Ensure top border is present
-              const firstRow = table.querySelector('tbody tr:first-child');
-              if (firstRow) {
-                firstRow.style.borderTop = '1px solid #000';
-              }
-            });
-
-            // Set delivery date input background to transparent for printing
-            const deliveryDateInput = document.getElementById('deliveryDatePicker');
-            if (deliveryDateInput) {
-              deliveryDateInput.style.backgroundColor = 'transparent';
-            }
-
-            // Small delay to ensure styles are applied
-            setTimeout(() => {
-              window.print();
-            }, 200);
-          }
-
-          // PDF export function
-          function exportPDF() {
-            // Show loading indicator
-            const loadingEl = document.createElement("div");
-            loadingEl.style.position = "fixed";
-            loadingEl.style.top = "0";
-            loadingEl.style.left = "0";
-            loadingEl.style.width = "100%";
-            loadingEl.style.height = "100%";
-            loadingEl.style.backgroundColor = "rgba(255,255,255,0.8)";
-            loadingEl.style.display = "flex";
-            loadingEl.style.justifyContent = "center";
-            loadingEl.style.alignItems = "center";
-            loadingEl.style.zIndex = "9999";
-            loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
-            document.body.appendChild(loadingEl);
-
-            try {
-              // Prepare the document for PDF
-              prepareForPDF();
-              
-              // Create an instance of jsPDF
-              const pdf = new jspdf.jsPDF({
-                orientation: 'landscape',
-                unit: 'mm',
-                format: 'a4'
-              });
-              
-              // Add Japanese font support if available
-              addJapaneseFontSupport(pdf);
-              
-              // Get the content container
-              const element = document.getElementById('pdf-container');
-              
-              // Generate PDF with html2canvas
-              html2canvas(element, {
-                scale: 2, // Higher scale for better quality
-                useCORS: true,
-                logging: false,
-                allowTaint: true,
-                backgroundColor: '#ffffff'
-              }).then(canvas => {
-                const imgData = canvas.toDataURL('image/png');
-                
-                // Add image to PDF (A4 landscape dimensions: 297mm x 210mm)
-                const imgWidth = 287; // leaving some margin
-                const imgHeight = canvas.height * imgWidth / canvas.width;
-                
-                pdf.addImage(imgData, 'PNG', 5, 5, imgWidth, imgHeight);
-                
-                // Save the PDF
-                const today = new Date();
-                const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
-                pdf.save(`水平ノズル検査成績書_${dateStr}.pdf`);
-                
-                // Restore the document after PDF generation
-                restoreAfterPDF();
-                
-                // Remove loading indicator
-                document.body.removeChild(loadingEl);
-              }).catch(error => {
-                console.error("Error generating canvas:", error);
-                alert("PDF生成中にエラーが発生しました: " + error.message);
-                restoreAfterPDF();
-                document.body.removeChild(loadingEl);
-              });
-            } catch (error) {
-              console.error("Error generating PDF:", error);
-              alert("PDF生成中にエラーが発生しました。ブラウザのコンソールで詳細を確認してください。");
-              restoreAfterPDF();
-              document.body.removeChild(loadingEl);
-            }
-          }
-
-          // Prepare the document for PDF export
-          function prepareForPDF() {
-            // Hide elements not needed in PDF
-            document.querySelectorAll('.no-print').forEach(el => {
-              el.style.display = 'none';
-            });
-            
-            // Hide column labels row
-            const headerRow = document.querySelector('.table thead tr:last-child');
-            if (headerRow) {
-              headerRow.style.display = 'none';
-            }
-            
-            // Ensure table borders are visible
-            document.querySelectorAll('table, th, td').forEach(el => {
-              el.style.border = '1px solid #000';
-            });
-            
-            // Make sure the content container has a white background
-            const container = document.getElementById('pdf-container');
-            if (container) {
-              container.style.backgroundColor = 'white';
-            }
-            
-            // Remove borders from editable fields for inspector and delivery date
-            const inspectorElement = document.getElementById('inspector');
-            if (inspectorElement) {
-              inspectorElement.style.border = 'none';
-              inspectorElement.style.borderBottom = 'none';
-            }
-            
-            const deliveryDateInput = document.getElementById('deliveryDatePicker');
-            if (deliveryDateInput) {
-              deliveryDateInput.style.border = 'none';
-              deliveryDateInput.style.backgroundColor = 'transparent';
-            }
-          }
-
-          // Restore the document after PDF export
-          function restoreAfterPDF() {
-            // Restore hidden elements
-            document.querySelectorAll('.no-print').forEach(el => {
-              el.style.display = '';
-            });
-            
-            // Restore column labels row
-            const headerRow = document.querySelector('.table thead tr:last-child');
-            if (headerRow) {
-              headerRow.style.display = '';
-            }
-            
-            // Restore borders for editable fields
-            const inspectorElement = document.getElementById('inspector');
-            if (inspectorElement) {
-              inspectorElement.style.border = '';
-              inspectorElement.style.borderBottom = '';
-            }
-            
-            const deliveryDateInput = document.getElementById('deliveryDatePicker');
-            if (deliveryDateInput) {
-              deliveryDateInput.style.border = '';
-              deliveryDateInput.style.backgroundColor = '';
-            }
-          }
-
-          // Add Japanese font support to the PDF
-          function addJapaneseFontSupport(pdf) {
-            try {
-              // Use the Japanese font support from the imported library
-              if (typeof japaneseFont !== 'undefined') {
-                japaneseFont.addFontToDocument(pdf);
-              }
-            } catch (error) {
-              console.warn("Japanese font support not available:", error);
-            }
-          }
+      document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Flatpickr
+        flatpickr("#deliveryDatePicker", {
+          dateFormat: "Y/m/d",
+          locale: "ja",
+          allowInput: true,
         });
-        </script>
-        <script>
-      let validationPassed = false;
 
-      function validateBeforePrint() {
+        // Quick approve button logic
+        document.getElementById("quickApproveButton").addEventListener("click", function () {
+          const rows = document.querySelectorAll("tbody tr");
+          rows.forEach((row) => {
+            const cells = row.querySelectorAll("td:nth-child(6), td:nth-child(7), td:nth-child(14), td:nth-child(15)");
+            cells.forEach((cell) => {
+              if (cell.textContent.trim() === "-" || cell.textContent.trim() === "") {
+                cell.classList.remove("invalid-value");
+                cell.textContent = "合";
+              }
+            });
+          });
+        });
+      });
+
+      // Validation function - triggered by "確認" button
+      function showValidation() {
         const issues = [];
         const warnings = [];
         
-        // 1. Check 合否 columns (E, F, M, N)
         const rows = document.querySelectorAll('tbody tr');
         let missingApprovals = [];
         
-        rows.forEach((row, index) => {
+        rows.forEach((row) => {
           const cells = row.querySelectorAll('td');
           const filename = cells[0].textContent.trim();
           
-          // Check columns E, F, M, N (indices 5, 6, 13, 14)
           const columnE = cells[5]?.textContent.trim();
           const columnF = cells[6]?.textContent.trim();
           const columnM = cells[13]?.textContent.trim();
@@ -1063,7 +763,6 @@
           });
         }
         
-        // 2. Check inspector name
         const inspector = document.getElementById('inspector')?.textContent.trim();
         if (!inspector || inspector === '') {
           issues.push({
@@ -1073,7 +772,6 @@
           });
         }
         
-        // 3. Check delivery date
         const deliveryDate = document.getElementById('deliveryDatePicker')?.value;
         if (!deliveryDate || deliveryDate === '' || deliveryDate === 'YYYY/MM/DD') {
           issues.push({
@@ -1083,7 +781,6 @@
           });
         }
         
-        // 4. Check weights
         let missingWeights = [];
         rows.forEach((row) => {
           const cells = row.querySelectorAll('td');
@@ -1104,7 +801,6 @@
           });
         }
         
-        // 5. Check LOT groups and determine which LOT検査成績書 are needed
         const lotGroups = {};
         <% files.forEach(function(file) { %>
           const lot_<%= file.$id.replace(/[^a-zA-Z0-9]/g, '_') %> = '<%= file.lot || "未設定" %>';
@@ -1116,7 +812,6 @@
           lotGroups[lot_<%= file.$id.replace(/[^a-zA-Z0-9]/g, '_') %>].push(filename_<%= file.$id.replace(/[^a-zA-Z0-9]/g, '_') %>);
         <% }); %>
         
-        // Determine which LOT検査成績書 are needed
         const lotSheets = [];
         Object.keys(lotGroups).forEach(lot => {
           const files = lotGroups[lot];
@@ -1148,17 +843,15 @@
           });
         }
         
-        // Display results
-        showValidationResults(issues, warnings);
+        displayValidationResults(issues, warnings);
       }
 
-      function showValidationResults(issues, warnings) {
+      function displayValidationResults(issues, warnings) {
         const resultsDiv = document.getElementById('validationResults');
-        const proceedBtn = document.getElementById('proceedPrintBtn');
+        const enableBtn = document.getElementById('enablePrintBtn');
         
         let html = '';
         
-        // Show errors
         if (issues.length > 0) {
           html += '<div style="margin-bottom: 20px;">';
           issues.forEach(issue => {
@@ -1171,17 +864,14 @@
             `;
           });
           html += '</div>';
-          proceedBtn.disabled = true;
-          validationPassed = false;
+          enableBtn.style.display = 'none';
         } else {
           html += '<div style="background: #d4edda; border-left: 4px solid #28a745; padding: 12px; margin-bottom: 20px; border-radius: 4px;">';
           html += '<div style="font-weight: bold; color: #155724;">✓ すべての必須項目が入力されています</div>';
           html += '</div>';
-          proceedBtn.disabled = false;
-          validationPassed = true;
+          enableBtn.style.display = 'inline-block';
         }
         
-        // Show warnings (LOT sheets needed)
         if (warnings.length > 0) {
           warnings.forEach(warning => {
             html += '<div style="background: #e3f2fd; border-left: 4px solid #0d6efd; padding: 12px; margin-bottom: 10px; border-radius: 4px;">';
@@ -1216,33 +906,173 @@
         document.getElementById('validationModal').style.display = 'none';
       }
 
-      async function proceedToPrint() {
-        if (!validationPassed) {
-          alert('エラーを修正してから印刷してください。');
-          return;
+      function enablePrintPdf() {
+        document.getElementById('printBtn').disabled = false;
+        document.getElementById('pdfBtn').disabled = false;
+        closeValidationModal();
+        alert('✓ 印刷とPDFボタンが有効になりました！');
+      }
+
+      function printReport() {
+        const urlElements = document.querySelectorAll('.url-display, .timestamp');
+        urlElements.forEach(el => {
+          el.classList.add('no-print');
+        });
+
+        const headerRow = document.querySelector('.table thead tr:last-child');
+        if (headerRow) {
+          headerRow.classList.add('no-print');
+          headerRow.style.display = 'none';
         }
         
-        // Step 1: Close validation modal
-        closeValidationModal();
-        
-        // Step 2: Wait for modal to fully close (longer delay)
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Step 3: Show confirmation dialog
-        const shouldPrint = confirm('印刷しますか？\n\nOK = 印刷\nキャンセル = PDF保存');
-        
-        // Step 4: Wait before executing action
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        // Step 5: Execute action based on user choice
-        if (shouldPrint) {
-          // User chose Print
-          printReport();
-        } else {
-          // User chose PDF
-          exportPDF();
+        const tables = document.querySelectorAll('table');
+        tables.forEach(table => {
+          table.style.borderCollapse = 'collapse';
+          table.style.border = '1px solid #000';
+          
+          const firstRow = table.querySelector('tbody tr:first-child');
+          if (firstRow) {
+            firstRow.style.borderTop = '1px solid #000';
+          }
+        });
+
+        const deliveryDateInput = document.getElementById('deliveryDatePicker');
+        if (deliveryDateInput) {
+          deliveryDateInput.style.backgroundColor = 'transparent';
+        }
+
+        setTimeout(() => {
+          window.print();
+        }, 200);
+      }
+
+      function exportPDF() {
+        const loadingEl = document.createElement("div");
+        loadingEl.style.position = "fixed";
+        loadingEl.style.top = "0";
+        loadingEl.style.left = "0";
+        loadingEl.style.width = "100%";
+        loadingEl.style.height = "100%";
+        loadingEl.style.backgroundColor = "rgba(255,255,255,0.8)";
+        loadingEl.style.display = "flex";
+        loadingEl.style.justifyContent = "center";
+        loadingEl.style.alignItems = "center";
+        loadingEl.style.zIndex = "9999";
+        loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
+        document.body.appendChild(loadingEl);
+
+        try {
+          prepareForPDF();
+          
+          const pdf = new jspdf.jsPDF({
+            orientation: 'landscape',
+            unit: 'mm',
+            format: 'a4'
+          });
+          
+          addJapaneseFontSupport(pdf);
+          
+          const element = document.getElementById('pdf-container');
+          
+          html2canvas(element, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            allowTaint: true,
+            backgroundColor: '#ffffff'
+          }).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            
+            const imgWidth = 287;
+            const imgHeight = canvas.height * imgWidth / canvas.width;
+            
+            pdf.addImage(imgData, 'PNG', 5, 5, imgWidth, imgHeight);
+            
+            const today = new Date();
+            const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+            pdf.save(`水平ノズル検査成績書_${dateStr}.pdf`);
+            
+            restoreAfterPDF();
+            
+            document.body.removeChild(loadingEl);
+          }).catch(error => {
+            console.error("Error generating canvas:", error);
+            alert("PDF生成中にエラーが発生しました: " + error.message);
+            restoreAfterPDF();
+            document.body.removeChild(loadingEl);
+          });
+        } catch (error) {
+          console.error("Error generating PDF:", error);
+          alert("PDF生成中にエラーが発生しました。ブラウザのコンソールで詳細を確認してください。");
+          restoreAfterPDF();
+          document.body.removeChild(loadingEl);
         }
       }
-      </script>
+
+      function prepareForPDF() {
+        document.querySelectorAll('.no-print').forEach(el => {
+          el.style.display = 'none';
+        });
+        
+        const headerRow = document.querySelector('.table thead tr:last-child');
+        if (headerRow) {
+          headerRow.style.display = 'none';
+        }
+        
+        document.querySelectorAll('table, th, td').forEach(el => {
+          el.style.border = '1px solid #000';
+        });
+        
+        const container = document.getElementById('pdf-container');
+        if (container) {
+          container.style.backgroundColor = 'white';
+        }
+        
+        const inspectorElement = document.getElementById('inspector');
+        if (inspectorElement) {
+          inspectorElement.style.border = 'none';
+          inspectorElement.style.borderBottom = 'none';
+        }
+        
+        const deliveryDateInput = document.getElementById('deliveryDatePicker');
+        if (deliveryDateInput) {
+          deliveryDateInput.style.border = 'none';
+          deliveryDateInput.style.backgroundColor = 'transparent';
+        }
+      }
+
+      function restoreAfterPDF() {
+        document.querySelectorAll('.no-print').forEach(el => {
+          el.style.display = '';
+        });
+        
+        const headerRow = document.querySelector('.table thead tr:last-child');
+        if (headerRow) {
+          headerRow.style.display = '';
+        }
+        
+        const inspectorElement = document.getElementById('inspector');
+        if (inspectorElement) {
+          inspectorElement.style.border = '';
+          inspectorElement.style.borderBottom = '';
+        }
+        
+        const deliveryDateInput = document.getElementById('deliveryDatePicker');
+        if (deliveryDateInput) {
+          deliveryDateInput.style.border = '';
+          deliveryDateInput.style.backgroundColor = '';
+        }
+      }
+
+      function addJapaneseFontSupport(pdf) {
+        try {
+          if (typeof japaneseFont !== 'undefined') {
+            japaneseFont.addFontToDocument(pdf);
+          }
+        } catch (error) {
+          console.warn("Japanese font support not available:", error);
+        }
+      }
+    </script>
   </body>
 </html>
