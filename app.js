@@ -1,12 +1,10 @@
-// app.js - WITH LOGIN AND AUTHORIZATION
-// 水平ノズル検査成績書システム with Appwrite Backend
-
+// app.js - WITH DATABASE-BASED SESSIONS FOR VERCEL
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const bodyParser = require("body-parser");
-const session = require("express-session");
-const fs = require("fs");
+const cookieParser = require("cookie-parser");
+const crypto = require("crypto");
 require("dotenv").config();
 
 // Appwrite SDK
@@ -19,19 +17,20 @@ const PORT = process.env.PORT || 3000;
 // USER CONFIGURATION
 // ======================
 
-// Authorized users who can edit/save weights
 const AUTHORIZED_USERS = ['naemura', 'iwatsuki'];
 
-// Simple password validation (any 4 digits)
 function isValidPassword(password) {
   return /^\d{4}$/.test(password);
+}
+
+function canEditWeights(username) {
+  return AUTHORIZED_USERS.includes(username);
 }
 
 // ======================
 // MEASUREMENT CONFIGURATION
 // ======================
 
-// Validation ranges for measurements A-N
 const validationRanges = {
   'A': { min: 8.0, max: 8.4 },
   'B': { min: 37.2, max: 37.8 },
@@ -52,7 +51,6 @@ const validationRanges = {
   'N': null
 };
 
-// Measurement mapping
 const measurementMapping = {
   'A': { index: 1, type: 'PT-COMP', field: 'x', absolute: true },
   'B': { index: 9, type: 'CIRCLE', field: 'diameter', absolute: false },
@@ -97,6 +95,7 @@ const DATABASE_ID = process.env.APPWRITE_DATABASE_ID;
 const COLLECTION_FILES = process.env.APPWRITE_COLLECTION_FILES_ID;
 const COLLECTION_FILE_DATA = process.env.APPWRITE_COLLECTION_FILE_DATA_ID;
 const COLLECTION_LOGIN_LOGS = process.env.APPWRITE_COLLECTION_LOGIN_LOGS_ID;
+const COLLECTION_SESSIONS = process.env.APPWRITE_COLLECTION_SESSIONS_ID;
 
 // ======================
 // MIDDLEWARE
@@ -107,19 +106,8 @@ app.set("views", path.join(__dirname, "views"));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static("public"));
+app.use(cookieParser(process.env.SESSION_SECRET || 'your-secret-key-change-in-production'));
 
-// Session configuration
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { 
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    secure: process.env.NODE_ENV === 'production' // HTTPS only in production
-  }
-}));
-
-// Multer configuration
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -133,31 +121,119 @@ const upload = multer({
 });
 
 // ======================
+// SESSION HELPERS
+// ======================
+
+function generateSessionId() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+async function getSession(sessionId) {
+  if (!sessionId) return null;
+  
+  try {
+    const sessions = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_SESSIONS,
+      [Query.equal('session_id', sessionId), Query.limit(1)]
+    );
+    
+    if (sessions.documents.length === 0) return null;
+    
+    const session = sessions.documents[0];
+    
+    // Check if expired
+    if (new Date(session.expires_at) < new Date()) {
+      await databases.deleteDocument(DATABASE_ID, COLLECTION_SESSIONS, session.$id);
+      return null;
+    }
+    
+    return session;
+  } catch (error) {
+    console.error('Error getting session:', error);
+    return null;
+  }
+}
+
+async function createSession(username) {
+  const sessionId = generateSessionId();
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+  
+  await databases.createDocument(
+    DATABASE_ID,
+    COLLECTION_SESSIONS,
+    ID.unique(),
+    {
+      session_id: sessionId,
+      username: username,
+      can_edit_weights: canEditWeights(username),
+      created_at: new Date().toISOString(),
+      expires_at: expiresAt.toISOString()
+    }
+  );
+  
+  return sessionId;
+}
+
+async function deleteSession(sessionId) {
+  if (!sessionId) return;
+  
+  try {
+    const sessions = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_SESSIONS,
+      [Query.equal('session_id', sessionId), Query.limit(1)]
+    );
+    
+    if (sessions.documents.length > 0) {
+      await databases.deleteDocument(
+        DATABASE_ID,
+        COLLECTION_SESSIONS,
+        sessions.documents[0].$id
+      );
+    }
+  } catch (error) {
+    console.error('Error deleting session:', error);
+  }
+}
+
+// ======================
 // AUTHENTICATION MIDDLEWARE
 // ======================
 
-// Check if user is logged in
-function requireAuth(req, res, next) {
-  if (req.session && req.session.username) {
-    return next();
+async function requireAuth(req, res, next) {
+  const sessionId = req.cookies.session_id;
+  const session = await getSession(sessionId);
+  
+  if (!session) {
+    return res.redirect('/login');
   }
-  res.redirect('/login');
+  
+  req.session = {
+    username: session.username,
+    canEditWeights: session.can_edit_weights
+  };
+  
+  next();
 }
 
-// Check if user can edit weights
-function canEditWeights(username) {
-  return AUTHORIZED_USERS.includes(username);
-}
-
-// Middleware to check weight editing permission
-function requireWeightEditAuth(req, res, next) {
-  if (req.session && req.session.username && canEditWeights(req.session.username)) {
-    return next();
+async function requireWeightEditAuth(req, res, next) {
+  const sessionId = req.cookies.session_id;
+  const session = await getSession(sessionId);
+  
+  if (!session || !session.can_edit_weights) {
+    return res.status(403).json({ 
+      success: false, 
+      error: 'Not authorized to edit weights. Only naemura and iwatsuki can edit weights.' 
+    });
   }
-  return res.status(403).json({ 
-    success: false, 
-    error: 'Not authorized to edit weights. Only naemura and iwatsuki can edit weights.' 
-  });
+  
+  req.session = {
+    username: session.username,
+    canEditWeights: session.can_edit_weights
+  };
+  
+  next();
 }
 
 // ======================
@@ -344,12 +420,10 @@ function parseTxtFile(content) {
 // ROUTES - LOGIN/LOGOUT
 // ======================
 
-// Login page
 app.get("/login", (req, res) => {
   res.render("login", { error: null });
 });
 
-// Login handler
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
@@ -357,44 +431,52 @@ app.post("/login", async (req, res) => {
     return res.render("login", { error: "Username and password are required" });
   }
 
-  // Validate password (any 4 digits)
   if (!isValidPassword(password)) {
     return res.render("login", { error: "Password must be 4 digits" });
   }
 
-  // Set session
-  req.session.username = username;
-  req.session.canEditWeights = canEditWeights(username);
-
-  // Log login to database
   try {
-    await databases.createDocument(
-      DATABASE_ID,
-      COLLECTION_LOGIN_LOGS,
-      ID.unique(),
-      {
-        username: username,
-        login_time: new Date().toISOString()
-      }
-    );
-  } catch (error) {
-    console.error("Error logging login:", error);
-  }
+    const sessionId = await createSession(username);
+    
+    res.cookie('session_id', sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 24 * 60 * 60 * 1000,
+      sameSite: 'lax'
+    });
 
-  res.redirect("/");
+    try {
+      await databases.createDocument(
+        DATABASE_ID,
+        COLLECTION_LOGIN_LOGS,
+        ID.unique(),
+        {
+          username: username,
+          login_time: new Date().toISOString()
+        }
+      );
+    } catch (error) {
+      console.error("Error logging login:", error);
+    }
+
+    res.redirect("/");
+  } catch (error) {
+    console.error("Login error:", error);
+    res.render("login", { error: "Login failed. Please try again." });
+  }
 });
 
-// Logout
-app.get("/logout", (req, res) => {
-  req.session.destroy();
-  res.redirect("/login");
+app.get("/logout", async (req, res) => {
+  const sessionId = req.cookies.session_id;
+  await deleteSession(sessionId);
+  res.clearCookie('session_id');
+  res.redirect('/login');
 });
 
 // ======================
 // ROUTES - MAIN APP
 // ======================
 
-// Home page - REQUIRES AUTH
 app.get("/", requireAuth, async (req, res) => {
   try {
     const response = await databases.listDocuments(
@@ -418,54 +500,55 @@ app.get("/", requireAuth, async (req, res) => {
   }
 });
 
-// Upload handler - REQUIRES AUTH
-app.post("/upload", requireAuth, upload.single("file"), async (req, res) => {
+app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).send("No file uploaded");
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).send("No files uploaded");
     }
 
-    const filename = req.file.originalname;
-    const content = req.file.buffer.toString("utf8");
-    const dataPoints = parseTxtFile(content);
+    for (const file of req.files) {
+      const filename = file.originalname;
+      const content = file.buffer.toString("utf8");
+      const dataPoints = parseTxtFile(content);
 
-    if (dataPoints.length === 0) {
-      return res.status(400).send("No valid data found in file");
-    }
-
-    const fileDoc = await databases.createDocument(
-      DATABASE_ID,
-      COLLECTION_FILES,
-      ID.unique(),
-      {
-        filename: filename,
-        uploaded_at: new Date().toISOString(),
-        weight: null,
+      if (dataPoints.length === 0) {
+        continue;
       }
-    );
 
-    const fileId = fileDoc.$id;
-
-    for (const point of dataPoints) {
-      await databases.createDocument(
+      const fileDoc = await databases.createDocument(
         DATABASE_ID,
-        COLLECTION_FILE_DATA,
+        COLLECTION_FILES,
         ID.unique(),
         {
-          file_id: fileId,
-          index: point.index,
-          data_type: point.data_type,
-          x: point.x,
-          y: point.y,
-          z: point.z,
-          rot_x: point.rot_x,
-          rot_y: point.rot_y,
-          rot_z: point.rot_z,
-          note: point.note || "",
-          diameter: point.diameter,
-          tolerance: point.tolerance,
+          filename: filename,
+          uploaded_at: new Date().toISOString(),
+          weight: null,
         }
       );
+
+      const fileId = fileDoc.$id;
+
+      for (const point of dataPoints) {
+        await databases.createDocument(
+          DATABASE_ID,
+          COLLECTION_FILE_DATA,
+          ID.unique(),
+          {
+            file_id: fileId,
+            index: point.index,
+            data_type: point.data_type,
+            x: point.x,
+            y: point.y,
+            z: point.z,
+            rot_x: point.rot_x,
+            rot_y: point.rot_y,
+            rot_z: point.rot_z,
+            note: point.note || "",
+            diameter: point.diameter,
+            tolerance: point.tolerance,
+          }
+        );
+      }
     }
 
     res.redirect("/");
@@ -475,7 +558,6 @@ app.post("/upload", requireAuth, upload.single("file"), async (req, res) => {
   }
 });
 
-// View file data - REQUIRES AUTH
 app.get("/files/:id", requireAuth, async (req, res) => {
   try {
     const fileId = req.params.id;
@@ -508,7 +590,6 @@ app.get("/files/:id", requireAuth, async (req, res) => {
   }
 });
 
-// Update weight - REQUIRES WEIGHT EDIT AUTH
 app.post("/files/:id/update-weight", requireWeightEditAuth, async (req, res) => {
   try {
     const fileId = req.params.id;
@@ -528,26 +609,13 @@ app.post("/files/:id/update-weight", requireWeightEditAuth, async (req, res) => 
       { weight: weight }
     );
     
-    if (req.headers['content-type']?.includes('application/json')) {
-      return res.json({ success: true, weight: weight });
-    }
-    
     res.redirect(`/files/${fileId}`);
   } catch (error) {
     console.error("Error updating weight:", error);
-    
-    if (req.headers['content-type']?.includes('application/json')) {
-      return res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
-    }
-    
     res.status(500).send("Error updating weight");
   }
 });
 
-// Update weights - batch - REQUIRES WEIGHT EDIT AUTH
 app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
   try {
     const { weights } = req.body;
@@ -582,7 +650,6 @@ app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
   }
 });
 
-// Delete file - REQUIRES AUTH
 app.post("/delete-file", requireAuth, async (req, res) => {
   try {
     const { fileId } = req.body;
@@ -624,7 +691,6 @@ app.post("/delete-file", requireAuth, async (req, res) => {
   }
 });
 
-// Export weights - REQUIRES AUTH
 app.get("/export-weights", requireAuth, async (req, res) => {
   try {
     const filesResponse = await databases.listDocuments(
@@ -649,38 +715,6 @@ app.get("/export-weights", requireAuth, async (req, res) => {
   }
 });
 
-// Export data - REQUIRES AUTH
-app.get("/export-data", requireAuth, async (req, res) => {
-  try {
-    const filesResponse = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTION_FILES,
-      [Query.orderDesc("uploaded_at"), Query.limit(100)]
-    );
-
-    const exportData = [];
-
-    for (const file of filesResponse.documents) {
-      const dataResponse = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTION_FILE_DATA,
-        [Query.equal("file_id", file.$id), Query.limit(1000)]
-      );
-
-      exportData.push({
-        file: file,
-        data: dataResponse.documents,
-      });
-    }
-
-    res.json(exportData);
-  } catch (error) {
-    console.error("Export error:", error);
-    res.status(500).json({ error: "Export failed" });
-  }
-});
-
-// Summary page - REQUIRES AUTH
 app.get("/summary", requireAuth, async (req, res) => {
   try {
     const selectedFilesParam = req.query.selectedFiles || "";
@@ -740,7 +774,7 @@ app.get("/summary", requireAuth, async (req, res) => {
       fileData: fileData,
       validationRanges: validationRanges,
       username: req.session.username,
-      inspectorName: req.session.username, // Changed to use logged-in username
+      inspectorName: req.session.username,
     });
   } catch (error) {
     console.error("Error generating summary:", error);
@@ -748,7 +782,6 @@ app.get("/summary", requireAuth, async (req, res) => {
   }
 });
 
-// Health check
 app.get("/health", (req, res) => {
   res.json({
     status: "OK",
@@ -756,10 +789,6 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
-
-// ======================
-// ERROR HANDLERS
-// ======================
 
 app.use((req, res) => {
   res.status(404).send("Page not found");
@@ -770,16 +799,11 @@ app.use((err, req, res, next) => {
   res.status(500).send("Something went wrong!");
 });
 
-// ======================
-// START SERVER
-// ======================
-
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Database: Appwrite`);
-  console.log(`Authentication: ENABLED`);
+  console.log(`Authentication: ENABLED (Database Sessions)`);
   console.log(`Authorized weight editors: ${AUTHORIZED_USERS.join(', ')}`);
-  console.log(`Measurement processor: ENABLED`);
 });
 
 module.exports = app;

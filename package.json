@@ -13,10 +13,10 @@
     "@vercel/analytics": "^1.5.0",
     "body-parser": "^1.x.x",
     "busboy": "^1.6.0",
+    "cookie-parser": "^1.4.7",
     "dotenv": "^16.x.x",
     "ejs": "^3.x.x",
     "express": "^4.x.x",
-    "express-session": "^1.x.x",
     "geoip-lite": "^1.4.10",
     "multer": "^1.x.x",
     "node-appwrite": "^14.1.0"
