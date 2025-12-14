@@ -1029,227 +1029,214 @@
         });
         </script>
         <script>
-let validationPassed = false;
+      let validationPassed = false;
 
-function validateBeforePrint() {
-  const issues = [];
-  const warnings = [];
-  
-  // 1. Check 合否 columns (E, F, M, N)
-  const rows = document.querySelectorAll('tbody tr');
-  let missingApprovals = [];
-  
-  rows.forEach((row, index) => {
-    const cells = row.querySelectorAll('td');
-    const filename = cells[0].textContent.trim();
-    
-    // Check columns E, F, M, N (indices 5, 6, 13, 14)
-    const columnE = cells[5]?.textContent.trim();
-    const columnF = cells[6]?.textContent.trim();
-    const columnM = cells[13]?.textContent.trim();
-    const columnN = cells[14]?.textContent.trim();
-    
-    if (columnE === '-' || columnF === '-' || columnM === '-' || columnN === '-') {
-      missingApprovals.push(filename);
-    }
-  });
-  
-  if (missingApprovals.length > 0) {
-    issues.push({
-      type: 'error',
-      title: '❌ 合否が未入力',
-      message: `${missingApprovals.length}件のファイルで合否(E,F,M,N)が未入力です。秘密ボタンを押してください。`,
-      files: missingApprovals.slice(0, 5).join(', ') + (missingApprovals.length > 5 ? '...' : '')
-    });
-  }
-  
-  // 2. Check inspector name
-  const inspector = document.getElementById('inspector')?.textContent.trim();
-  if (!inspector || inspector === '') {
-    issues.push({
-      type: 'error',
-      title: '❌ 担当者名が未入力',
-      message: '担当者名を入力してください。'
-    });
-  }
-  
-  // 3. Check delivery date
-  const deliveryDate = document.getElementById('deliveryDatePicker')?.value;
-  if (!deliveryDate || deliveryDate === '' || deliveryDate === 'YYYY/MM/DD') {
-    issues.push({
-      type: 'error',
-      title: '❌ 納期が未入力',
-      message: '納期をカレンダーから選択してください。'
-    });
-  }
-  
-  // 4. Check weights
-  let missingWeights = [];
-  rows.forEach((row) => {
-    const cells = row.querySelectorAll('td');
-    const filename = cells[0].textContent.trim();
-    const weight = cells[15]?.textContent.trim();
-    
-    if (!weight || weight === '-') {
-      missingWeights.push(filename);
-    }
-  });
-  
-  if (missingWeights.length > 0) {
-    issues.push({
-      type: 'error',
-      title: '❌ 重量が未入力',
-      message: `${missingWeights.length}件のファイルで重量が未設定です。`,
-      files: missingWeights.slice(0, 5).join(', ') + (missingWeights.length > 5 ? '...' : '')
-    });
-  }
-  
-  // 5. Check LOT groups and determine which LOT検査成績書 are needed
-  const lotGroups = {};
-  <% files.forEach(function(file) { %>
-    const lot_<%= file.$id.replace(/[^a-zA-Z0-9]/g, '_') %> = '<%= file.lot || "未設定" %>';
-    const filename_<%= file.$id.replace(/[^a-zA-Z0-9]/g, '_') %> = '<%= file.filename.replace(/\.txt$/i, "") %>';
-    
-    if (!lotGroups[lot_<%= file.$id.replace(/[^a-zA-Z0-9]/g, '_') %>]) {
-      lotGroups[lot_<%= file.$id.replace(/[^a-zA-Z0-9]/g, '_') %>] = [];
-    }
-    lotGroups[lot_<%= file.$id.replace(/[^a-zA-Z0-9]/g, '_') %>].push(filename_<%= file.$id.replace(/[^a-zA-Z0-9]/g, '_') %>);
-  <% }); %>
-  
-  // Determine which LOT検査成績書 are needed
-  const lotSheets = [];
-  Object.keys(lotGroups).forEach(lot => {
-    const files = lotGroups[lot];
-    if (files.length > 0 && lot !== '未設定') {
-      files.sort((a, b) => {
-        const numA = parseInt(a.match(/^\d+/)?.[0] || 0);
-        const numB = parseInt(b.match(/^\d+/)?.[0] || 0);
-        return numA - numB;
-      });
-      
-      const firstFile = files[0];
-      const lastFile = files[files.length - 1];
-      
-      lotSheets.push({
-        lot: lot,
-        count: files.length,
-        representative: firstFile,
-        range: firstFile + (files.length > 1 ? ` 〜 ${lastFile}` : '')
-      });
-    }
-  });
-  
-  if (lotSheets.length > 0) {
-    warnings.push({
-      type: 'warning',
-      title: '📎 必要なLOT検査成績書',
-      message: '以下のLOT検査成績書を準備してください:',
-      sheets: lotSheets
-    });
-  }
-  
-  // Display results
-  showValidationResults(issues, warnings);
-}
-
-function showValidationResults(issues, warnings) {
-  const resultsDiv = document.getElementById('validationResults');
-  const proceedBtn = document.getElementById('proceedPrintBtn');
-  
-  let html = '';
-  
-  // Show errors
-  if (issues.length > 0) {
-    html += '<div style="margin-bottom: 20px;">';
-    issues.forEach(issue => {
-      html += `
-        <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin-bottom: 10px; border-radius: 4px;">
-          <div style="font-weight: bold; margin-bottom: 5px;">${issue.title}</div>
-          <div style="font-size: 14px;">${issue.message}</div>
-          ${issue.files ? `<div style="font-size: 12px; color: #666; margin-top: 5px;">対象: ${issue.files}</div>` : ''}
-        </div>
-      `;
-    });
-    html += '</div>';
-    proceedBtn.disabled = true;
-    validationPassed = false;
-  } else {
-    html += '<div style="background: #d4edda; border-left: 4px solid #28a745; padding: 12px; margin-bottom: 20px; border-radius: 4px;">';
-    html += '<div style="font-weight: bold; color: #155724;">✓ すべての必須項目が入力されています</div>';
-    html += '</div>';
-    proceedBtn.disabled = false;
-    validationPassed = true;
-  }
-  
-  // Show warnings (LOT sheets needed)
-  if (warnings.length > 0) {
-    warnings.forEach(warning => {
-      html += '<div style="background: #e3f2fd; border-left: 4px solid #0d6efd; padding: 12px; margin-bottom: 10px; border-radius: 4px;">';
-      html += `<div style="font-weight: bold; margin-bottom: 10px;">${warning.title}</div>`;
-      html += `<div style="font-size: 14px; margin-bottom: 10px;">${warning.message}</div>`;
-      
-      if (warning.sheets) {
-        html += '<ul style="margin: 0; padding-left: 20px;">';
-        warning.sheets.forEach(sheet => {
-          html += `
-            <li style="margin-bottom: 8px;">
-              <strong>ロット: ${sheet.lot}</strong><br>
-              <span style="font-size: 13px; color: #666;">
-                範囲: ${sheet.range} (${sheet.count}件)<br>
-                添付: <strong>${sheet.representative}</strong> のLOT検査成績書
-              </span>
-            </li>
-          `;
+      function validateBeforePrint() {
+        const issues = [];
+        const warnings = [];
+        
+        // 1. Check 合否 columns (E, F, M, N)
+        const rows = document.querySelectorAll('tbody tr');
+        let missingApprovals = [];
+        
+        rows.forEach((row, index) => {
+          const cells = row.querySelectorAll('td');
+          const filename = cells[0].textContent.trim();
+          
+          // Check columns E, F, M, N (indices 5, 6, 13, 14)
+          const columnE = cells[5]?.textContent.trim();
+          const columnF = cells[6]?.textContent.trim();
+          const columnM = cells[13]?.textContent.trim();
+          const columnN = cells[14]?.textContent.trim();
+          
+          if (columnE === '-' || columnF === '-' || columnM === '-' || columnN === '-') {
+            missingApprovals.push(filename);
+          }
         });
-        html += '</ul>';
+        
+        if (missingApprovals.length > 0) {
+          issues.push({
+            type: 'error',
+            title: '❌ 合否が未入力',
+            message: `${missingApprovals.length}件のファイルで合否(E,F,M,N)が未入力です。秘密ボタンを押してください。`,
+            files: missingApprovals.slice(0, 5).join(', ') + (missingApprovals.length > 5 ? '...' : '')
+          });
+        }
+        
+        // 2. Check inspector name
+        const inspector = document.getElementById('inspector')?.textContent.trim();
+        if (!inspector || inspector === '') {
+          issues.push({
+            type: 'error',
+            title: '❌ 担当者名が未入力',
+            message: '担当者名を入力してください。'
+          });
+        }
+        
+        // 3. Check delivery date
+        const deliveryDate = document.getElementById('deliveryDatePicker')?.value;
+        if (!deliveryDate || deliveryDate === '' || deliveryDate === 'YYYY/MM/DD') {
+          issues.push({
+            type: 'error',
+            title: '❌ 納期が未入力',
+            message: '納期をカレンダーから選択してください。'
+          });
+        }
+        
+        // 4. Check weights
+        let missingWeights = [];
+        rows.forEach((row) => {
+          const cells = row.querySelectorAll('td');
+          const filename = cells[0].textContent.trim();
+          const weight = cells[15]?.textContent.trim();
+          
+          if (!weight || weight === '-') {
+            missingWeights.push(filename);
+          }
+        });
+        
+        if (missingWeights.length > 0) {
+          issues.push({
+            type: 'error',
+            title: '❌ 重量が未入力',
+            message: `${missingWeights.length}件のファイルで重量が未設定です。`,
+            files: missingWeights.slice(0, 5).join(', ') + (missingWeights.length > 5 ? '...' : '')
+          });
+        }
+        
+        // 5. Check LOT groups and determine which LOT検査成績書 are needed
+        const lotGroups = {};
+        <% files.forEach(function(file) { %>
+          const lot_<%= file.$id.replace(/[^a-zA-Z0-9]/g, '_') %> = '<%= file.lot || "未設定" %>';
+          const filename_<%= file.$id.replace(/[^a-zA-Z0-9]/g, '_') %> = '<%= file.filename.replace(/\.txt$/i, "") %>';
+          
+          if (!lotGroups[lot_<%= file.$id.replace(/[^a-zA-Z0-9]/g, '_') %>]) {
+            lotGroups[lot_<%= file.$id.replace(/[^a-zA-Z0-9]/g, '_') %>] = [];
+          }
+          lotGroups[lot_<%= file.$id.replace(/[^a-zA-Z0-9]/g, '_') %>].push(filename_<%= file.$id.replace(/[^a-zA-Z0-9]/g, '_') %>);
+        <% }); %>
+        
+        // Determine which LOT検査成績書 are needed
+        const lotSheets = [];
+        Object.keys(lotGroups).forEach(lot => {
+          const files = lotGroups[lot];
+          if (files.length > 0 && lot !== '未設定') {
+            files.sort((a, b) => {
+              const numA = parseInt(a.match(/^\d+/)?.[0] || 0);
+              const numB = parseInt(b.match(/^\d+/)?.[0] || 0);
+              return numA - numB;
+            });
+            
+            const firstFile = files[0];
+            const lastFile = files[files.length - 1];
+            
+            lotSheets.push({
+              lot: lot,
+              count: files.length,
+              representative: firstFile,
+              range: firstFile + (files.length > 1 ? ` 〜 ${lastFile}` : '')
+            });
+          }
+        });
+        
+        if (lotSheets.length > 0) {
+          warnings.push({
+            type: 'warning',
+            title: '📎 必要なLOT検査成績書',
+            message: '以下のLOT検査成績書を準備してください:',
+            sheets: lotSheets
+          });
+        }
+        
+        // Display results
+        showValidationResults(issues, warnings);
       }
-      
-      html += '</div>';
-    });
-  }
-  
-  resultsDiv.innerHTML = html;
-  document.getElementById('validationModal').style.display = 'flex';
-}
 
-function closeValidationModal() {
-  document.getElementById('validationModal').style.display = 'none';
-}
+      function showValidationResults(issues, warnings) {
+        const resultsDiv = document.getElementById('validationResults');
+        const proceedBtn = document.getElementById('proceedPrintBtn');
+        
+        let html = '';
+        
+        // Show errors
+        if (issues.length > 0) {
+          html += '<div style="margin-bottom: 20px;">';
+          issues.forEach(issue => {
+            html += `
+              <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin-bottom: 10px; border-radius: 4px;">
+                <div style="font-weight: bold; margin-bottom: 5px;">${issue.title}</div>
+                <div style="font-size: 14px;">${issue.message}</div>
+                ${issue.files ? `<div style="font-size: 12px; color: #666; margin-top: 5px;">対象: ${issue.files}</div>` : ''}
+              </div>
+            `;
+          });
+          html += '</div>';
+          proceedBtn.disabled = true;
+          validationPassed = false;
+        } else {
+          html += '<div style="background: #d4edda; border-left: 4px solid #28a745; padding: 12px; margin-bottom: 20px; border-radius: 4px;">';
+          html += '<div style="font-weight: bold; color: #155724;">✓ すべての必須項目が入力されています</div>';
+          html += '</div>';
+          proceedBtn.disabled = false;
+          validationPassed = true;
+        }
+        
+        // Show warnings (LOT sheets needed)
+        if (warnings.length > 0) {
+          warnings.forEach(warning => {
+            html += '<div style="background: #e3f2fd; border-left: 4px solid #0d6efd; padding: 12px; margin-bottom: 10px; border-radius: 4px;">';
+            html += `<div style="font-weight: bold; margin-bottom: 10px;">${warning.title}</div>`;
+            html += `<div style="font-size: 14px; margin-bottom: 10px;">${warning.message}</div>`;
+            
+            if (warning.sheets) {
+              html += '<ul style="margin: 0; padding-left: 20px;">';
+              warning.sheets.forEach(sheet => {
+                html += `
+                  <li style="margin-bottom: 8px;">
+                    <strong>ロット: ${sheet.lot}</strong><br>
+                    <span style="font-size: 13px; color: #666;">
+                      範囲: ${sheet.range} (${sheet.count}件)<br>
+                      添付: <strong>${sheet.representative}</strong> のLOT検査成績書
+                    </span>
+                  </li>
+                `;
+              });
+              html += '</ul>';
+            }
+            
+            html += '</div>';
+          });
+        }
+        
+        resultsDiv.innerHTML = html;
+        document.getElementById('validationModal').style.display = 'flex';
+      }
 
-function proceedToPrint() {
-  if (!validationPassed) {
-    alert('エラーを修正してから印刷してください。');
-    return;
-  }
-  
-  // Show choice: Print or PDF
-  if (confirm('印刷しますか？\n\nOK = 印刷\nキャンセル = PDF保存')) {
-    // User chose Print
-    
-    // Add event listener to detect when print dialog is closed
-    const afterPrintHandler = function() {
-      closeValidationModal();
-      window.removeEventListener('afterprint', afterPrintHandler);
-    };
-    
-    window.addEventListener('afterprint', afterPrintHandler);
-    
-    // Small delay to ensure event listener is attached
-    setTimeout(() => {
-      printReport();
-    }, 100);
-  } else {
-    // User chose PDF - close validation modal before export
-    closeValidationModal();
-    
-    // Small delay to ensure modal is closed
-    setTimeout(() => {
-      exportPDF();
-    }, 100);
-  }
-}
-    </script>
+      function closeValidationModal() {
+        document.getElementById('validationModal').style.display = 'none';
+      }
 
-
+      function proceedToPrint() {
+        if (!validationPassed) {
+          alert('エラーを修正してから印刷してください。');
+          return;
+        }
+        
+        // Close the validation modal FIRST
+        closeValidationModal();
+        
+        // Small delay to ensure modal closes smoothly
+        setTimeout(() => {
+          // THEN ask: Print or PDF?
+          if (confirm('印刷しますか？\n\nOK = 印刷\nキャンセル = PDF保存')) {
+            // User chose Print
+            printReport();
+          } else {
+            // User chose PDF
+            exportPDF();
+          }
+        }, 200);
+      }
+      </script>
   </body>
 </html>
