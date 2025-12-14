@@ -690,29 +690,15 @@
                   </td>
 
                   <!-- Column E: 合否 -->
+                  <!-- Column E: 合否 -->
                   <td class="highlight-cell data-cell">
-                    <% if (fileData[file.$id]['E'].value !== '-') {
-                      if (fileData[file.$id]['E'].isValid) { %>
-                        合
-                      <% } else { %>
-                        <span class="invalid-value">否</span>
-                      <% }
-                    } else { %>
-                      -
-                    <% } %>
+                    -
                   </td>
 
                   <!-- Column F: 合否 -->
+                  <!-- Column E: 合否 -->
                   <td class="highlight-cell data-cell">
-                    <% if (fileData[file.$id]['F'].value !== '-') {
-                      if (fileData[file.$id]['F'].isValid) { %>
-                        合
-                      <% } else { %>
-                        <span class="invalid-value">否</span>
-                      <% }
-                    } else { %>
-                      -
-                    <% } %>
+                    -
                   </td>
 
                   <!-- Column G: Combined G1-G4 check -->
@@ -808,26 +794,21 @@
           });
 
           // Quick approve button logic
-          document
-            .getElementById("quickApproveButton")
-            .addEventListener("click", function () {
-              const rows = document.querySelectorAll("tbody tr");
-              rows.forEach((row) => {
-                // Specifically target only the E, F, M, N columns (columns 5, 6, 14, 15)
-                const cells = row.querySelectorAll(
-                  "td:nth-child(6), td:nth-child(7), td:nth-child(14), td:nth-child(15)"
-                );
-                cells.forEach((cell) => {
-                  if (
-                    cell.textContent.trim() === "-" ||
-                    cell.textContent.trim() === ""
-                  ) {
-                    cell.classList.remove("invalid-value");
-                    cell.textContent = "合";
-                  }
-                });
+          document.getElementById("quickApproveButton").addEventListener("click", function () {
+            const rows = document.querySelectorAll("tbody tr");
+            rows.forEach((row) => {
+              // Target columns E, F, M, N (columns 6, 7, 14, 15)
+              const cells = row.querySelectorAll(
+                "td:nth-child(6), td:nth-child(7), td:nth-child(14), td:nth-child(15)"
+              );
+              cells.forEach((cell) => {
+                if (cell.textContent.trim() === "-" || cell.textContent.trim() === "") {
+                  cell.classList.remove("invalid-value");
+                  cell.textContent = "合";
+                }
               });
             });
+          });
 
           // Print button event handler
           document.querySelector('.button-print').addEventListener('click', printReport);
