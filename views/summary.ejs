@@ -1,528 +1,1035 @@
+<!-- Improved summary.ejs with proper spacing between notes and table -->
 <!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>水平ノズル検査成績書</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
-  <style>
-    body {
-      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
-      background-color: #f5f5f5;
-      padding: 20px 0;
-    }
-
-    .container {
-      max-width: 1200px;
-      background: white;
-      padding: 30px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-
-    .inspection-sheet {
-      background: white;
-      padding: 20px;
-      border: 2px solid #000;
-    }
-
-    .inspection-header {
-      margin-bottom: 20px;
-    }
-
-    .header-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-
-    .header-title {
-      text-align: center;
-      font-size: 24px;
-      font-weight: bold;
-      flex-grow: 1;
-    }
-
-    .company-name {
-      text-align: right;
-      font-size: 18px;
-      font-weight: bold;
-    }
-
-    .header-info {
-      display: flex;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      font-size: 14px;
-      margin-bottom: 10px;
-    }
-
-    .header-info > div {
-      margin-right: 20px;
-      margin-bottom: 5px;
-    }
-
-    .environment-note {
-      font-size: 12px;
-      margin: 15px 0;
-      padding: 10px;
-      background-color: #f8f9fa;
-      border-left: 4px solid #0d6efd;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 11px;
-      margin-top: 10px;
-    }
-
-    th, td {
-      border: 1px solid #000;
-      padding: 4px 2px;
-      text-align: center;
-      vertical-align: middle;
-    }
-
-    th {
-      background-color: #e9ecef;
-      font-weight: bold;
-      font-size: 10px;
-    }
-
-    .header-cell {
-      background-color: #d3d3d3;
-      font-weight: bold;
-    }
-
-    .measurement-cell {
-      min-width: 35px;
-    }
-
-    .tolerance-row {
-      background-color: #f8f9fa;
-      font-size: 10px;
-    }
-
-    .invalid-value {
-      color: #dc3545;
-      font-weight: bold;
-    }
-
-    .rotate-text {
-      writing-mode: vertical-rl;
-      text-orientation: mixed;
-      white-space: nowrap;
-    }
-
-    .result-cell {
-      font-weight: bold;
-    }
-
-    .footer-note {
-      margin-top: 20px;
-      font-size: 12px;
-      padding: 10px;
-      background-color: #fff3cd;
-      border-left: 4px solid #ffc107;
-    }
-
-    /* PRINT STYLES - Clean PDF */
-    @media print {
-      @page {
-        margin: 10mm 8mm;
-        size: A4 portrait;
-      }
-      
-      body {
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Vercel Analytics script - only loads in browser, not print -->
+    <script defer src="/_vercel/insights/script.js"></script>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+    <title>水平ノズル全数検査成績書</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+    />
+    <!-- Add jsPDF for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/jspdf-font@1.0.7/dist/japanese.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+      /* UPDATED: Reset all margins and paddings for better control */
+      * {
         margin: 0;
         padding: 0;
-        background: white;
+        box-sizing: border-box;
       }
       
-      .no-print {
+      /* UPDATED: Container styling with reduced spacing */
+      .container {
+        max-width: 1200px;
+        margin: 0 !important; /* Removed margin-top */
+        padding: 0 !important; /* Removed padding */
+      }
+      
+      /* UPDATED: Reduced table margins */
+      .summary-table {
+        margin-top: 0.5rem !important; /* Reduced from 2rem */
+      }
+      
+      .nav-links {
+        margin-bottom: 1rem !important; /* Reduced from 2rem */
+      }
+      
+      .no-data {
+        padding: 1rem !important; /* Reduced from 2rem */
+        text-align: center;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        margin-bottom: 1rem !important; /* Reduced from 2rem */
+      }
+      
+      .highlight-cell {
+        background-color: #fff3cd;
+        font-weight: bold;
+      }
+      
+      /* UPDATED: Add padding to table-responsive */
+      .table-responsive {
+        overflow-x: auto;
+        padding-top: 5px !important; /* Added padding */
+        margin: 0 !important; /* Force zero margin */
+      }
+      
+      .file-filter-form {
+        background-color: #e9ecef;
+        padding: 0.5rem !important; /* Reduced from 1rem */
+        border-radius: 5px;
+        margin-bottom: 0.5rem !important; /* Reduced from 1.5rem */
+      }
+      
+      .form-range-group {
+        display: flex;
+        gap: 0.5rem !important; /* Reduced from 1rem */
+        align-items: end;
+      }
+      
+      .range-input {
+        width: 120px;
+      }
+
+      /* UPDATED: Added padding to content-section */
+      .content-section {
+        background-color: white;
+        padding: 0.2rem !important; /* Reduced from 1rem */
+        margin: 0 !important;
+        max-height: 175px !important; /* Increased from 150px to give more space */
+      }
+
+      /* UPDATED: Minimized header-info spacing */
+      .header-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 0 !important; /* Changed from 0.3px */
+        padding: 0 !important; /* Changed from 0.2px */
+        height: auto !important; /* Control height */
+        max-height: 50px !important; /* Limit height */
+      }
+
+      .header-info:nth-child(3) {
+        position: relative;
+        top: -20px; /* Move up by 10px */
+        margin-bottom: -20px !important; /* Compensate for the space */
+      }
+
+      .company-info {
+        font-weight: bold;
+        font-size: 1.2em;
+        position: relative;
+        top: -20px; /* Move up by 10px */
+      }
+
+      .editable {
+        border-bottom: 1px solid #ccc;
+        padding: 0 2px !important; /* Reduced from 5px */
+        min-width: 50px;
+        display: inline-block;
+      }
+
+      .date-input, #deliveryDatePicker, input#deliveryDatePicker, flatpickr-input {
+        border: none !important;
+        background: transparent !important;
+        -webkit-appearance: none !important;
+        appearance: none !important;
+      }
+      
+      /* UPDATED: Reduced note margins */
+      .note {
+        margin: 5px 0 !important; /* Reduced from 15px */
+        font-size: 0.9em;
+        color: #666;
+        padding-left: 2px !important; /* Reduced from 5px */
+      }
+
+      .note::before {
+        content: "※";
+        margin-right: 2px !important; /* Reduced from 5px */
+      }
+
+      /* UPDATED: Fixed unit-note and environment-note spacing */
+      .unit-note {
+        text-align: right;
+        font-weight: bold;
+        margin: 5px 0 10px 0 !important; /* Match margins with environment-note */
+        padding: 0 !important;
+        clear: both;
+        position: relative;
+        line-height: 1.2 !important; /* Match line-height with environment-note */
+      }
+
+      .environment-note {
+        margin: 5px 0 10px 0 !important;
+        padding: 0 !important;
+        line-height: 1.2 !important;
+        clear: both;
+      }
+
+      /* Table styles with added padding */
+      .table {
+        background-color: white;
+        border-collapse: collapse;
+        margin: 5px 0 0 0 !important; /* Added top margin */
+        border: 1px solid #dee2e6;
+      }
+
+      .table td, .table th {
+        text-align: center; /* Center align all table cells */
+        vertical-align: middle;
+        border: 1px solid #dee2e6;
+        padding: 2px !important; /* Reduced from 4px */
+      }
+
+      .table thead td {
+        background-color: white;
+        font-weight: normal;
+        text-align: center;
+        vertical-align: middle;
+        border: 1px solid #dee2e6;
+      }
+
+      .table thead tr:last-child {
+        /* Visible in normal view */
+        display: table-row;
+      }
+
+      .table tbody td {
+        text-align: center; /* Ensure body cells are also centered */
+        border: 1px solid #dee2e6;
+      }
+
+      /* Filename cell styles */
+      .filename-cell {
+        text-align: center;
+        font-weight: bold;
+      }
+
+      .smaller-text {
+        font-size: 0.9em;
+      }
+
+      .button-container {
+        position: fixed;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 1000;
+      }
+
+      .button-container button,
+      .button-container a {
+        width: 100px;
+        padding: 10px;
+        text-align: center;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        font-weight: bold;
+      }
+
+      .button-home {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        text-decoration: none;
+        display: block;
+      }
+
+      .button-print {
+        background-color: #16862f;
+        color: white;
+        border: none;
+      }
+
+      /* UPDATED: Reduced logs container margin */
+      .logs-container {
+        margin-top: 10px !important; /* Reduced from 20px */
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+
+      .logs-header {
+        padding: 5px !important; /* Reduced from 10px */
+        background-color: #f8f9fa;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .logs-content {
+        padding: 5px !important; /* Reduced from 15px */
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .logs-content.hidden {
+        display: none;
+      }
+
+      .toggle-icon {
+        font-size: 12px;
+      }
+
+      /* UPDATED: Added spacing to PDF container */
+      #pdf-container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        background-color: white;
+        overflow: visible; /* Changed from hidden to allow scrolling */
+        padding: 0 5px !important; /* Reduced from 20px */
+      }
+
+      /* UPDATED: Reduced page title spacing */
+      h2.text-center {
+        margin: 0 0 2px 0 !important; /* Reduced margins */
+        padding: 0 !important;
+        line-height: 1.2 !important; /* Reduced line height */
+      }
+
+      /* Add this to the existing style section */
+      .invalid-value {
+        color: #dc3545 !important;  /* Bootstrap's danger red */
+        font-weight: bold;
+        background-color: rgba(220, 53, 69, 0.1);  /* Light red background */
+        position: relative;
+      }
+
+      .invalid-value:hover::after {
+        content: attr(title);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 5px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: nowrap;
+        z-index: 1000;
+      }
+
+      /* Ensure the highlight-cell class doesn't override invalid-value */
+      .highlight-cell.invalid-value {
+        background-color: rgba(220, 53, 69, 0.1) !important;
+      }
+
+      /* Classes to hide URL and timestamp in print */
+      .url-display, .timestamp {
+        display: block;
+      }
+      
+      /* Add spacing between notes and table */
+      .notes-container {
+        margin-bottom: 10px !important;
+        padding-bottom: 5px !important;
+        position: relative;
+      }
+
+      /* Always hide the column labels row (Filename, A, B, C...) */
+      .table thead tr:last-child, 
+      .column-labels-row,
+      tr.print-hide {
         display: none !important;
       }
+
+
       
-      .container {
-        max-width: 100%;
-        margin: 0;
-        padding: 0;
-        box-shadow: none;
-      }
-      
-      .inspection-sheet {
-        box-shadow: none;
-        border: 1px solid #000;
-        padding: 10px;
-      }
-      
-      * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
-      
-      table {
-        page-break-inside: auto;
-      }
-      
-      tr {
-        page-break-inside: avoid;
-        page-break-after: auto;
-      }
-      
-      thead {
-        display: table-header-group;
-      }
-      
-      .inspection-header,
-      .header-section,
-      .environment-note {
-        page-break-after: avoid;
-      }
-      
-      th, td {
-        font-size: 10px;
-        padding: 3px 2px;
-      }
-    }
+      /* Print-specific styles */
+      @media print {
+        /* Page setup with margin for content */
+        @page {
+          size: A4 landscape;
+          margin: 5mm; /* Reduced margin for printed output */
+        }
 
-    /* Button Styles */
-    .print-btn {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border: none;
-      padding: 15px 40px;
-      font-size: 18px;
-      font-weight: 600;
-      border-radius: 8px;
-      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-      transition: all 0.3s ease;
-      color: white;
-    }
+        body {
+          width: 297mm; /* A4 width */
+          height: 210mm; /* A4 height */
+          margin: 0;
+          padding: 0;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
 
-    .print-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
-    }
+        /* Hide non-printable elements */
+        .no-print, .button-container, .url-display, .timestamp {
+          display: none !important;
+        }
 
-    .instruction-box {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 20px;
-      margin: 20px auto;
-      max-width: 1200px;
-      border-radius: 10px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    }
-
-    .instruction-content {
-      background: rgba(255,255,255,0.95);
-      color: #333;
-      padding: 20px;
-      border-radius: 8px;
-    }
-
-    .hint-box {
-      margin-top: 15px;
-      padding: 12px;
-      background: #fff3cd;
-      border-left: 4px solid #ffc107;
-      border-radius: 4px;
-    }
-  </style>
-</head>
-<body>
-  <!-- Print Instructions - Hidden when printing -->
-  <div class="no-print instruction-box">
-    <h3 style="margin-top: 0; font-size: 20px;">📄 きれいなPDFを保存する方法</h3>
-    <div class="instruction-content">
-      <p style="margin-top: 0; font-weight: 600; font-size: 16px;">印刷設定 (重要!):</p>
-      <ol style="line-height: 2; margin-bottom: 0; padding-left: 25px; font-size: 15px;">
-        <li>下の <strong style="color: #667eea;">「🖨️ PDF保存」</strong> ボタンをクリック</li>
-        <li><strong>送信先</strong> → <strong style="color: #667eea;">「PDFに保存」</strong> を選択</li>
-        <li><strong>「詳細設定」</strong> または <strong>「その他の設定」</strong> をクリック</li>
-        <li>⚠️ <strong style="color: #dc3545;">「ヘッダーとフッター」のチェックを外す</strong> ← これが重要!</li>
-        <li><strong style="color: #28a745;">「保存」</strong> をクリック</li>
-      </ol>
-      <div class="hint-box">
-        <strong style="color: #856404;">💡 ヒント:</strong> ヘッダーとフッターを無効にしないと、URL・日付・ページ番号が表示されます
-      </div>
-    </div>
-  </div>
-
-  <!-- Print Button -->
-  <div class="no-print" style="text-align: center; margin: 20px auto; max-width: 1200px;">
-    <button onclick="printInspectionSheet()" class="btn print-btn">
-      🖨️ PDF保存 / 印刷
-    </button>
-    <p style="margin-top: 10px; color: #666; font-size: 14px;">
-      Ctrl+P (Windows) または Cmd+P (Mac) でも印刷できます
-    </p>
-    <a href="/" class="btn btn-secondary" style="margin-top: 10px;">← ホームに戻る</a>
-  </div>
-
-  <div class="container">
-    <div class="inspection-sheet">
-      <!-- Header Section -->
-      <div class="inspection-header">
-        <div class="header-row">
-          <div class="header-title">水平ノズル全数検査成績書</div>
-          <div class="company-name">㈱平田商店</div>
-        </div>
-
-        <div class="header-info">
-          <div><strong>品名:</strong> 水平ノズル</div>
-          <div><strong>仕様書番号:</strong> KDMP-0434</div>
-          <div><strong>担当者:</strong> <%= inspectorName %></div>
-        </div>
-
-        <div class="header-info">
-          <div><strong>図番:</strong> P2MM302000</div>
-          <div><strong>数量:</strong> <%= files.length %>個</div>
-          <div><strong>検査方法:</strong> 全数検査</div>
-          <div><strong>検査日:</strong> <%= new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/') %></div>
-          <div><strong>納期:</strong> YYYY/MM/DD</div>
-        </div>
-      </div>
-
-      <!-- Environment Note -->
-      <div class="environment-note">
-        当社検査における環境は室温20℃±5℃、湿度40%±25%で管理された部屋で実施しております。
-      </div>
-
-      <!-- Measurement Table -->
-      <div style="margin-top: 15px; text-align: right; font-weight: bold;">単位 (mm)</div>
-      
-      <table>
-        <thead>
-          <tr>
-            <th rowspan="3" style="width: 60px;">図面寸法</th>
-            <th>8.2</th>
-            <th>37.5</th>
-            <th>15.9</th>
-            <th>24.1</th>
-            <th>Φ11.2</th>
-            <th>Φ3.2<br>全周</th>
-            <th>Φ8.0</th>
-            <th>深さ5.0</th>
-            <th>P.C.D 30</th>
-            <th>Φ155.4</th>
-            <th>83.1</th>
-            <th>Φ122.3</th>
-            <th rowspan="3">拡め合<br>い</th>
-            <th rowspan="3">目視点<br>検</th>
-            <th rowspan="3">(参考<br>値)</th>
-          </tr>
-          <tr>
-            <th>±0.2</th>
-            <th>±0.3</th>
-            <th>±0.2</th>
-            <th>±0.2</th>
-            <th>+0.2/0</th>
-            <th>±0.1</th>
-            <th>±0.2</th>
-            <th>±0.1</th>
-            <th>±0.2</th>
-            <th>±0.5</th>
-            <th>±0.3</th>
-            <th>±0.5</th>
-          </tr>
-          <tr class="header-cell">
-            <th>A</th>
-            <th>B</th>
-            <th>C</th>
-            <th>D</th>
-            <th>E</th>
-            <th>F</th>
-            <th>G</th>
-            <th>H</th>
-            <th>I</th>
-            <th>J</th>
-            <th>K</th>
-            <th>L</th>
-          </tr>
-          <tr class="tolerance-row">
-            <th>上限値</th>
-            <th>8.4</th>
-            <th>37.8</th>
-            <th>16.1</th>
-            <th>24.3</th>
-            <th>11.4</th>
-            <th>3.3</th>
-            <th>8.2</th>
-            <th>5.1</th>
-            <th>30.2</th>
-            <th>155.9</th>
-            <th>83.4</th>
-            <th>122.8</th>
-            <th>-</th>
-            <th>-</th>
-            <th>-</th>
-          </tr>
-          <tr class="tolerance-row">
-            <th>下限値</th>
-            <th>8.0</th>
-            <th>37.2</th>
-            <th>15.7</th>
-            <th>23.9</th>
-            <th>11.2</th>
-            <th>3.1</th>
-            <th>7.8</th>
-            <th>4.9</th>
-            <th>29.8</th>
-            <th>154.9</th>
-            <th>82.8</th>
-            <th>121.8</th>
-            <th>-</th>
-            <th>-</th>
-            <th>-</th>
-          </tr>
-          <tr class="header-cell">
-            <th>測定器</th>
-            <th colspan="2">三次元測定器</th>
-            <th colspan="2">三次元測定器</th>
-            <th colspan="2">ピンゲージ</th>
-            <th colspan="2">三次元測定器</th>
-            <th colspan="5">三次元測定器</th>
-            <th>治具</th>
-            <th>目視</th>
-            <th>秤</th>
-          </tr>
-          <tr class="header-cell">
-            <th>記載事項</th>
-            <th colspan="2">測定値</th>
-            <th colspan="2">測定値</th>
-            <th colspan="2">合否</th>
-            <th colspan="2">測定値</th>
-            <th colspan="5">測定値</th>
-            <th>合否</th>
-            <th>合否</th>
-            <th>重量(g)</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% files.forEach(function(file) { 
-            var measurements = fileData[file.$id];
-            var fileNumber = file.filename.replace(/\.txt$/i, '');
-          %>
-          <tr>
-            <td><strong><%= fileNumber %></strong></td>
-            
-            <!-- Column A -->
-            <td class="measurement-cell <%= !measurements.A.isValid ? 'invalid-value' : '' %>">
-              <%= measurements.A.value %>
-            </td>
-            
-            <!-- Column B -->
-            <td class="measurement-cell <%= !measurements.B.isValid ? 'invalid-value' : '' %>">
-              <%= measurements.B.value %>
-            </td>
-            
-            <!-- Column C -->
-            <td class="measurement-cell <%= !measurements.C.isValid ? 'invalid-value' : '' %>">
-              <%= measurements.C.value %>
-            </td>
-            
-            <!-- Column D -->
-            <td class="measurement-cell <%= !measurements.D.isValid ? 'invalid-value' : '' %>">
-              <%= measurements.D.value %>
-            </td>
-            
-            <!-- Column E -->
-            <td class="result-cell <%= !measurements.E.isValid ? 'invalid-value' : '' %>">
-              <%= measurements.E.isValid ? '合' : '否' %>
-            </td>
-            
-            <!-- Column F -->
-            <td class="result-cell <%= !measurements.F.isValid ? 'invalid-value' : '' %>">
-              <%= measurements.F.isValid ? '合' : '否' %>
-            </td>
-            
-            <!-- Column G (Combined G1-G4) -->
-            <td class="result-cell <%= !measurements.G.isValid ? 'invalid-value' : '' %>" 
-                <% if (!measurements.G.isValid && measurements.G.value !== '-') { %>
-                  title="不合格: <%= measurements.G.value %>"
-                <% } %>>
-              <%= measurements.G.isValid ? '合' : '否' %>
-            </td>
-            
-            <!-- Column H -->
-            <td class="measurement-cell <%= !measurements.H.isValid ? 'invalid-value' : '' %>">
-              <%= measurements.H.value %>
-            </td>
-            
-            <!-- Column I -->
-            <td class="measurement-cell <%= !measurements.I.isValid ? 'invalid-value' : '' %>">
-              <%= measurements.I.value %>
-            </td>
-            
-            <!-- Column J -->
-            <td class="measurement-cell <%= !measurements.J.isValid ? 'invalid-value' : '' %>">
-              <%= measurements.J.value %>
-            </td>
-            
-            <!-- Column K -->
-            <td class="measurement-cell <%= !measurements.K.isValid ? 'invalid-value' : '' %>">
-              <%= measurements.K.value %>
-            </td>
-            
-            <!-- Column L -->
-            <td class="measurement-cell <%= !measurements.L.isValid ? 'invalid-value' : '' %>">
-              <%= measurements.L.value %>
-            </td>
-            
-            <!-- Column M (Manual) -->
-            <td class="result-cell">-</td>
-            
-            <!-- Column N (Visual) -->
-            <td class="result-cell">-</td>
-            
-            <!-- Weight -->
-            <td class="measurement-cell">
-              <%= file.weight ? Number(file.weight).toFixed(1) : '-' %>
-            </td>
-          </tr>
-          <% }); %>
-        </tbody>
-      </table>
-
-      <!-- Footer Note -->
-      <div class="footer-note">
-        ※着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。
-      </div>
-    </div>
-  </div>
-
-  <script>
-    function printInspectionSheet() {
-      // Set clean title for PDF filename
-      const originalTitle = document.title;
-      const today = new Date();
-      const dateStr = today.getFullYear() + 
-                      String(today.getMonth() + 1).padStart(2, '0') + 
-                      String(today.getDate()).padStart(2, '0');
-      
-      document.title = '水平ノズル全数検査成績書_' + dateStr;
-      
-      // Small delay to ensure title is set
-      setTimeout(function() {
-        window.print();
+        .editable {
+          border: none !important;
+          border-bottom: none !important;
+        }
         
-        // Restore original title after print dialog closes
-        setTimeout(function() {
-          document.title = originalTitle;
-        }, 100);
-      }, 100);
-    }
-    
-    // Also set title when user uses Ctrl+P / Cmd+P
-    window.addEventListener('beforeprint', function() {
-      const today = new Date();
-      const dateStr = today.getFullYear() + 
-                      String(today.getMonth() + 1).padStart(2, '0') + 
-                      String(today.getDate()).padStart(2, '0');
-      document.title = '水平ノズル全数検査成績書_' + dateStr;
-    });
-  </script>
-</body>
+        /* Hide border and styling for date input when printing */
+        .date-input, #deliveryDatePicker {
+          border: none !important;
+          background: transparent !important;
+          -webkit-appearance: none !important;
+          appearance: none !important;
+        }
+
+        /* Reset container styling for print */
+        .container {
+          width: 100%;
+          max-width: none;
+          margin: 0;
+          padding: 0 !important; /* Reduced from 2mm */
+        }
+
+        /* Adjust table for printing */
+        .table {
+          font-size: 9pt;
+          margin: 0;
+          border-collapse: collapse;
+          width: 100%;
+          page-break-inside: auto;
+          border: 1px solid #000 !important;
+        }
+
+        .table td,
+        .table th {
+          padding: 1px 2px !important; /* Reduced from 2px 4px */
+          border: 1px solid #000 !important;
+        }
+
+        .table thead tr:last-child {
+          display: none !important;
+        }
+
+        .table tr {
+          page-break-inside: avoid;
+          page-break-after: auto;
+          border: 1px solid #000 !important;
+          border-top: 1px solid #000 !important;
+        }
+
+        /* Header adjustments */
+        h2 {
+          font-size: 14pt;
+          margin: 0 0 2mm 0 !important; /* Reduced from 5mm */
+        }
+
+        /* Force show background colors and images in print */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+
+        .content-section {
+          padding: 0 !important;
+          margin: 0 !important;
+          background-color: white;
+          box-shadow: none;
+          max-height: 130px !important; /* Limit height in print */
+        }
+        
+        /* Ensure all table borders are visible and consistent */
+        table, th, td, tr {
+          border: 1px solid #000 !important;
+        }
+        
+        /* Fix for table top border */
+        table {
+          border-top: 1px solid #000 !important;
+          border-collapse: collapse !important;
+        }
+        
+        tbody tr:first-child {
+          border-top: 1px solid #000 !important;
+        }
+        
+        /* Maintain environment note spacing in print */
+        .environment-note {
+          margin: 3px 0 5px 0 !important;
+          padding: 0 !important;
+          line-height: 1.1 !important;
+        }
+        
+        /* Maintain unit note spacing in print */
+        .unit-note {
+          margin: 0 0 3px 0 !important; 
+          padding: 0 !important;
+        }
+
+        /* Ensure table has proper spacing */
+        .table-responsive {
+          padding-top: 5px !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div id="pdf-container">
+        <div class="content-section">
+          <div class="container">
+            <!-- Page title - this will be visible in print -->
+            <h2 class="text-center">水平ノズル全数検査成績書</h2>
+            
+            <div class="header-info">
+              <div>
+                <strong>品名:</strong> 水平ノズル
+                <strong>仕様書番号:</strong> KDMP-0434
+                <strong>担当者:</strong>
+                <span class="editable" contenteditable="true" id="inspector"
+                  ><%= inspectorName %></span
+                >
+              </div>
+            </div>
+            <div style="height: 1px;"></div>
+            <div class="header-info">
+              <div style="white-space: nowrap">
+                <strong>図番:</strong> P2MM302000 <strong>数量:</strong
+                ><span id="fileCount"><%= files ? files.length : 0 %></span>個
+                <strong>検査方法:</strong> 全数検査 <strong>検査日:</strong> <%=
+                new Date().toLocaleDateString('ja-JP', { year: 'numeric', month:
+                '2-digit', day: '2-digit' }).replace(/\//g, '/') %>
+                <strong>納期:</strong>
+                <input
+                  type="text"
+                  id="deliveryDatePicker"
+                  class="date-input flatpickr"
+                  placeholder="YYYY/MM/DD"
+                />
+              </div>
+              <div class="company-info">㈱平田商店</div>
+            </div>
+            <div class="header-info">
+              <div style="margin-left: auto">
+                <button
+                  id="quickApproveButton"
+                  style="
+                    width: 48px;
+                    height: 48px;
+                    border-radius: 50%;
+                    background-color: white;
+                    color: white;
+                    border: none;
+                    font-weight: bold;
+                    cursor: pointer;
+                    box-shadow: 0 2px 4px white;
+                  "
+                  title="一括承認"
+                ></button>
+              </div>
+            </div>
+
+            <!-- Notes container with proper spacing -->
+            <div class="notes-container">
+              <div class="environment-note">
+                当社検査における環境は室温20℃±5℃、湿度40%±25%で管理された部屋で実施しております。
+              </div>
+
+              <div class="unit-note">
+                単位（ｍｍ）
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="height: 40px;"></div>
+
+        <div class="container">
+          <% if (typeof error !== 'undefined' && error) { %>
+          <div class="alert alert-danger"><%= error %></div>
+          <% } %> <% if (typeof files !== 'undefined' && files && files.length > 0) { %>
+          <!-- Summary table with proper structure -->
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+              <thead>
+                <!-- Specification rows -->
+                <tr>
+                  <td>図面寸法</td>
+                  <td>8.2</td>
+                  <td>37.5</td>
+                  <td>15.9</td>
+                  <td>24.1</td>
+                  <td>Φ11.2</td>
+                  <td>Φ3.2全貫通</td>
+                  <td>Φ8.0</td>
+                  <td>深さ5.0</td>
+                  <td>P.C.D 30</td>
+                  <td>Φ155.4</td>
+                  <td>83.1</td>
+                  <td>Φ122.3</td>
+                  <td>嵌め合い</td>
+                  <td>目視点検</td>
+                  <td>（参考値）</td>
+                </tr>
+                <tr>
+                  <td>寸法公差</td>
+                  <td>±0.2</td>
+                  <td>±0.3</td>
+                  <td>±0.2</td>
+                  <td>±0.2</td>
+                  <td>＋0.2/0</td>
+                  <td>±0.1</td>
+                  <td>±0.2</td>
+                  <td>±0.1</td>
+                  <td>±0.2</td>
+                  <td>±0.5</td>
+                  <td>±0.3</td>
+                  <td>±0.5</td>
+                  <td>-</td>
+                  <td>-</td>
+                  <td>-</td>
+                </tr>
+                <tr>
+                  <td>上限値</td>
+                  <td>8.4</td>
+                  <td>37.8</td>
+                  <td>16.1</td>
+                  <td>24.3</td>
+                  <td>11.4</td>
+                  <td>3.3</td>
+                  <td>8.2</td>
+                  <td>5.1</td>
+                  <td>30.2</td>
+                  <td>155.9</td>
+                  <td>83.4</td>
+                  <td>122.8</td>
+                  <td>-</td>
+                  <td>-</td>
+                  <td>-</td>
+                </tr>
+                <tr>
+                  <td>下限値</td>
+                  <td>8.0</td>
+                  <td>37.2</td>
+                  <td>15.7</td>
+                  <td>23.9</td>
+                  <td>11.2</td>
+                  <td>3.1</td>
+                  <td>7.8</td>
+                  <td>4.9</td>
+                  <td>29.8</td>
+                  <td>154.9</td>
+                  <td>82.8</td>
+                  <td>121.8</td>
+                  <td>-</td>
+                  <td>-</td>
+                  <td>-</td>
+                </tr>
+                <tr>
+                  <td>測定器具</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>ピンゲージ</td>
+                  <td>ピンゲージ</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>三次元測定器</td>
+                  <td>治具</td>
+                  <td>目視</td>
+                  <td>秤</td>
+                </tr>
+                <tr>
+                  <td>記載事項</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>合否</td>
+                  <td>合否</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>測定値</td>
+                  <td>合否</td>
+                  <td>合否</td>
+                  <td>重量(g)</td>
+                </tr>
+                <!-- Original header row -->
+                <tr class="column-labels-row print-hide">
+                  <th>Filename</th>
+                  <% var displayHeaders = ['A', 'B', 'C', 'D', 'E', 'F', 'G',
+                  'H', 'I', 'J', 'K', 'L', 'M', 'N']; %> <% var internalHeaders
+                  = ['A', 'B', 'C', 'D', 'E', 'F', 'G1', 'G2', 'G3', 'G4', 'H',
+                  'I', 'J', 'K', 'L', 'M', 'N']; %> <%
+                  displayHeaders.forEach(function(header) { %>
+                  <th><%= header %></th>
+                  <% }); %>
+                  <th>質量 (g)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% files.forEach(function(file) { %>
+                <%
+                // Remove .txt extension from filename
+                const displayFilename = file.filename.replace(/\.txt$/i, '');
+                %>
+                <tr>
+                  <td class="filename-cell" data-file-id="<%= file.$id %>">
+                    <strong><%= displayFilename %></strong>
+                  </td>
+                  
+                  <!-- Column A: 測定値 -->
+                  <td class="<%= fileData[file.$id]['A'].value !== '-' && !fileData[file.$id]['A'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
+                    <%= fileData[file.$id]['A'].value %>
+                  </td>
+
+                  <!-- Column B: 測定値 -->
+                  <td class="<%= fileData[file.$id]['B'].value !== '-' && !fileData[file.$id]['B'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
+                    <%= fileData[file.$id]['B'].value %>
+                  </td>
+
+                  <!-- Column C: 測定値 -->
+                  <td class="<%= fileData[file.$id]['C'].value !== '-' && !fileData[file.$id]['C'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
+                    <%= fileData[file.$id]['C'].value %>
+                  </td>
+
+                  <!-- Column D: 測定値 -->
+                  <td class="<%= fileData[file.$id]['D'].value !== '-' && !fileData[file.$id]['D'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
+                    <%= fileData[file.$id]['D'].value %>
+                  </td>
+
+                  <!-- Column E: 合否 -->
+                  <td class="highlight-cell data-cell">
+                    <% if (fileData[file.$id]['E'].value !== '-') {
+                      if (fileData[file.$id]['E'].isValid) { %>
+                        合
+                      <% } else { %>
+                        <span class="invalid-value">否</span>
+                      <% }
+                    } else { %>
+                      -
+                    <% } %>
+                  </td>
+
+                  <!-- Column F: 合否 -->
+                  <td class="highlight-cell data-cell">
+                    <% if (fileData[file.$id]['F'].value !== '-') {
+                      if (fileData[file.$id]['F'].isValid) { %>
+                        合
+                      <% } else { %>
+                        <span class="invalid-value">否</span>
+                      <% }
+                    } else { %>
+                      -
+                    <% } %>
+                  </td>
+
+                  <!-- Column G: Combined G1-G4 check -->
+                  <td class="<%= fileData[file.$id]['G'].value !== '-' && !fileData[file.$id]['G'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell g-value-cell"
+                      title="G1: <%= fileData[file.$id]['G1'].value %>&#13;G2: <%= fileData[file.$id]['G2'].value %>&#13;G3: <%= fileData[file.$id]['G3'].value %>&#13;G4: <%= fileData[file.$id]['G4'].value %>">
+                    <%= fileData[file.$id]['G'].value %>
+                  </td>
+
+                  <!-- Column H: 測定値 -->
+                  <td class="<%= fileData[file.$id]['H'].value !== '-' && !fileData[file.$id]['H'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
+                    <%= fileData[file.$id]['H'].value %>
+                  </td>
+
+                  <!-- Column I: 測定値 -->
+                  <td class="<%= fileData[file.$id]['I'].value !== '-' && !fileData[file.$id]['I'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
+                    <%= fileData[file.$id]['I'].value %>
+                  </td>
+
+                  <!-- Column J: 測定値 -->
+                  <td class="<%= fileData[file.$id]['J'].value !== '-' && !fileData[file.$id]['J'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
+                    <%= fileData[file.$id]['J'].value %>
+                  </td>
+
+                  <!-- Column K: 測定値 -->
+                  <td class="<%= fileData[file.$id]['K'].value !== '-' && !fileData[file.$id]['K'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
+                    <%= fileData[file.$id]['K'].value %>
+                  </td>
+
+                  <!-- Column L: 測定値 -->
+                  <td class="<%= fileData[file.$id]['L'].value !== '-' && !fileData[file.$id]['L'].isValid ? 'invalid-value' : '' %> highlight-cell data-cell">
+                    <%= fileData[file.$id]['L'].value %>
+                  </td>
+
+                  <!-- Column M: 合否 -->
+                  <td class="highlight-cell data-cell">
+                    -
+                  </td>
+
+                  <!-- Column N: 合否 -->
+                  <td class="highlight-cell data-cell">
+                    -
+                  </td>
+
+                  <!-- Weight column -->
+                  <td>
+                    <% if (file.weight) { %>
+                      <%= (parseFloat(file.weight)).toFixed(1) %>
+                    <% } else { %>
+                      -
+                    <% } %>
+                  </td>
+                </tr>
+                <% }); %>
+              </tbody>
+            </table>
+            <div class="bottom-note" style="margin-top: 10px; text-align: left">
+              ＊着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。
+            </div>
+          </div>
+          <% } else { %>
+          <div class="no-data">
+            <h3>No Data Available</h3>
+            <p class="text-muted">
+              No files match your current filter criteria.
+            </p>
+            <a href="/" class="btn btn-primary">Go to Upload Page</a>
+          </div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Buttons positioned at the side of the page - These will be hidden when printing -->
+      <div class="button-container no-print">
+        <a href="/" class="button-home">ホーム</a>
+        <button onclick="printReport()" class="button-print">印刷</button>
+        <button onclick="exportPDF()" class="button-export-pdf" style="background-color: #8a2be2; color: white; border: none;">PDF</button>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/jspdf-font@1.0.7/dist/japanese.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          // Initialize Flatpickr
+          flatpickr("#deliveryDatePicker", {
+            dateFormat: "Y/m/d",
+            locale: "ja",
+            allowInput: true,
+          });
+
+          // Quick approve button logic
+          document
+            .getElementById("quickApproveButton")
+            .addEventListener("click", function () {
+              const rows = document.querySelectorAll("tbody tr");
+              rows.forEach((row) => {
+                // Specifically target only the E, F, M, N columns (columns 5, 6, 14, 15)
+                const cells = row.querySelectorAll(
+                  "td:nth-child(6), td:nth-child(7), td:nth-child(14), td:nth-child(15)"
+                );
+                cells.forEach((cell) => {
+                  if (
+                    cell.textContent.trim() === "-" ||
+                    cell.textContent.trim() === ""
+                  ) {
+                    cell.classList.remove("invalid-value");
+                    cell.textContent = "合";
+                  }
+                });
+              });
+            });
+
+          // Print button event handler
+          document.querySelector('.button-print').addEventListener('click', printReport);
+          
+          // PDF export button event handler
+          document.querySelector('.button-export-pdf').addEventListener('click', exportPDF);
+
+          /**
+          * Enhanced printing function that ensures proper formatting
+          */
+          function printReport() {
+            // Hide URLs and timestamps before printing
+            const urlElements = document.querySelectorAll('.url-display, .timestamp');
+            urlElements.forEach(el => {
+              el.classList.add('no-print');
+            });
+
+            // Hide the header row with column labels
+            const headerRow = document.querySelector('.table thead tr:last-child');
+            if (headerRow) {
+              headerRow.classList.add('no-print');
+              // Add backup style in case class doesn't work
+              headerRow.style.display = 'none';
+            }
+            
+            // Fix table borders
+            const tables = document.querySelectorAll('table');
+            tables.forEach(table => {
+              // Add border styles for consistent appearance
+              table.style.borderCollapse = 'collapse';
+              table.style.border = '1px solid #000';
+              
+              // Ensure top border is present
+              const firstRow = table.querySelector('tbody tr:first-child');
+              if (firstRow) {
+                firstRow.style.borderTop = '1px solid #000';
+              }
+            });
+
+            // Set delivery date input background to transparent for printing
+            const deliveryDateInput = document.getElementById('deliveryDatePicker');
+            if (deliveryDateInput) {
+              deliveryDateInput.style.backgroundColor = 'transparent';
+            }
+
+            // Small delay to ensure styles are applied
+            setTimeout(() => {
+              window.print();
+            }, 200);
+          }
+
+          // PDF export function
+          function exportPDF() {
+            // Show loading indicator
+            const loadingEl = document.createElement("div");
+            loadingEl.style.position = "fixed";
+            loadingEl.style.top = "0";
+            loadingEl.style.left = "0";
+            loadingEl.style.width = "100%";
+            loadingEl.style.height = "100%";
+            loadingEl.style.backgroundColor = "rgba(255,255,255,0.8)";
+            loadingEl.style.display = "flex";
+            loadingEl.style.justifyContent = "center";
+            loadingEl.style.alignItems = "center";
+            loadingEl.style.zIndex = "9999";
+            loadingEl.innerHTML = '<div style="background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">PDFを生成中です。お待ちください...</div>';
+            document.body.appendChild(loadingEl);
+
+            try {
+              // Prepare the document for PDF
+              prepareForPDF();
+              
+              // Create an instance of jsPDF
+              const pdf = new jspdf.jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a4'
+              });
+              
+              // Add Japanese font support if available
+              addJapaneseFontSupport(pdf);
+              
+              // Get the content container
+              const element = document.getElementById('pdf-container');
+              
+              // Generate PDF with html2canvas
+              html2canvas(element, {
+                scale: 2, // Higher scale for better quality
+                useCORS: true,
+                logging: false,
+                allowTaint: true,
+                backgroundColor: '#ffffff'
+              }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                
+                // Add image to PDF (A4 landscape dimensions: 297mm x 210mm)
+                const imgWidth = 287; // leaving some margin
+                const imgHeight = canvas.height * imgWidth / canvas.width;
+                
+                pdf.addImage(imgData, 'PNG', 5, 5, imgWidth, imgHeight);
+                
+                // Save the PDF
+                const today = new Date();
+                const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+                pdf.save(`水平ノズル検査成績書_${dateStr}.pdf`);
+                
+                // Restore the document after PDF generation
+                restoreAfterPDF();
+                
+                // Remove loading indicator
+                document.body.removeChild(loadingEl);
+              }).catch(error => {
+                console.error("Error generating canvas:", error);
+                alert("PDF生成中にエラーが発生しました: " + error.message);
+                restoreAfterPDF();
+                document.body.removeChild(loadingEl);
+              });
+            } catch (error) {
+              console.error("Error generating PDF:", error);
+              alert("PDF生成中にエラーが発生しました。ブラウザのコンソールで詳細を確認してください。");
+              restoreAfterPDF();
+              document.body.removeChild(loadingEl);
+            }
+          }
+
+          // Prepare the document for PDF export
+          function prepareForPDF() {
+            // Hide elements not needed in PDF
+            document.querySelectorAll('.no-print').forEach(el => {
+              el.style.display = 'none';
+            });
+            
+            // Hide column labels row
+            const headerRow = document.querySelector('.table thead tr:last-child');
+            if (headerRow) {
+              headerRow.style.display = 'none';
+            }
+            
+            // Ensure table borders are visible
+            document.querySelectorAll('table, th, td').forEach(el => {
+              el.style.border = '1px solid #000';
+            });
+            
+            // Make sure the content container has a white background
+            const container = document.getElementById('pdf-container');
+            if (container) {
+              container.style.backgroundColor = 'white';
+            }
+            
+            // Remove borders from editable fields for inspector and delivery date
+            const inspectorElement = document.getElementById('inspector');
+            if (inspectorElement) {
+              inspectorElement.style.border = 'none';
+              inspectorElement.style.borderBottom = 'none';
+            }
+            
+            const deliveryDateInput = document.getElementById('deliveryDatePicker');
+            if (deliveryDateInput) {
+              deliveryDateInput.style.border = 'none';
+              deliveryDateInput.style.backgroundColor = 'transparent';
+            }
+          }
+
+          // Restore the document after PDF export
+          function restoreAfterPDF() {
+            // Restore hidden elements
+            document.querySelectorAll('.no-print').forEach(el => {
+              el.style.display = '';
+            });
+            
+            // Restore column labels row
+            const headerRow = document.querySelector('.table thead tr:last-child');
+            if (headerRow) {
+              headerRow.style.display = '';
+            }
+            
+            // Restore borders for editable fields
+            const inspectorElement = document.getElementById('inspector');
+            if (inspectorElement) {
+              inspectorElement.style.border = '';
+              inspectorElement.style.borderBottom = '';
+            }
+            
+            const deliveryDateInput = document.getElementById('deliveryDatePicker');
+            if (deliveryDateInput) {
+              deliveryDateInput.style.border = '';
+              deliveryDateInput.style.backgroundColor = '';
+            }
+          }
+
+          // Add Japanese font support to the PDF
+          function addJapaneseFontSupport(pdf) {
+            try {
+              // Use the Japanese font support from the imported library
+              if (typeof japaneseFont !== 'undefined') {
+                japaneseFont.addFontToDocument(pdf);
+              }
+            } catch (error) {
+              console.warn("Japanese font support not available:", error);
+            }
+          }
+        });
+        </script>
+  </body>
 </html>
