@@ -526,6 +526,8 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
         continue;
       }
 
+      const lotNumber = req.body.lot || null;
+
       const fileDoc = await databases.createDocument(
         DATABASE_ID,
         COLLECTION_FILES,
@@ -534,7 +536,7 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
           filename: filename,
           uploaded_at: new Date().toISOString(),
           weight: null,
-          lot: lotNumber,  // ← ADD THIS
+          lot: lotNumber,  
         }
       );
 
