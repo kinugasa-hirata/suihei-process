@@ -57,12 +57,12 @@
     </style>
   </head>
   <body>
-    <!-- User Info Header -->
     <div class="user-info-header">
       <div style="display: flex; align-items: center; gap: 8px;">
         <span style="font-size: 18px;">👤</span>
-        <strong style="color: #333;"><%= username %></strong>
+        <strong style="color: #333;"><%= displayName %></strong>
       </div>
+      
       <% if (canEditWeights) { %>
         <span style="background: #d4edda; color: #155724; padding: 4px 12px; border-radius: 4px; font-size: 13px; font-weight: 500;">
           ✓ 重量編集可
@@ -72,7 +72,10 @@
           📖 閲覧のみ
         </span>
       <% } %>
-      <a href="/logout" class="btn btn-sm btn-outline-danger" style="margin-left: 10px;">ログアウト</a>
+      
+      <a href="/logout" class="btn btn-sm btn-outline-danger" style="margin-left: 10px;">
+        ログアウト
+      </a>
     </div>
 
     <div class="container">
@@ -210,11 +213,12 @@
       document.addEventListener("DOMContentLoaded", function () {
         const fileCards = document.querySelectorAll(".file-card");
         const selectedFiles = new Set();
-        const canEditWeights = <%= canEditWeights ? 'true' : 'false' %>;
         let pressTimer;
 
+        const userCanEditWeights = <% if (canEditWeights) { %>true<% } else { %>false<% } %>;
+
         async function saveWeight(fileId, weight) {
-          if (!canEditWeights) {
+          if (!userCanEditWeights) {
             alert('⚠️ 権限がありません\n\n重量の編集は naemura と iwatsuki のみ可能です。');
             return false;
           }
@@ -224,7 +228,7 @@
             const response = await fetch("/update-weights", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ weights: [{ fileId, weight: formattedWeight }] }),
+              body: JSON.stringify({ weights: [{ fileId: fileId, weight: formattedWeight }] }),
             });
             if (!response.ok) {
               const error = await response.json();
@@ -232,7 +236,7 @@
             }
             const result = await response.json();
             if (result.success) {
-              const card = document.querySelector(`.file-card[data-file-id="${fileId}"]`);
+              const card = document.querySelector(".file-card[data-file-id='" + fileId + "']");
               let weightDisplay = card.querySelector(".weight-display");
               if (!weightDisplay) {
                 weightDisplay = document.createElement("div");
@@ -241,7 +245,7 @@
                 weightDisplay.style.fontSize = "0.85rem";
                 card.querySelector(".weight-section").appendChild(weightDisplay);
               }
-              weightDisplay.textContent = `${formattedWeight} g`;
+              weightDisplay.textContent = formattedWeight + " g";
               return true;
             }
             return false;
@@ -257,7 +261,7 @@
         }
 
         <% if (canEditWeights) { %>
-        document.querySelectorAll(".weight-input").forEach((input, index, inputs) => {
+        document.querySelectorAll(".weight-input").forEach(function(input, index, inputs) {
           input.addEventListener("change", async function (e) {
             let weight = this.value;
             const fileId = this.dataset.fileId;
@@ -266,9 +270,11 @@
               await saveWeight(fileId, weight);
             }
           });
+          
           input.addEventListener("focus", function () {
             this.setSelectionRange(this.value.length, this.value.length);
           });
+          
           input.addEventListener("keypress", function (e) {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -277,7 +283,10 @@
               else this.blur();
             }
           });
-          input.addEventListener("click", function(e) { e.stopPropagation(); });
+          
+          input.addEventListener("click", function(e) { 
+            e.stopPropagation(); 
+          });
         });
 
         const saveWeightsBtn = document.getElementById("saveWeightsBtn");
@@ -286,31 +295,35 @@
             try {
               const weightInputs = document.querySelectorAll(".weight-input");
               const weights = [];
-              weightInputs.forEach((input) => {
+              weightInputs.forEach(function(input) {
                 const fileId = input.dataset.fileId;
                 const weight = input.value;
                 if (weight && !isNaN(weight)) {
-                  weights.push({ fileId, weight: parseFloat(weight).toFixed(1) });
+                  weights.push({ fileId: fileId, weight: parseFloat(weight).toFixed(1) });
                 }
               });
+              
               if (weights.length === 0) {
                 alert("保存する重量がありません!");
                 return;
               }
+              
               const response = await fetch("/update-weights", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ weights }),
+                body: JSON.stringify({ weights: weights }),
               });
+              
               if (!response.ok) {
                 const error = await response.json();
                 throw new Error(error.error || 'Failed to save');
               }
+              
               const result = await response.json();
               if (result.success) {
-                alert(`✓ ${result.count}件の重量データを保存しました`);
-                weights.forEach(({ fileId, weight }) => {
-                  const card = document.querySelector(`.file-card[data-file-id="${fileId}"]`);
+                alert("✓ " + result.count + "件の重量データを保存しました");
+                weights.forEach(function(item) {
+                  const card = document.querySelector(".file-card[data-file-id='" + item.fileId + "']");
                   let weightDisplay = card.querySelector(".weight-display");
                   if (!weightDisplay) {
                     weightDisplay = document.createElement("div");
@@ -319,7 +332,7 @@
                     weightDisplay.style.fontSize = "0.85rem";
                     card.querySelector(".weight-section").appendChild(weightDisplay);
                   }
-                  weightDisplay.textContent = `${weight} g`;
+                  weightDisplay.textContent = item.weight + " g";
                 });
               }
             } catch (error) {
@@ -339,7 +352,7 @@
           const selectedFilesInput = document.getElementById("selectedFilesInput");
           if (selectedFiles.size > 0) {
             viewSelectedBtn.disabled = false;
-            viewSelectedBtn.textContent = `選択されたファイル：${selectedFiles.size}`;
+            viewSelectedBtn.textContent = "選択されたファイル：" + selectedFiles.size;
             selectedFilesInput.value = Array.from(selectedFiles).join(",");
           } else {
             viewSelectedBtn.disabled = true;
@@ -370,13 +383,16 @@
           }
           const endFile = startFile + fileCount - 1;
           selectedFiles.clear();
-          fileCards.forEach((card) => card.classList.remove("selected"));
-          fileCards.forEach((card) => {
+          fileCards.forEach(function(card) { card.classList.remove("selected"); });
+          fileCards.forEach(function(card) {
             const filename = card.dataset.filename;
-            const fileNumber = parseInt(filename.match(/^\d+/)?.[0]);
-            if (fileNumber >= startFile && fileNumber <= endFile) {
-              card.classList.add("selected");
-              selectedFiles.add(card.dataset.fileId);
+            const match = filename.match(/^\d+/);
+            if (match) {
+              const fileNumber = parseInt(match[0]);
+              if (fileNumber >= startFile && fileNumber <= endFile) {
+                card.classList.add("selected");
+                selectedFiles.add(card.dataset.fileId);
+              }
             }
           });
           updateSummaryForm();
@@ -389,7 +405,7 @@
           }
         });
 
-        fileCards.forEach((card) => {
+        fileCards.forEach(function(card) {
           card.addEventListener("click", function (e) {
             if (!e.target.closest("input") && !e.target.closest("a")) {
               toggleFileSelection(this);
@@ -398,21 +414,23 @@
 
           card.addEventListener("mousedown", function (e) {
             if (e.target.closest("input") || e.target.closest("a")) return;
-            pressTimer = setTimeout(() => { card.classList.add("deleting"); }, 2000);
+            pressTimer = setTimeout(function() { 
+              card.classList.add("deleting"); 
+            }, 2000);
           });
 
           card.addEventListener("mouseup", function () {
             clearTimeout(pressTimer);
             if (card.classList.contains("deleting")) {
               card.classList.remove("deleting");
-              if (confirm(`本当にファイル ${card.dataset.filename} を削除しますか？`)) {
+              if (confirm("本当にファイル " + card.dataset.filename + " を削除しますか？")) {
                 fetch("/delete-file", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ fileId: card.dataset.fileId }),
                 })
-                  .then((response) => response.json())
-                  .then((result) => {
+                  .then(function(response) { return response.json(); })
+                  .then(function(result) {
                     if (result.success) {
                       card.remove();
                       alert("✓ ファイルを削除しました");
@@ -420,7 +438,7 @@
                       throw new Error(result.error || "削除に失敗しました");
                     }
                   })
-                  .catch((error) => {
+                  .catch(function(error) {
                     console.error("Error:", error);
                     alert("❌ 削除エラー: " + error.message);
                   });
@@ -439,7 +457,7 @@
           exportWeightsBtn.addEventListener("click", async function() {
             try {
               const response = await fetch('/export-weights');
-              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+              if (!response.ok) throw new Error("HTTP error! status: " + response.status);
               const data = await response.json();
               if (!data || data.length === 0) {
                 alert('エクスポートするデータがありません。');
@@ -452,7 +470,7 @@
               const url = URL.createObjectURL(blob);
               const link = document.createElement('a');
               link.href = url;
-              link.download = `weight_data_${dateStr}.json`;
+              link.download = "weight_data_" + dateStr + ".json";
               document.body.appendChild(link);
               link.click();
               document.body.removeChild(link);
@@ -467,7 +485,10 @@
         const importWeightsBtn = document.getElementById("importWeightsBtn");
         const weightFileInput = document.getElementById("weightFileInput");
         if (importWeightsBtn && weightFileInput) {
-          importWeightsBtn.addEventListener("click", function() { weightFileInput.click(); });
+          importWeightsBtn.addEventListener("click", function() { 
+            weightFileInput.click(); 
+          });
+          
           weightFileInput.addEventListener("change", async function(e) {
             if (!this.files || this.files.length === 0) return;
             const file = this.files[0];
@@ -486,7 +507,9 @@
                   alert('❌ インポートエラー: ' + error.message);
                 }
               };
-              reader.onerror = function() { alert('❌ ファイル読み込みエラー'); };
+              reader.onerror = function() { 
+                alert('❌ ファイル読み込みエラー'); 
+              };
               reader.readAsText(file);
             } catch (error) {
               console.error('Error:', error);

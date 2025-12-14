@@ -7,7 +7,6 @@ const cookieParser = require("cookie-parser");
 const crypto = require("crypto");
 require("dotenv").config();
 
-// Appwrite SDK
 const { Client, Databases, Query, ID } = require("node-appwrite");
 
 const app = express();
@@ -25,6 +24,14 @@ function isValidPassword(password) {
 
 function canEditWeights(username) {
   return AUTHORIZED_USERS.includes(username);
+}
+
+function getDisplayName(username) {
+  const nameMap = {
+    'naemura': '苗村',
+    'iwatsuki': '岩月'
+  };
+  return nameMap[username.toLowerCase()] || username;
 }
 
 // ======================
@@ -142,7 +149,6 @@ async function getSession(sessionId) {
     
     const session = sessions.documents[0];
     
-    // Check if expired
     if (new Date(session.expires_at) < new Date()) {
       await databases.deleteDocument(DATABASE_ID, COLLECTION_SESSIONS, session.$id);
       return null;
@@ -157,7 +163,7 @@ async function getSession(sessionId) {
 
 async function createSession(username) {
   const sessionId = generateSessionId();
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
   
   await databases.createDocument(
     DATABASE_ID,
@@ -488,6 +494,7 @@ app.get("/", requireAuth, async (req, res) => {
     res.render("index", {
       files: response.documents,
       username: req.session.username,
+      displayName: getDisplayName(req.session.username),
       canEditWeights: req.session.canEditWeights
     });
   } catch (error) {
@@ -495,6 +502,7 @@ app.get("/", requireAuth, async (req, res) => {
     res.render("index", {
       files: [],
       username: req.session.username,
+      displayName: getDisplayName(req.session.username),
       canEditWeights: req.session.canEditWeights
     });
   }
@@ -581,6 +589,7 @@ app.get("/files/:id", requireAuth, async (req, res) => {
       data: dataResponse.documents,
       highlights: highlights,
       username: req.session.username,
+      displayName: getDisplayName(req.session.username),
       canEditWeights: req.session.canEditWeights,
       message: null,
     });
@@ -774,7 +783,8 @@ app.get("/summary", requireAuth, async (req, res) => {
       fileData: fileData,
       validationRanges: validationRanges,
       username: req.session.username,
-      inspectorName: req.session.username,
+      displayName: getDisplayName(req.session.username),
+      inspectorName: getDisplayName(req.session.username),
     });
   } catch (error) {
     console.error("Error generating summary:", error);

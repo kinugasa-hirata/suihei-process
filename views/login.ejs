@@ -1,61 +1,150 @@
 <!DOCTYPE html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Vercel Analytics script -->
-    <script defer src="/_vercel/insights/script.js"></script>
-    <title>ログイン</title>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
-    />
-    <style>
-      .login-container {
-        max-width: 400px;
-        margin: 100px auto;
-        padding: 20px;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        background-color: white;
-      }
-      .error-message {
-        color: red;
-        margin-bottom: 15px;
-      }
-    </style>
-  </head>
-  <body class="bg-light">
-    <div class="login-container">
-      <h2 class="text-center mb-4">ログイン</h2>
-      <% if (typeof error !== 'undefined' && error) { %>
-      <div class="error-message text-center"><%= error %></div>
-      <% } %>
-      <form action="/login" method="POST">
-        <div class="mb-3">
-          <label for="username" class="form-label">ユーザー名</label>
-          <input
-            type="text"
-            class="form-control"
-            id="username"
-            name="username"
-            required
-          />
-        </div>
-        <div class="mb-3">
-          <label for="password" class="form-label">パスワード</label>
-          <input
-            type="password"
-            class="form-control"
-            id="password"
-            name="password"
-            required
-            pattern="[0-9]{4}"
-            title="4桁の数字を入力してください"
-          />
-        </div>
-        <button type="submit" class="btn btn-primary w-100">ログイン</button>
-      </form>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>水平ノズル検査成績書</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+      background-color: #f5f5f5;
+      padding: 20px 0;
+    }
+    .container { max-width: 1200px; background: white; padding: 30px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .inspection-sheet { background: white; padding: 20px; border: 2px solid #000; }
+    .inspection-header { margin-bottom: 20px; }
+    .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .header-title { text-align: center; font-size: 24px; font-weight: bold; flex-grow: 1; }
+    .company-name { text-align: right; font-size: 18px; font-weight: bold; }
+    .header-info { display: flex; justify-content: space-between; flex-wrap: wrap; font-size: 14px; margin-bottom: 10px; }
+    .header-info > div { margin-right: 20px; margin-bottom: 5px; }
+    .environment-note { font-size: 12px; margin: 15px 0; padding: 10px; background-color: #f8f9fa; border-left: 4px solid #0d6efd; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px; }
+    th, td { border: 1px solid #000; padding: 4px 2px; text-align: center; vertical-align: middle; }
+    th { background-color: #e9ecef; font-weight: bold; font-size: 10px; }
+    .header-cell { background-color: #d3d3d3; font-weight: bold; }
+    .measurement-cell { min-width: 35px; }
+    .tolerance-row { background-color: #f8f9fa; font-size: 10px; }
+    .invalid-value { color: #dc3545; font-weight: bold; }
+    .rotate-text { writing-mode: vertical-rl; text-orientation: mixed; white-space: nowrap; }
+    .result-cell { font-weight: bold; }
+    .footer-note { margin-top: 20px; font-size: 12px; padding: 10px; background-color: #fff3cd; border-left: 4px solid #ffc107; }
+    .btn-container { margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="btn-container">
+      <a href="/" class="btn btn-secondary">← ホームに戻る</a>
+      <button onclick="window.print()" class="btn btn-primary">🖨️ 印刷 / PDF保存</button>
     </div>
-  </body>
+
+    <div class="inspection-sheet">
+      <div class="inspection-header">
+        <div class="header-row">
+          <div class="header-title">水平ノズル全数検査成績書</div>
+          <div class="company-name">㈱平田商店</div>
+        </div>
+
+        <div class="header-info">
+          <div><strong>品名:</strong> 水平ノズル</div>
+          <div><strong>仕様書番号:</strong> KDMP-0434</div>
+          <div><strong>担当者:</strong> <%= displayName %></div>
+        </div>
+
+        <div class="header-info">
+          <div><strong>図番:</strong> P2MM302000</div>
+          <div><strong>数量:</strong> <%= files.length %>個</div>
+          <div><strong>検査方法:</strong> 全数検査</div>
+          <div><strong>検査日:</strong> <%= new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/') %></div>
+          <div><strong>納期:</strong> YYYY/MM/DD</div>
+        </div>
+      </div>
+
+      <div class="environment-note">
+        当社検査における環境は室温20℃±5℃、湿度40%±25%で管理された部屋で実施しております。
+      </div>
+
+      <div style="margin-top: 15px; text-align: right; font-weight: bold;">単位 (mm)</div>
+      
+      <table>
+        <thead>
+          <tr>
+            <th rowspan="3" style="width: 60px;">図面寸法</th>
+            <th>8.2</th><th>37.5</th><th>15.9</th><th>24.1</th><th>Φ11.2</th><th>Φ3.2<br>全周</th>
+            <th>Φ8.0</th><th>深さ5.0</th><th>P.C.D 30</th><th>Φ155.4</th><th>83.1</th><th>Φ122.3</th>
+            <th rowspan="3">拡め合<br>い</th><th rowspan="3">目視点<br>検</th><th rowspan="3">(参考<br>値)</th>
+          </tr>
+          <tr>
+            <th>±0.2</th><th>±0.3</th><th>±0.2</th><th>±0.2</th><th>+0.2/0</th><th>±0.1</th>
+            <th>±0.2</th><th>±0.1</th><th>±0.2</th><th>±0.5</th><th>±0.3</th><th>±0.5</th>
+          </tr>
+          <tr class="header-cell">
+            <th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th>
+            <th>G</th><th>H</th><th>I</th><th>J</th><th>K</th><th>L</th>
+          </tr>
+          <tr class="tolerance-row">
+            <th>上限値</th>
+            <th>8.4</th><th>37.8</th><th>16.1</th><th>24.3</th><th>11.4</th><th>3.3</th>
+            <th>8.2</th><th>5.1</th><th>30.2</th><th>155.9</th><th>83.4</th><th>122.8</th>
+            <th>-</th><th>-</th><th>-</th>
+          </tr>
+          <tr class="tolerance-row">
+            <th>下限値</th>
+            <th>8.0</th><th>37.2</th><th>15.7</th><th>23.9</th><th>11.2</th><th>3.1</th>
+            <th>7.8</th><th>4.9</th><th>29.8</th><th>154.9</th><th>82.8</th><th>121.8</th>
+            <th>-</th><th>-</th><th>-</th>
+          </tr>
+          <tr class="header-cell">
+            <th>測定器</th>
+            <th colspan="2">三次元測定器</th><th colspan="2">三次元測定器</th><th colspan="2">ピンゲージ</th>
+            <th colspan="2">三次元測定器</th><th colspan="5">三次元測定器</th>
+            <th>治具</th><th>目視</th><th>秤</th>
+          </tr>
+          <tr class="header-cell">
+            <th>記載事項</th>
+            <th colspan="2">測定値</th><th colspan="2">測定値</th><th colspan="2">合否</th>
+            <th colspan="2">測定値</th><th colspan="5">測定値</th>
+            <th>合否</th><th>合否</th><th>重量(g)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% files.forEach(function(file) { 
+            var measurements = fileData[file.$id];
+            var fileNumber = file.filename.replace(/\.txt$/i, '');
+          %>
+          <tr>
+            <td><strong><%= fileNumber %></strong></td>
+            <td class="measurement-cell <%= !measurements.A.isValid ? 'invalid-value' : '' %>"><%= measurements.A.value %></td>
+            <td class="measurement-cell <%= !measurements.B.isValid ? 'invalid-value' : '' %>"><%= measurements.B.value %></td>
+            <td class="measurement-cell <%= !measurements.C.isValid ? 'invalid-value' : '' %>"><%= measurements.C.value %></td>
+            <td class="measurement-cell <%= !measurements.D.isValid ? 'invalid-value' : '' %>"><%= measurements.D.value %></td>
+            <td class="result-cell <%= !measurements.E.isValid ? 'invalid-value' : '' %>"><%= measurements.E.isValid ? '合' : '否' %></td>
+            <td class="result-cell <%= !measurements.F.isValid ? 'invalid-value' : '' %>"><%= measurements.F.isValid ? '合' : '否' %></td>
+            <td class="result-cell <%= !measurements.G.isValid ? 'invalid-value' : '' %>" 
+                <% if (!measurements.G.isValid && measurements.G.value !== '-') { %>
+                  title="不合格: <%= measurements.G.value %>"
+                <% } %>>
+              <%= measurements.G.isValid ? '合' : '否' %>
+            </td>
+            <td class="measurement-cell <%= !measurements.H.isValid ? 'invalid-value' : '' %>"><%= measurements.H.value %></td>
+            <td class="measurement-cell <%= !measurements.I.isValid ? 'invalid-value' : '' %>"><%= measurements.I.value %></td>
+            <td class="measurement-cell <%= !measurements.J.isValid ? 'invalid-value' : '' %>"><%= measurements.J.value %></td>
+            <td class="measurement-cell <%= !measurements.K.isValid ? 'invalid-value' : '' %>"><%= measurements.K.value %></td>
+            <td class="measurement-cell <%= !measurements.L.isValid ? 'invalid-value' : '' %>"><%= measurements.L.value %></td>
+            <td class="result-cell">-</td>
+            <td class="result-cell">-</td>
+            <td class="measurement-cell"><%= file.weight ? Number(file.weight).toFixed(1) : '-' %></td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+
+      <div class="footer-note">
+        ※着脱容易なシールに識別番号を記載し製品裏の底面に貼り付ける。
+      </div>
+    </div>
+  </div>
+</body>
 </html>
