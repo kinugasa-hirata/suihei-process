@@ -523,18 +523,31 @@
             try {
               const reader = new FileReader();
               reader.onload = async function(event) {
-                try {
-                  const weightData = JSON.parse(event.target.result);
-                  if (!Array.isArray(weightData)) {
-                    throw new Error("無効なJSONフォーマットです。");
+                  try {
+                    const weightData = JSON.parse(event.target.result);
+                    if (!Array.isArray(weightData)) {
+                      throw new Error("無効なJSONフォーマットです。");
+                    }
+                    
+                    // Send to backend
+                    const response = await fetch('/import-weights', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ weights: weightData })
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                      alert(`✓ ${result.updated}件の重量データをインポートしました`);
+                      window.location.reload();
+                    } else {
+                      throw new Error(result.error || 'Import failed');
+                    }
+                  } catch (error) {
+                    console.error('Error:', error);
+                    alert('❌ インポートエラー: ' + error.message);
                   }
-                  alert('データをインポートしました。ページを更新します。');
-                  window.location.reload();
-                } catch (error) {
-                  console.error('Error:', error);
-                  alert('❌ インポートエラー: ' + error.message);
-                }
-              };
+                };
               reader.onerror = function() { alert('❌ ファイル読み込みエラー'); };
               reader.readAsText(file);
             } catch (error) {

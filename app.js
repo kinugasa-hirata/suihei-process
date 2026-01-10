@@ -758,6 +758,53 @@ app.post("/delete-file", requireAuth, async (req, res) => {
   }
 });
 
+app.post("/import-weights", requireWeightEditAuth, async (req, res) => {
+  try {
+    const { weights } = req.body; // Array of {filename, weight}
+    
+    if (!weights || !Array.isArray(weights)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid weights data' 
+      });
+    }
+
+    let updated = 0;
+    
+    // Query inspections by filename and update weights
+    for (const item of weights) {
+      if (item.filename && item.weight !== null) {
+        try {
+          // Find inspection by filename
+          const result = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTION_INSPECTIONS,
+            [Query.equal('filename', item.filename)]
+          );
+          
+          if (result.documents.length > 0) {
+            const inspection = result.documents[0];
+            await databases.updateDocument(
+              DATABASE_ID,
+              COLLECTION_INSPECTIONS,
+              inspection.$id,
+              { weight: parseFloat(item.weight) }
+            );
+            updated++;
+          }
+        } catch (err) {
+          console.error(`Failed to update ${item.filename}:`, err);
+        }
+      }
+    }
+    
+    res.json({ success: true, updated: updated });
+  } catch (error) {
+    console.error("Error importing weights:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ======================
 // EXPORT WEIGHTS - UPDATED
 // ======================
