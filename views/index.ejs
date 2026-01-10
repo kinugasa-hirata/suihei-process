@@ -122,6 +122,7 @@
           </div>
         </div>
 
+        <!-- Lot Dialog Modal -->
         <div id="lotModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
           <div style="background: white; padding: 30px; border-radius: 10px; max-width: 400px; width: 90%;">
             <h4 style="margin-bottom: 20px;">📦 生産ロット番号を入力</h4>
@@ -223,7 +224,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-      // GLOBAL FUNCTIONS
+      // GLOBAL FUNCTIONS - Must be accessible from HTML attributes
       function showLotDialog() {
         const filesInput = document.getElementById("files");
         if (filesInput.files.length > 0) {
@@ -253,14 +254,8 @@
         const fileCards = document.querySelectorAll(".file-card");
         const selectedFiles = new Set();
         let pressTimer;
-        const userCanEditWeights = <% if (canEditWeights) { %>true<% } else { %>false<% } %>;
 
-        const lotNumberInput = document.getElementById('lotNumberInput');
-        if (lotNumberInput) {
-          lotNumberInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') { confirmLot(); }
-          });
-        }
+        const userCanEditWeights = <% if (canEditWeights) { %>true<% } else { %>false<% } %>;
 
         async function saveWeight(fileId, weight) {
           if (!userCanEditWeights) {
@@ -315,9 +310,11 @@
               await saveWeight(fileId, weight);
             }
           });
+          
           input.addEventListener("focus", function () {
             this.setSelectionRange(this.value.length, this.value.length);
           });
+          
           input.addEventListener("keypress", function (e) {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -326,7 +323,10 @@
               else this.blur();
             }
           });
-          input.addEventListener("click", function(e) { e.stopPropagation(); });
+          
+          input.addEventListener("click", function(e) { 
+            e.stopPropagation(); 
+          });
         });
 
         const saveWeightsBtn = document.getElementById("saveWeightsBtn");
@@ -342,19 +342,23 @@
                   weights.push({ fileId: fileId, weight: parseFloat(weight).toFixed(1) });
                 }
               });
+              
               if (weights.length === 0) {
                 alert("保存する重量がありません!");
                 return;
               }
+              
               const response = await fetch("/update-weights", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ weights: weights }),
               });
+              
               if (!response.ok) {
                 const error = await response.json();
                 throw new Error(error.error || 'Failed to save');
               }
+              
               const result = await response.json();
               if (result.success) {
                 alert("✓ " + result.count + "件の重量データを保存しました");
@@ -382,6 +386,13 @@
           });
         }
         <% } %>
+
+        const lotNumberInput = document.getElementById('lotNumberInput');
+        if (lotNumberInput) {
+          lotNumberInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') { confirmLot(); }
+          });
+        }
 
         function updateSummaryForm() {
           const viewSelectedBtn = document.getElementById("viewSelectedBtn");
@@ -447,10 +458,14 @@
               toggleFileSelection(this);
             }
           });
+
           card.addEventListener("mousedown", function (e) {
             if (e.target.closest("input") || e.target.closest("a")) return;
-            pressTimer = setTimeout(function() { card.classList.add("deleting"); }, 2000);
+            pressTimer = setTimeout(function() { 
+              card.classList.add("deleting"); 
+            }, 2000);
           });
+
           card.addEventListener("mouseup", function () {
             clearTimeout(pressTimer);
             if (card.classList.contains("deleting")) {
@@ -477,6 +492,7 @@
               }
             }
           });
+
           card.addEventListener("mouseleave", function () {
             clearTimeout(pressTimer);
             card.classList.remove("deleting");
@@ -516,39 +532,53 @@
         const importWeightsBtn = document.getElementById("importWeightsBtn");
         const weightFileInput = document.getElementById("weightFileInput");
         if (importWeightsBtn && weightFileInput) {
-          importWeightsBtn.addEventListener("click", function() { weightFileInput.click(); });
+          importWeightsBtn.addEventListener("click", function() { 
+            weightFileInput.click(); 
+          });
+          
           weightFileInput.addEventListener("change", async function(e) {
             if (!this.files || this.files.length === 0) return;
             const file = this.files[0];
             try {
               const reader = new FileReader();
               reader.onload = async function(event) {
-                  try {
-                    const weightData = JSON.parse(event.target.result);
-                    if (!Array.isArray(weightData)) {
-                      throw new Error("無効なJSONフォーマットです。");
-                    }
-                    
-                    // Send to backend
-                    const response = await fetch('/import-weights', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ weights: weightData })
-                    });
-                    
-                    const result = await response.json();
-                    if (result.success) {
-                      alert(`✓ ${result.updated}件の重量データをインポートしました`);
-                      window.location.reload();
-                    } else {
-                      throw new Error(result.error || 'Import failed');
-                    }
-                  } catch (error) {
-                    console.error('Error:', error);
-                    alert('❌ インポートエラー: ' + error.message);
+                try {
+                  const weightData = JSON.parse(event.target.result);
+                  if (!Array.isArray(weightData)) {
+                    throw new Error("無効なJSONフォーマットです。");
                   }
-                };
-              reader.onerror = function() { alert('❌ ファイル読み込みエラー'); };
+                  
+                  // Send to backend
+                  const response = await fetch('/import-weights', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ weights: weightData })
+                  });
+                  
+                  if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Import failed');
+                  }
+                  
+                  const result = await response.json();
+                  if (result.success) {
+                    let message = `✓ ${result.updated}件の重量データをインポートしました`;
+                    if (result.notFound && result.notFound.length > 0) {
+                      message += `\n\n⚠️ ${result.notFound.length}件が見つかりませんでした`;
+                    }
+                    alert(message);
+                    window.location.reload();
+                  } else {
+                    throw new Error(result.error || 'Import failed');
+                  }
+                } catch (error) {
+                  console.error('Error:', error);
+                  alert('❌ インポートエラー: ' + error.message);
+                }
+              };
+              reader.onerror = function() { 
+                alert('❌ ファイル読み込みエラー'); 
+              };
               reader.readAsText(file);
             } catch (error) {
               console.error('Error:', error);

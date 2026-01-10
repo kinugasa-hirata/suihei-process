@@ -172,20 +172,33 @@ async function createSession(username) {
   const sessionId = generateSessionId();
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
   
-  await databases.createDocument(
-    DATABASE_ID,
-    COLLECTION_SESSIONS,
-    ID.unique(),
-    {
-      session_id: sessionId,
-      username: username,
-      can_edit_weights: canEditWeights(username),
-      created_at: new Date().toISOString(),
-      expires_at: expiresAt.toISOString()
-    }
-  );
+  console.log(`[SESSION] Creating session for user: ${username}`);
+  console.log(`[SESSION] Session ID: ${sessionId.substring(0, 10)}...`);
+  console.log(`[SESSION] Can edit weights: ${canEditWeights(username)}`);
   
-  return sessionId;
+  try {
+    const doc = await databases.createDocument(
+      DATABASE_ID,
+      COLLECTION_SESSIONS,
+      ID.unique(),
+      {
+        session_id: sessionId,
+        username: username,
+        can_edit_weights: canEditWeights(username),
+        created_at: new Date().toISOString(),
+        expires_at: expiresAt.toISOString()
+      }
+    );
+    console.log(`[SESSION] Document created: ${doc.$id}`);
+    return sessionId;
+  } catch (error) {
+    console.error(`[SESSION] Error creating session document:`, {
+      message: error.message,
+      code: error.code,
+      type: error.type
+    });
+    throw error;
+  }
 }
 
 async function deleteSession(sessionId) {
@@ -397,11 +410,15 @@ app.get("/login", (req, res) => {
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
+  console.log(`[LOGIN] Attempt - Username: ${username}`);
+
   if (!username || !password) {
+    console.log(`[LOGIN] Failed - Missing credentials`);
     return res.render("login", { error: "Username and password are required" });
   }
 
   if (!isValidPassword(password)) {
+    console.log(`[LOGIN] Failed - Invalid password format`);
     return res.render("login", { error: "Password must be 4 digits" });
   }
 
@@ -410,7 +427,12 @@ app.post("/login", async (req, res) => {
   // In production, you'd verify against a database or secure store
 
   try {
+    console.log(`[LOGIN] Creating session for: ${username.toLowerCase()}`);
+    console.log(`[LOGIN] Database ID: ${DATABASE_ID}`);
+    console.log(`[LOGIN] Sessions Collection: ${COLLECTION_SESSIONS}`);
+    
     const sessionId = await createSession(username.toLowerCase());
+    console.log(`[LOGIN] Session created: ${sessionId}`);
     
     res.cookie('session_id', sessionId, {
       httpOnly: true,
@@ -418,22 +440,35 @@ app.post("/login", async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000,
       sameSite: 'lax'
     });
+    console.log(`[LOGIN] Cookie set`);
 
-    await databases.createDocument(
-      DATABASE_ID,
-      COLLECTION_LOGIN_LOGS,
-      ID.unique(),
-      {
-        username: username.toLowerCase(),
-        logged_in_at: new Date().toISOString(),
-        ip_address: req.ip || req.connection.remoteAddress || 'unknown'
-      }
-    );
+    try {
+      await databases.createDocument(
+        DATABASE_ID,
+        COLLECTION_LOGIN_LOGS,
+        ID.unique(),
+        {
+          username: username.toLowerCase(),
+          logged_in_at: new Date().toISOString(),
+          ip_address: req.ip || req.connection.remoteAddress || 'unknown'
+        }
+      );
+      console.log(`[LOGIN] Login log created`);
+    } catch (logError) {
+      console.error(`[LOGIN] Warning - Could not create login log:`, logError.message);
+      // Continue anyway - login log is not critical
+    }
 
+    console.log(`[LOGIN] Success - Redirecting to /`);
     res.redirect("/");
   } catch (error) {
-    console.error("Login error:", error);
-    res.render("login", { error: "Login failed" });
+    console.error(`[LOGIN] Error details:`, {
+      message: error.message,
+      code: error.code,
+      type: error.type,
+      response: error.response
+    });
+    res.render("login", { error: `Login failed: ${error.message}` });
   }
 });
 
@@ -758,53 +793,6 @@ app.post("/delete-file", requireAuth, async (req, res) => {
   }
 });
 
-app.post("/import-weights", requireWeightEditAuth, async (req, res) => {
-  try {
-    const { weights } = req.body; // Array of {filename, weight}
-    
-    if (!weights || !Array.isArray(weights)) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Invalid weights data' 
-      });
-    }
-
-    let updated = 0;
-    
-    // Query inspections by filename and update weights
-    for (const item of weights) {
-      if (item.filename && item.weight !== null) {
-        try {
-          // Find inspection by filename
-          const result = await databases.listDocuments(
-            DATABASE_ID,
-            COLLECTION_INSPECTIONS,
-            [Query.equal('filename', item.filename)]
-          );
-          
-          if (result.documents.length > 0) {
-            const inspection = result.documents[0];
-            await databases.updateDocument(
-              DATABASE_ID,
-              COLLECTION_INSPECTIONS,
-              inspection.$id,
-              { weight: parseFloat(item.weight) }
-            );
-            updated++;
-          }
-        } catch (err) {
-          console.error(`Failed to update ${item.filename}:`, err);
-        }
-      }
-    }
-    
-    res.json({ success: true, updated: updated });
-  } catch (error) {
-    console.error("Error importing weights:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 // ======================
 // EXPORT WEIGHTS - UPDATED
 // ======================
@@ -827,6 +815,71 @@ app.get("/export-weights", requireAuth, async (req, res) => {
     res.json(weightsData);
   } catch (error) {
     console.error("Error exporting weights:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// ======================
+// IMPORT WEIGHTS - NEW
+// ======================
+
+app.post("/import-weights", requireWeightEditAuth, async (req, res) => {
+  try {
+    const { weights } = req.body;
+    
+    if (!weights || !Array.isArray(weights)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid weights data' 
+      });
+    }
+
+    let updated = 0;
+    let notFound = [];
+    
+    for (const item of weights) {
+      if (item.filename && item.weight !== null && item.weight !== undefined) {
+        try {
+          // Try with .txt extension first (most common)
+          const filenameWithExt = item.filename.includes('.txt') 
+            ? item.filename 
+            : `${item.filename}.txt`;
+          
+          const result = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTION_INSPECTIONS,
+            [Query.equal('filename', filenameWithExt), Query.limit(1)]
+          );
+          
+          if (result.documents.length > 0) {
+            const inspection = result.documents[0];
+            await databases.updateDocument(
+              DATABASE_ID,
+              COLLECTION_INSPECTIONS,
+              inspection.$id,
+              { weight: parseFloat(item.weight) }
+            );
+            updated++;
+          } else {
+            notFound.push(item.filename);
+          }
+        } catch (err) {
+          console.error(`Failed to update ${item.filename}:`, err);
+          notFound.push(item.filename);
+        }
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      updated: updated,
+      notFound: notFound.length > 0 ? notFound : undefined
+    });
+  } catch (error) {
+    console.error("Error importing weights:", error);
     res.status(500).json({ 
       success: false, 
       error: error.message 

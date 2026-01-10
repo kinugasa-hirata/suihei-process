@@ -107,7 +107,7 @@
       <div class="file-info">
         <div class="row align-items-center mb-3">
           <div class="col-md-8">
-            <h2 style="margin: 0;"><%= file.filename %>.txt</h2>
+            <h2 style="margin: 0;"><%= file.filename %></h2>
           </div>
           <div class="col-md-4 text-end">
             <% 
@@ -207,11 +207,22 @@
           });
         %>
         
-        <% if (typeof gValue !== 'undefined' && gValue && gValue !== '-') { %>
+        <% 
+        // Calculate G average only if all G1-G4 are valid numbers
+        var g1 = measurements.G1 && measurements.G1.value && measurements.G1.value !== '-' ? parseFloat(measurements.G1.value) : null;
+        var g2 = measurements.G2 && measurements.G2.value && measurements.G2.value !== '-' ? parseFloat(measurements.G2.value) : null;
+        var g3 = measurements.G3 && measurements.G3.value && measurements.G3.value !== '-' ? parseFloat(measurements.G3.value) : null;
+        var g4 = measurements.G4 && measurements.G4.value && measurements.G4.value !== '-' ? parseFloat(measurements.G4.value) : null;
+        
+        var canCalculateG = g1 !== null && g2 !== null && g3 !== null && g4 !== null;
+        var gAverage = canCalculateG ? (g1 + g2 + g3 + g4) / 4 : null;
+        
+        if (canCalculateG && gAverage !== null) { 
+        %>
         <div class="measurement-card valid" style="grid-column: span 2; background: #e7f3ff;">
           <div class="measurement-label" style="color: #0066cc;">G (Average)</div>
           <div class="measurement-value" style="color: #0066cc; font-size: 2.2rem;">
-            <%= parseFloat(gValue).toFixed(3) %>
+            <%= gAverage.toFixed(3) %>
           </div>
           <div class="measurement-status" style="color: #0066cc;">
             Calculated from G1, G2, G3, G4
