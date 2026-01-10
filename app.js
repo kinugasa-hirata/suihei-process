@@ -18,14 +18,19 @@ const PORT = process.env.PORT || 3000;
 // USER CONFIGURATION
 // ======================
 
+// Users who can edit weights (naemura, iwatsuki)
 const AUTHORIZED_USERS = ['naemura', 'iwatsuki'];
+
+// Authentication: Any username with any 4-digit password can log in
+// Only AUTHORIZED_USERS (above) can edit weights
+// All other users can view and upload files but cannot edit weights
 
 function isValidPassword(password) {
   return /^\d{4}$/.test(password);
 }
 
 function canEditWeights(username) {
-  return AUTHORIZED_USERS.includes(username);
+  return AUTHORIZED_USERS.includes(username.toLowerCase());
 }
 
 function getDisplayName(username) {
@@ -400,8 +405,12 @@ app.post("/login", async (req, res) => {
     return res.render("login", { error: "Password must be 4 digits" });
   }
 
+  // Authentication: Accept any 4-digit password for any username
+  // This is a simple authentication - password just needs to be 4 digits
+  // In production, you'd verify against a database or secure store
+
   try {
-    const sessionId = await createSession(username);
+    const sessionId = await createSession(username.toLowerCase());
     
     res.cookie('session_id', sessionId, {
       httpOnly: true,
@@ -415,7 +424,7 @@ app.post("/login", async (req, res) => {
       COLLECTION_LOGIN_LOGS,
       ID.unique(),
       {
-        username: username,
+        username: username.toLowerCase(),
         logged_in_at: new Date().toISOString(),
         ip_address: req.ip || req.connection.remoteAddress || 'unknown'
       }
