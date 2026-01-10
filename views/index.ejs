@@ -1,571 +1,274 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script defer src="/_vercel/insights/script.js"></script>
-    <title>水平ノズル検査</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" />
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-    <style>
-      .container { max-width: 1200px; margin-top: 2rem; }
-      .file-selection-form, .upload-form, .action-buttons {
-        padding: 1.5rem; background-color: #f8f9fa;
-        border-radius: 5px; border: 1px solid #dee2e6; height: 100%;
-      }
-      .upload-form { display: flex; flex-direction: column; justify-content: center; align-items: center; }
-      .action-buttons .btn { margin-bottom: 0.5rem; width: 100%; }
-      .file-grid {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 1rem; margin-top: 1rem;
-      }
-      .file-card {
-        background-color: #f8f9fa; border-radius: 8px; padding: 1.5rem 1rem;
-        text-align: center; transition: all 0.3s ease; cursor: pointer;
-        border: 2px solid #dee2e6; position: relative; user-select: none;
-      }
-      .file-card:hover { box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); border-color: #adb5bd; }
-      .file-card.selected { background-color: #e3f2fd; border-color: #0d6efd; box-shadow: 0 0 0 2px #0d6efd; }
-      .file-number { font-size: 2.5rem; font-weight: bold; color: #0d6efd; margin-bottom: 0.5rem; }
-      .weight-section { margin-top: 0.5rem; padding: 8px; background: #fff; border-radius: 4px; }
-      .weight-input {
-        width: 80px; font-size: 0.9rem; padding: 0.25rem 0.5rem;
-        border-radius: 4px; border: 1px solid #ced4da; text-align: center;
-      }
-      .weight-display { color: #666; font-size: 0.95rem; padding: 4px 8px; }
-      .file-card .file-content { display: flex; flex-direction: column; align-items: center; }
-      .delete-overlay {
-        position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-        background-color: rgba(220, 53, 69, 0.9); display: flex;
-        align-items: center; justify-content: center; color: white;
-        font-weight: bold; opacity: 0; transition: opacity 0.3s ease;
-        pointer-events: none; border-radius: 6px;
-      }
-      .file-card.deleting .delete-overlay { opacity: 1; }
-      .weight-input::-webkit-outer-spin-button,
-      .weight-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-      .weight-input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
-      .top-row { display: flex; gap: 1rem; margin-bottom: 2rem; }
-      .column-left { flex: 0 0 42%; }
-      .column-middle { flex: 0 0 33%; }
-      .column-right { flex: 0 0 25%; }
-      .user-info-header {
-        position: fixed; top: 20px; right: 20px; background: white;
-        padding: 12px 24px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-        z-index: 1000; display: flex; align-items: center; gap: 15px;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="user-info-header">
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="font-size: 18px;">👤</span>
-        <strong style="color: #333;"><%= displayName %></strong>
-      </div>
-      
-      <% if (canEditWeights) { %>
-        <span style="background: #d4edda; color: #155724; padding: 4px 12px; border-radius: 4px; font-size: 13px; font-weight: 500;">
-          ✓ 重量編集可
-        </span>
-      <% } else { %>
-        <span style="background: #e2e3e5; color: #383d41; padding: 4px 12px; border-radius: 4px; font-size: 13px; font-weight: 500;">
-          📖 閲覧のみ
-        </span>
-      <% } %>
-      
-      <a href="/logout" class="btn btn-sm btn-outline-danger" style="margin-left: 10px;">
-        ログアウト
-      </a>
-    </div>
 
-    <div class="container">
-      <h1 class="mb-4">水平ノズル検査</h1>
 
-      <div class="top-row">
-        <div class="column-left">
-          <div class="file-selection-form">
-            <h3>ファイル選択</h3>
-            <p>始めのファイル番号とファイル数を入力してください</p>
-            <form id="rangeSelectForm" onsubmit="selectFileRange(event)">
-              <div class="row">
-                <div class="col-md-5">
-                  <label for="startFile" class="form-label">始めのファイル</label>
-                  <input type="number" class="form-control" id="startFile" name="startFile" placeholder="e.g., 240" />
-                </div>
-                <div class="col-md-5">
-                  <label for="fileCount" class="form-label">ファイル数</label>
-                  <input type="number" class="form-control" id="fileCount" name="fileCount" placeholder="e.g., 10" min="1" />
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                  <button type="submit" class="btn btn-info w-100">選択</button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
+    Skip to main content
+    Skip to search
 
-        <div class="column-middle">
-          <div class="upload-form">
-            <h4 class="mb-3">測定データアップロード</h4>
-            <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
-              <input type="file" id="files" name="files" accept=".txt" multiple required style="display: none" 
-                onchange="showLotDialog()" />
-              <input type="hidden" name="lot" id="lotInput" value="" />
-              <label for="files" class="btn btn-primary d-flex align-items-center justify-content-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-upload me-2" viewBox="0 0 16 16">
-                  <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
-                  <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z" />
-                </svg>
-                アップロード
-              </label>
-            </form>
-          </div>
-        </div>
+Learn frontend, backend, and AI from our course partner Scrimba
+Blog
+Log in
 
-        <!-- Lot Dialog Modal -->
-        <div id="lotModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
-          <div style="background: white; padding: 30px; border-radius: 10px; max-width: 400px; width: 90%;">
-            <h4 style="margin-bottom: 20px;">📦 生産ロット番号を入力</h4>
-            <p style="color: #666; margin-bottom: 15px;">このバッチのファイルのロット番号を入力してください</p>
-            <input type="text" id="lotNumberInput" class="form-control" placeholder="例: LOT-2025-001" style="margin-bottom: 20px;" />
-            <div style="display: flex; gap: 10px; justify-content: flex-end;">
-              <button onclick="cancelLotDialog()" class="btn btn-secondary">キャンセル</button>
-              <button onclick="confirmLot()" class="btn btn-primary">確認</button>
-            </div>
-          </div>
-        </div>
+    Web
+    JavaScript
+    Reference
+    JavaScript error reference
+    ReferenceError: "x" is not defined
 
-        <div class="column-right">
-          <div class="action-buttons">
-            <% if (canEditWeights) { %>
-              <button id="saveWeightsBtn" class="btn btn-primary">💾 重量データ保存</button>
-            <% } else { %>
-              <div class="alert alert-info" style="padding: 8px 12px; margin-bottom: 8px; font-size: 13px;">
-                ℹ️ 重量の編集は <strong>naemura</strong> と <strong>iwatsuki</strong> のみ可能です
-              </div>
-            <% } %>
-            <button id="viewSelectedBtn" class="btn btn-info" disabled>検査成績書作成へ</button>
-            <button id="exportWeightsBtn" class="btn btn-secondary">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-download me-1" viewBox="0 0 16 16">
-                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
-              </svg>
-              Data Export
-            </button>
-            <button id="importWeightsBtn" class="btn btn-secondary">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-upload me-1" viewBox="0 0 16 16">
-                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-                <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
-              </svg>
-              Data Import
-            </button>
-            <input type="file" id="weightFileInput" accept=".json" style="display: none;" />
-          </div>
-        </div>
-      </div>
+ReferenceError: "x" is not defined
 
-      <form id="viewSelectedForm" action="/summary" method="get" style="display: none">
-        <input type="hidden" name="selectedFiles" id="selectedFilesInput" value="" />
-      </form>
+The JavaScript exception "variable is not defined" occurs when there is a non-existent variable referenced somewhere.
+In this article
 
-      <h2 class="mb-3">ファイル一覧</h2>
+    Message
+    Error type
+    What went wrong?
+    Examples
+    See also
 
-      <% if (files && files.length > 0) { %>
-      <div class="file-grid">
-        <% 
-        var sortedFiles = [];
-        files.forEach(function(file) { sortedFiles.push(file); });
-        sortedFiles.sort(function(a, b) {
-          var numA = parseInt((a.filename.match(/^\d+/) || ['0'])[0], 10);
-          var numB = parseInt((b.filename.match(/^\d+/) || ['0'])[0], 10);
-          return numA - numB;
-        });
-        sortedFiles.forEach(function(file) {
-          var fileNumber = file.filename;
-          var match = file.filename.match(/^(\d+)/);
-          if (match) { fileNumber = match[1]; }
-        %>
-        <div class="file-card" data-file-id="<%= file.$id %>" data-filename="<%= file.filename %>">
-          <div class="delete-overlay">Release to Delete</div>
-          <div class="file-content">
-            <div class="file-number"><%= fileNumber %></div>
-            
-            <div class="weight-section">
-              <% if (canEditWeights) { %>
-                <input type="number" class="weight-input" data-file-id="<%= file.$id %>" step="0.1" value="<%= file.weight || '' %>" placeholder="Weight (g)" />
-                <% if (file.weight) { %>
-                  <div class="weight-display" style="margin-top: 4px; font-size: 0.85rem;">
-                    <%= parseFloat(file.weight).toFixed(1) %> g
-                  </div>
-                <% } %>
-              <% } else { %>
-                <div class="weight-display">
-                  <strong>重量:</strong>
-                  <%= file.weight ? parseFloat(file.weight).toFixed(1) + ' g' : '未設定' %>
-                </div>
-              <% } %>
-            </div>
-            
-            <div class="view-data-link mt-2">
-              <a href="/files/<%= file.$id %>" class="btn btn-sm btn-outline-secondary" style="padding: 4px; font-size: 0.8rem; border-radius: 50%" onclick="event.stopPropagation();">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
-                  <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
-                </svg>
-              </a>
-            </div>
-          </div>
-        </div>
-        <% }); %>
-      </div>
-      <% } else { %>
-      <div class="alert alert-info"><p>水平ノズル検査データ一覧</p></div>
-      <% } %>
-    </div>
+Message
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        const fileCards = document.querySelectorAll(".file-card");
-        const selectedFiles = new Set();
-        let pressTimer;
+ReferenceError: "x" is not defined (V8-based & Firefox)
+ReferenceError: Can't find variable: x (Safari)
 
-        const userCanEditWeights = <% if (canEditWeights) { %>true<% } else { %>false<% } %>;
+Error type
 
-        async function saveWeight(fileId, weight) {
-          if (!userCanEditWeights) {
-            alert('⚠️ 権限がありません\n\n重量の編集は naemura と iwatsuki のみ可能です。');
-            return false;
-          }
-          try {
-            if (!weight || isNaN(weight)) return false;
-            const formattedWeight = parseFloat(weight).toFixed(1);
-            const response = await fetch("/update-weights", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ weights: [{ fileId: fileId, weight: formattedWeight }] }),
-            });
-            if (!response.ok) {
-              const error = await response.json();
-              throw new Error(error.error || 'Failed to save weight');
-            }
-            const result = await response.json();
-            if (result.success) {
-              const card = document.querySelector(".file-card[data-file-id='" + fileId + "']");
-              let weightDisplay = card.querySelector(".weight-display");
-              if (!weightDisplay) {
-                weightDisplay = document.createElement("div");
-                weightDisplay.className = "weight-display";
-                weightDisplay.style.marginTop = "4px";
-                weightDisplay.style.fontSize = "0.85rem";
-                card.querySelector(".weight-section").appendChild(weightDisplay);
-              }
-              weightDisplay.textContent = formattedWeight + " g";
-              return true;
-            }
-            return false;
-          } catch (error) {
-            console.error("Error:", error);
-            if (error.message.includes('Not authorized')) {
-              alert('⚠️ 権限がありません\n\n重量の編集は naemura と iwatsuki のみ可能です。');
-            } else {
-              alert('❌ 保存エラー: ' + error.message);
-            }
-            return false;
-          }
-        }
+ReferenceError.
+What went wrong?
 
-        <% if (canEditWeights) { %>
-        document.querySelectorAll(".weight-input").forEach(function(input, index, inputs) {
-          input.addEventListener("change", async function (e) {
-            let weight = this.value;
-            const fileId = this.dataset.fileId;
-            if (weight && !isNaN(weight)) {
-              if (!weight.includes(".")) weight += ".0";
-              await saveWeight(fileId, weight);
-            }
-          });
-          
-          input.addEventListener("focus", function () {
-            this.setSelectionRange(this.value.length, this.value.length);
-          });
-          
-          input.addEventListener("keypress", function (e) {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              const nextInput = inputs[index + 1];
-              if (nextInput) nextInput.focus();
-              else this.blur();
-            }
-          });
-          
-          input.addEventListener("click", function(e) { 
-            e.stopPropagation(); 
-          });
-        });
+There is a non-existent variable referenced somewhere. This variable needs to be declared, or you need to make sure it is available in your current script or scope.
 
-        const saveWeightsBtn = document.getElementById("saveWeightsBtn");
-        if (saveWeightsBtn) {
-          saveWeightsBtn.addEventListener("click", async function () {
-            try {
-              const weightInputs = document.querySelectorAll(".weight-input");
-              const weights = [];
-              weightInputs.forEach(function(input) {
-                const fileId = input.dataset.fileId;
-                const weight = input.value;
-                if (weight && !isNaN(weight)) {
-                  weights.push({ fileId: fileId, weight: parseFloat(weight).toFixed(1) });
-                }
-              });
-              
-              if (weights.length === 0) {
-                alert("保存する重量がありません!");
-                return;
-              }
-              
-              const response = await fetch("/update-weights", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ weights: weights }),
-              });
-              
-              if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to save');
-              }
-              
-              const result = await response.json();
-              if (result.success) {
-                alert("✓ " + result.count + "件の重量データを保存しました");
-                weights.forEach(function(item) {
-                  const card = document.querySelector(".file-card[data-file-id='" + item.fileId + "']");
-                  let weightDisplay = card.querySelector(".weight-display");
-                  if (!weightDisplay) {
-                    weightDisplay = document.createElement("div");
-                    weightDisplay.className = "weight-display";
-                    weightDisplay.style.marginTop = "4px";
-                    weightDisplay.style.fontSize = "0.85rem";
-                    card.querySelector(".weight-section").appendChild(weightDisplay);
-                  }
-                  weightDisplay.textContent = item.weight + " g";
-                });
-              }
-            } catch (error) {
-              console.error("Error:", error);
-              if (error.message.includes('Not authorized')) {
-                alert('⚠️ 権限がありません\n\n重量の編集は naemura と iwatsuki のみ可能です。');
-              } else {
-                alert("❌ 保存エラー: " + error.message);
-              }
-            }
-          });
-        }
-        <% } %>
+Note: When loading a library (such as jQuery), make sure it is loaded before you access library variables, such as "$". Put the <script> element that loads the library before your code that uses it.
+Examples
+Variable not declared
+js
 
-        function updateSummaryForm() {
-          const viewSelectedBtn = document.getElementById("viewSelectedBtn");
-          const selectedFilesInput = document.getElementById("selectedFilesInput");
-          if (selectedFiles.size > 0) {
-            viewSelectedBtn.disabled = false;
-            viewSelectedBtn.textContent = "選択されたファイル：" + selectedFiles.size;
-            selectedFilesInput.value = Array.from(selectedFiles).join(",");
-          } else {
-            viewSelectedBtn.disabled = true;
-            viewSelectedBtn.textContent = "検査成績書作成へ";
-            selectedFilesInput.value = "";
-          }
-        }
+foo.substring(1); // ReferenceError: foo is not defined
 
-        function toggleFileSelection(card) {
-          const fileId = card.dataset.fileId;
-          if (card.classList.contains("selected")) {
-            selectedFiles.delete(fileId);
-            card.classList.remove("selected");
-          } else {
-            selectedFiles.add(fileId);
-            card.classList.add("selected");
-          }
-          updateSummaryForm();
-        }
+The "foo" variable isn't defined anywhere. It needs to be some string, so that the String.prototype.substring() method will work.
+js
 
-        function showLotDialog() {
-          const filesInput = document.getElementById('files');
-          if (filesInput.files.length > 0) {
-            document.getElementById('lotModal').style.display = 'flex';
-            document.getElementById('lotNumberInput').focus();
-          }
-        }
+const foo = "bar";
+foo.substring(1); // "ar"
 
-        function cancelLotDialog() {
-          document.getElementById('lotModal').style.display = 'none';
-          document.getElementById('files').value = '';
-          document.getElementById('lotNumberInput').value = '';
-        }
+Wrong scope
 
-        function confirmLot() {
-          const lotNumber = document.getElementById('lotNumberInput').value.trim();
-          if (!lotNumber) {
-            alert('ロット番号を入力してください');
-            return;
-          }
-          
-          document.getElementById('lotInput').value = lotNumber;
-          document.getElementById('lotModal').style.display = 'none';
-          document.getElementById('uploadForm').submit();
-        }
+A variable needs to be available in the current context of execution. Variables defined inside a function cannot be accessed from anywhere outside the function, because the variable is defined only in the scope of the function
+js
 
-        // Allow Enter key to confirm
-        document.getElementById('lotNumberInput').addEventListener('keypress', function(e) {
-          if (e.key === 'Enter') {
-            confirmLot();
-          }
-        });
-        
-        window.selectFileRange = function (event) {
-          event.preventDefault();
-          const startFile = parseInt(document.getElementById("startFile").value);
-          const fileCount = parseInt(document.getElementById("fileCount").value);
-          if (isNaN(startFile) || isNaN(fileCount) || fileCount < 1) {
-            alert("有効なファイル番号とファイル数を入力してください");
-            return;
-          }
-          const endFile = startFile + fileCount - 1;
-          selectedFiles.clear();
-          fileCards.forEach(function(card) { card.classList.remove("selected"); });
-          fileCards.forEach(function(card) {
-            const filename = card.dataset.filename;
-            const match = filename.match(/^\d+/);
-            if (match) {
-              const fileNumber = parseInt(match[0]);
-              if (fileNumber >= startFile && fileNumber <= endFile) {
-                card.classList.add("selected");
-                selectedFiles.add(card.dataset.fileId);
-              }
-            }
-          });
-          updateSummaryForm();
-        };
+function numbers() {
+  const num1 = 2;
+  const num2 = 3;
+  return num1 + num2;
+}
 
-        document.getElementById("viewSelectedBtn").addEventListener("click", function (e) {
-          e.preventDefault();
-          if (selectedFiles.size > 0) {
-            document.getElementById("viewSelectedForm").submit();
-          }
-        });
+console.log(num1); // ReferenceError num1 is not defined.
 
-        fileCards.forEach(function(card) {
-          card.addEventListener("click", function (e) {
-            if (!e.target.closest("input") && !e.target.closest("a")) {
-              toggleFileSelection(this);
-            }
-          });
+However, a function can access all variables and functions defined inside the scope in which it is defined. In other words, a function defined in the global scope can access all variables defined in the global scope.
+js
 
-          card.addEventListener("mousedown", function (e) {
-            if (e.target.closest("input") || e.target.closest("a")) return;
-            pressTimer = setTimeout(function() { 
-              card.classList.add("deleting"); 
-            }, 2000);
-          });
+const num1 = 2;
+const num2 = 3;
 
-          card.addEventListener("mouseup", function () {
-            clearTimeout(pressTimer);
-            if (card.classList.contains("deleting")) {
-              card.classList.remove("deleting");
-              if (confirm("本当にファイル " + card.dataset.filename + " を削除しますか？")) {
-                fetch("/delete-file", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ fileId: card.dataset.fileId }),
-                })
-                  .then(function(response) { return response.json(); })
-                  .then(function(result) {
-                    if (result.success) {
-                      card.remove();
-                      alert("✓ ファイルを削除しました");
-                    } else {
-                      throw new Error(result.error || "削除に失敗しました");
-                    }
-                  })
-                  .catch(function(error) {
-                    console.error("Error:", error);
-                    alert("❌ 削除エラー: " + error.message);
-                  });
-              }
-            }
-          });
+function numbers() {
+  return num1 + num2;
+}
 
-          card.addEventListener("mouseleave", function () {
-            clearTimeout(pressTimer);
-            card.classList.remove("deleting");
-          });
-        });
+console.log(numbers()); // 5
 
-        const exportWeightsBtn = document.getElementById("exportWeightsBtn");
-        if (exportWeightsBtn) {
-          exportWeightsBtn.addEventListener("click", async function() {
-            try {
-              const response = await fetch('/export-weights');
-              if (!response.ok) throw new Error("HTTP error! status: " + response.status);
-              const data = await response.json();
-              if (!data || data.length === 0) {
-                alert('エクスポートするデータがありません。');
-                return;
-              }
-              const jsonStr = JSON.stringify(data, null, 2);
-              const blob = new Blob([jsonStr], { type: 'application/json' });
-              const today = new Date();
-              const dateStr = today.getFullYear() + String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0');
-              const url = URL.createObjectURL(blob);
-              const link = document.createElement('a');
-              link.href = url;
-              link.download = "weight_data_" + dateStr + ".json";
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-              URL.revokeObjectURL(url);
-            } catch (error) {
-              console.error('Error:', error);
-              alert('❌ エクスポートエラー: ' + error.message);
-            }
-          });
-        }
+See also
 
-        const importWeightsBtn = document.getElementById("importWeightsBtn");
-        const weightFileInput = document.getElementById("weightFileInput");
-        if (importWeightsBtn && weightFileInput) {
-          importWeightsBtn.addEventListener("click", function() { 
-            weightFileInput.click(); 
-          });
-          
-          weightFileInput.addEventListener("change", async function(e) {
-            if (!this.files || this.files.length === 0) return;
-            const file = this.files[0];
-            try {
-              const reader = new FileReader();
-              reader.onload = async function(event) {
-                try {
-                  const weightData = JSON.parse(event.target.result);
-                  if (!Array.isArray(weightData)) {
-                    throw new Error("無効なJSONフォーマットです。");
-                  }
-                  alert('データをインポートしました。ページを更新します。');
-                  window.location.reload();
-                } catch (error) {
-                  console.error('Error:', error);
-                  alert('❌ インポートエラー: ' + error.message);
-                }
-              };
-              reader.onerror = function() { 
-                alert('❌ ファイル読み込みエラー'); 
-              };
-              reader.readAsText(file);
-            } catch (error) {
-              console.error('Error:', error);
-              alert('❌ エラー: ' + error.message);
-            }
-            this.value = '';
-          });
-        }
-      });
-    </script>
-  </body>
-</html>
+    Scope
+    Declaring variables in the JavaScript Guide
+    Function scope in the JavaScript Guide
+
+Help improve MDN
+Was this page helpful to you?
+Learn how to contribute
+
+This page was last modified on ⁨Jul 8, 2025⁩ by MDN contributors.
+View this page on GitHub • Report a problem with this content
+Filter sidebar
+
+    JavaScript
+    Tutorials and guides
+    JavaScript Guide
+    Intermediate
+    Advanced
+    References
+    Built-in objects
+    Expressions & operators
+    Statements & declarations
+    Functions
+    Classes
+    Regular expressions
+    Errors
+        AggregateError: No Promise in Promise.any was resolved
+        Error: Permission denied to access property "x"
+        InternalError: too much recursion
+        RangeError: argument is not a valid code point
+        RangeError: BigInt division by zero
+        RangeError: BigInt negative exponent
+        RangeError: form must be one of 'NFC', 'NFD', 'NFKC', or 'NFKD'
+        RangeError: invalid array length
+        RangeError: invalid date
+        RangeError: precision is out of range
+        RangeError: radix must be an integer
+        RangeError: repeat count must be less than infinity
+        RangeError: repeat count must be non-negative
+        RangeError: x can't be converted to BigInt because it isn't an integer
+        ReferenceError: "x" is not defined
+        ReferenceError: assignment to undeclared variable "x"
+        ReferenceError: can't access lexical declaration 'X' before initialization
+        ReferenceError: must call super constructor before using 'this' in derived class constructor
+        ReferenceError: super() called twice in derived class constructor
+        SyntaxError: 'arguments'/'eval' can't be defined or assigned to in strict mode code
+        SyntaxError: "0"-prefixed octal literals are deprecated
+        SyntaxError: "use strict" not allowed in function with non-simple parameters
+        SyntaxError: "x" is a reserved identifier
+        SyntaxError: \ at end of pattern
+        SyntaxError: a declaration in the head of a for-of loop can't have an initializer
+        SyntaxError: applying the 'delete' operator to an unqualified name is deprecated
+        SyntaxError: arguments is not valid in fields
+        SyntaxError: await is only valid in async functions, async generators and modules
+        SyntaxError: await/yield expression can't be used in parameter
+        SyntaxError: cannot use `??` unparenthesized within `||` and `&&` expressions
+        SyntaxError: character class escape cannot be used in class range in regular expression
+        SyntaxError: continue must be inside loop
+        SyntaxError: duplicate capture group name in regular expression
+        SyntaxError: duplicate formal argument x
+        SyntaxError: for-in loop head declarations may not have initializers
+        SyntaxError: function statement requires a name
+        SyntaxError: functions cannot be labelled
+        SyntaxError: getter and setter for private name #x should either be both static or non-static
+        SyntaxError: getter functions must have no arguments
+        SyntaxError: identifier starts immediately after numeric literal
+        SyntaxError: illegal character
+        SyntaxError: import declarations may only appear at top level of a module
+        SyntaxError: incomplete quantifier in regular expression
+        SyntaxError: invalid assignment left-hand side
+        SyntaxError: invalid BigInt syntax
+        SyntaxError: invalid capture group name in regular expression
+        SyntaxError: invalid character in class in regular expression
+        SyntaxError: invalid class set operation in regular expression
+        SyntaxError: invalid decimal escape in regular expression
+        SyntaxError: invalid identity escape in regular expression
+        SyntaxError: invalid named capture reference in regular expression
+        SyntaxError: invalid property name in regular expression
+        SyntaxError: invalid range in character class
+        SyntaxError: invalid regexp group
+        SyntaxError: invalid regular expression flag "x"
+        SyntaxError: invalid unicode escape in regular expression
+        SyntaxError: JSON.parse: bad parsing
+        SyntaxError: label not found
+        SyntaxError: missing : after property id
+        SyntaxError: missing ) after argument list
+        SyntaxError: missing ) after condition
+        SyntaxError: missing ] after element list
+        SyntaxError: missing } after function body
+        SyntaxError: missing } after property list
+        SyntaxError: missing = in const declaration
+        SyntaxError: missing formal parameter
+        SyntaxError: missing name after . operator
+        SyntaxError: missing variable name
+        SyntaxError: negated character class with strings in regular expression
+        SyntaxError: new keyword cannot be used with an optional chain
+        SyntaxError: nothing to repeat
+        SyntaxError: numbers out of order in {} quantifier.
+        SyntaxError: octal escape sequences can't be used in untagged template literals or in strict mode code
+        SyntaxError: parameter after rest parameter
+        SyntaxError: private fields can't be deleted
+        SyntaxError: property name __proto__ appears more than once in object literal
+        SyntaxError: raw bracket is not allowed in regular expression with unicode flag
+        SyntaxError: redeclaration of formal parameter "x"
+        SyntaxError: reference to undeclared private field or method #x
+        SyntaxError: rest parameter may not have a default
+        SyntaxError: return not in function
+        SyntaxError: setter functions must have one argument
+        SyntaxError: string literal contains an unescaped line break
+        SyntaxError: super() is only valid in derived class constructors
+        SyntaxError: tagged template cannot be used with optional chain
+        SyntaxError: Unexpected '#' used outside of class body
+        SyntaxError: Unexpected token
+        SyntaxError: unlabeled break must be inside loop or switch
+        SyntaxError: unparenthesized unary expression can't appear on the left-hand side of '**'
+        SyntaxError: use of super property/member accesses only valid within methods or eval code within methods
+        SyntaxError: Using //@ to indicate sourceURL pragmas is deprecated. Use //# instead
+        TypeError: 'caller', 'callee', and 'arguments' properties may not be accessed
+        TypeError: 'x' is not iterable
+        TypeError: "x" is (not) "y"
+        TypeError: "x" is not a constructor
+        TypeError: "x" is not a function
+        TypeError: "x" is not a non-null object
+        TypeError: "x" is read-only
+        TypeError: already executing generator
+        TypeError: BigInt value can't be serialized in JSON
+        TypeError: calling a builtin X constructor without new is forbidden
+        TypeError: can't access/set private field or method: object is not the right class
+        TypeError: can't assign to property "x" on "y": not an object
+        TypeError: can't convert BigInt to number
+        TypeError: can't convert x to BigInt
+        TypeError: can't define property "x": "obj" is not extensible
+        TypeError: can't delete non-configurable array element
+        TypeError: can't redefine non-configurable property "x"
+        TypeError: can't set prototype of this object
+        TypeError: can't set prototype: it would cause a prototype chain cycle
+        TypeError: cannot use 'in' operator to search for 'x' in 'y'
+        TypeError: class constructors must be invoked with 'new'
+        TypeError: cyclic object value
+        TypeError: derived class constructor returned invalid value x
+        TypeError: getting private setter-only property
+        TypeError: Initializing an object twice is an error with private fields/methods
+        TypeError: invalid 'instanceof' operand 'x'
+        TypeError: invalid Array.prototype.sort argument
+        TypeError: invalid assignment to const "x"
+        TypeError: Iterator/AsyncIterator constructor can't be used directly
+        TypeError: matchAll/replaceAll must be called with a global RegExp
+        TypeError: More arguments needed
+        TypeError: null/undefined has no properties
+        TypeError: property "x" is non-configurable and can't be deleted
+        TypeError: Reduce of empty array with no initial value
+        TypeError: setting getter-only property "x"
+        TypeError: WeakSet key/WeakMap value 'x' must be an object or an unregistered symbol
+        TypeError: X.prototype.y called on incompatible type
+        URIError: malformed URI sequence
+        Warning: -file- is being assigned a //# sourceMappingURL, but already has one
+        Warning: unreachable code after return statement
+    Misc
+
+GitLab
+Ad
+
+Your blueprint for a better internet.
+
+MDN
+
+        About
+        Blog
+        Mozilla careers
+        Advertise with us
+        MDN Plus
+        Product help
+
+Contribute
+
+        MDN Community
+        Community resources
+        Writing guidelines
+        MDN Discord
+        MDN on GitHub
+
+Developers
+
+        Web technologies
+        Learn web development
+        Guides
+        Tutorials
+        Glossary
+        Hacks blog
+
+    Website Privacy Notice
+    Telemetry Settings
+    Legal
+    Community Participation Guidelines
+
+Visit Mozilla Corporation’s not-for-profit parent, the Mozilla Foundation.
+Portions of this content are ©1998–⁨2026⁩ by individual mozilla.org contributors. Content available under a Creative Commons license.
