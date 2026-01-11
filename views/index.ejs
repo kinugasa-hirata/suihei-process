@@ -112,13 +112,19 @@
         font-size: 24px;
       }
       .help-step {
-        margin-bottom: 16px; padding-left: 20px; position: relative;
+        margin-bottom: 16px; padding-left: 36px; position: relative;
       }
       .help-step-number {
         position: absolute; left: 0; top: 2px;
         background: #667eea; color: white; width: 24px; height: 24px;
         border-radius: 50%; display: flex; align-items: center;
         justify-content: center; font-size: 13px; font-weight: bold;
+      }
+      .help-step-content ul {
+        margin: 8px 0; padding-left: 20px;
+      }
+      .help-step-content strong {
+        display: block; margin-bottom: 4px;
       }
       .help-step-content {
         color: #495057; line-height: 1.6;
@@ -245,8 +251,8 @@
               <div class="help-step">
                 <div class="help-step-number">1</div>
                 <div class="help-step-content">
-                  <strong>Excelファイルの準備：</strong> 
-                  <ul style="margin: 8px 0; padding-left: 20px;">
+                  <strong>Excelファイルの準備：</strong>
+                  <ul>
                     <li>第1列：ファイル名（例：462 または 462.txt）</li>
                     <li>第2列：重量（グラム単位、小数点1桁）</li>
                     <li>1行目はヘッダー行（File Name, Weight）</li>
@@ -265,7 +271,7 @@
                 <div class="help-step-number">3</div>
                 <div class="help-step-content">
                   インポート結果が表示されます：
-                  <ul style="margin: 8px 0; padding-left: 20px;">
+                  <ul>
                     <li><strong>更新件数：</strong> 既存ファイルの重量を更新</li>
                     <li><strong>新規作成件数：</strong> 測定データがまだない場合、重量のみ先行登録</li>
                   </ul>
@@ -446,7 +452,7 @@
                 <div class="help-step-number">4</div>
                 <div class="help-step-content">
                   <strong>サマリーページで入力する項目：</strong>
-                  <ul style="margin: 8px 0; padding-left: 20px;">
+                  <ul>
                     <li><strong>M項目（手動検査）：</strong> 合格/不合格を選択</li>
                     <li><strong>N項目（目視検査）：</strong> 合格/不合格を選択</li>
                     <li><strong>備考欄：</strong> 必要に応じてコメントを入力</li>
@@ -465,7 +471,7 @@
                 <div class="help-step-number">6</div>
                 <div class="help-step-content">
                   検査成績書がPDF形式で生成されます。ブラウザの印刷機能を使用して：
-                  <ul style="margin: 8px 0; padding-left: 20px;">
+                  <ul>
                     <li>送り先：「PDFに保存」を選択</li>
                     <li>印刷ボタンをクリックしてPDFをダウンロード</li>
                   </ul>
@@ -496,7 +502,7 @@
                 <div class="help-step-number">2</div>
                 <div class="help-step-content">
                   詳細ページが開き、以下の情報が表示されます：
-                  <ul style="margin: 8px 0; padding-left: 20px;">
+                  <ul>
                     <li>すべての測定項目（A～L、G1～G4）の詳細値</li>
                     <li>各項目の合格/不合格判定</li>
                     <li>重量データ</li>
@@ -561,7 +567,7 @@
 
               <div style="margin-top: 16px;">
                 <strong style="color: #155724;">✓ 重量編集可能ユーザー（naemura、iwatsuki）：</strong>
-                <ul style="margin: 8px 0; padding-left: 20px;">
+                <ul>
                   <li>測定データのアップロード</li>
                   <li>重量データの編集・インポート</li>
                   <li>ファイルの選択・アーカイブ・削除</li>
@@ -571,7 +577,7 @@
 
               <div style="margin-top: 16px;">
                 <strong style="color: #383d41;">📖 閲覧のみユーザー（その他）：</strong>
-                <ul style="margin: 8px 0; padding-left: 20px;">
+                <ul>
                   <li>測定データのアップロード</li>
                   <li>ファイルの選択・アーカイブ・削除</li>
                   <li>検査成績書の作成</li>
@@ -599,7 +605,7 @@
                 <div class="help-step-number">2</div>
                 <div class="help-step-content">
                   <strong>色による状態識別：</strong>
-                  <ul style="margin: 8px 0; padding-left: 20px;">
+                  <ul>
                     <li>青色枠 = 検査成績書用に選択</li>
                     <li>黄色枠 = アーカイブ用に選択</li>
                     <li>赤色オーバーレイ = 削除待機中</li>
