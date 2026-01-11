@@ -1,5 +1,6 @@
 // app.js - EFFICIENT SCHEMA VERSION - 96% DATABASE REDUCTION
 // Updated for new inspections collection (no more file_data!)
+// Modified: Excel import/export instead of JSON
 
 const express = require("express");
 const multer = require("multer");
@@ -7,6 +8,7 @@ const path = require("path");
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 const crypto = require("crypto");
+const XLSX = require("xlsx");
 require("dotenv").config();
 
 const { Client, Databases, Query, ID } = require("node-appwrite");
@@ -126,10 +128,11 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   fileFilter: (req, file, cb) => {
-    if (path.extname(file.originalname).toLowerCase() === ".txt") {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (ext === ".txt" || ext === ".xlsx" || ext === ".xls") {
       cb(null, true);
     } else {
-      cb(new Error("Only .txt files are allowed"));
+      cb(new Error("Only .txt, .xlsx, and .xls files are allowed"));
     }
   },
 });
@@ -422,10 +425,6 @@ app.post("/login", async (req, res) => {
     return res.render("login", { error: "Password must be 4 digits" });
   }
 
-  // Authentication: Accept any 4-digit password for any username
-  // This is a simple authentication - password just needs to be 4 digits
-  // In production, you'd verify against a database or secure store
-
   try {
     console.log(`[LOGIN] Creating session for: ${username.toLowerCase()}`);
     console.log(`[LOGIN] Database ID: ${DATABASE_ID}`);
@@ -456,7 +455,6 @@ app.post("/login", async (req, res) => {
       console.log(`[LOGIN] Login log created`);
     } catch (logError) {
       console.error(`[LOGIN] Warning - Could not create login log:`, logError.message);
-      // Continue anyway - login log is not critical
     }
 
     console.log(`[LOGIN] Success - Redirecting to /`);
@@ -485,7 +483,6 @@ app.get("/logout", async (req, res) => {
 
 app.get("/", requireAuth, async (req, res) => {
   try {
-    // UPDATED: Using COLLECTION_INSPECTIONS instead of COLLECTION_FILES
     const filesResponse = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_INSPECTIONS,
@@ -506,7 +503,6 @@ app.get("/", requireAuth, async (req, res) => {
 
 // ======================
 // NEW EFFICIENT UPLOAD ROUTE
-// No more file_data! Just 1 API call per file!
 // ======================
 
 app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
@@ -557,7 +553,6 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
         
         console.log(`[${uploadId}]   Status: ${inspectionStatus}`);
 
-        // UPDATED: Create single inspection document with all measurements
         const inspection = await databases.createDocument(
           DATABASE_ID,
           COLLECTION_INSPECTIONS,
@@ -568,7 +563,6 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
             weight: null,
             lot: req.body.lot ? parseInt(req.body.lot) : null,
             
-            // Store all measurement values
             measurementA: String(measurements.A?.value || '-'),
             measurementB: String(measurements.B?.value || '-'),
             measurementC: String(measurements.C?.value || '-'),
@@ -585,7 +579,6 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
             measurementK: String(measurements.K?.value || '-'),
             measurementL: String(measurements.L?.value || '-'),
             
-            // Store validation flags
             isValidA: measurements.A?.isValid ?? true,
             isValidB: measurements.B?.isValid ?? true,
             isValidC: measurements.C?.isValid ?? true,
@@ -602,7 +595,6 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
             isValidK: measurements.K?.isValid ?? true,
             isValidL: measurements.L?.isValid ?? true,
             
-            // Overall status
             inspectionStatus: inspectionStatus,
             failedMeasurements: failedKeys.join(',')
           }
@@ -641,22 +633,19 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
 });
 
 // ======================
-// FILE DETAILS ROUTE - UPDATED
-// No more file_data queries!
+// FILE DETAILS ROUTE
 // ======================
 
 app.get("/files/:id", requireAuth, async (req, res) => {
   try {
     const inspectionId = req.params.id;
 
-    // UPDATED: Get inspection with all measurements embedded
     const inspection = await databases.getDocument(
       DATABASE_ID,
       COLLECTION_INSPECTIONS,
       inspectionId
     );
 
-    // Reconstruct measurements object from stored fields
     const measurements = {
       A: { value: inspection.measurementA, isValid: inspection.isValidA },
       B: { value: inspection.measurementB, isValid: inspection.isValidB },
@@ -681,8 +670,8 @@ app.get("/files/:id", requireAuth, async (req, res) => {
       file: inspection,
       measurements: measurements,
       gValue: gValue,
-      data: [], // No raw data anymore
-      highlights: [], // Not needed
+      data: [],
+      highlights: [],
       username: req.session.username,
       displayName: getDisplayName(req.session.username),
       canEditWeights: req.session.canEditWeights,
@@ -695,7 +684,7 @@ app.get("/files/:id", requireAuth, async (req, res) => {
 });
 
 // ======================
-// WEIGHT UPDATE ROUTES - UPDATED
+// WEIGHT UPDATE ROUTES - UPDATED WITH .toFixed(1)
 // ======================
 
 app.post("/files/:id/update-weight", requireWeightEditAuth, async (req, res) => {
@@ -710,12 +699,14 @@ app.post("/files/:id/update-weight", requireWeightEditAuth, async (req, res) => 
       });
     }
 
-    // UPDATED: Using COLLECTION_INSPECTIONS
+    // Format to 1 decimal place
+    const formattedWeight = parseFloat(weight.toFixed(1));
+
     await databases.updateDocument(
       DATABASE_ID,
       COLLECTION_INSPECTIONS,
       fileId,
-      { weight: weight }
+      { weight: formattedWeight }
     );
     
     res.redirect(`/files/${fileId}`);
@@ -740,12 +731,14 @@ app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
       const weightValue = parseFloat(item.weight);
       
       if (item.fileId && !isNaN(weightValue)) {
-        // UPDATED: Using COLLECTION_INSPECTIONS
+        // Format to 1 decimal place
+        const formattedWeight = parseFloat(weightValue.toFixed(1));
+        
         await databases.updateDocument(
           DATABASE_ID,
           COLLECTION_INSPECTIONS,
           item.fileId,
-          { weight: weightValue }
+          { weight: formattedWeight }
         );
       }
     }
@@ -761,8 +754,7 @@ app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
 });
 
 // ======================
-// DELETE ROUTE - SIMPLIFIED!
-// No more file_data cleanup needed!
+// DELETE ROUTE
 // ======================
 
 app.post("/delete-file", requireAuth, async (req, res) => {
@@ -776,7 +768,6 @@ app.post("/delete-file", requireAuth, async (req, res) => {
       });
     }
 
-    // UPDATED: Just delete the inspection - no file_data cleanup!
     await databases.deleteDocument(
       DATABASE_ID,
       COLLECTION_INSPECTIONS,
@@ -794,25 +785,61 @@ app.post("/delete-file", requireAuth, async (req, res) => {
 });
 
 // ======================
-// EXPORT WEIGHTS - UPDATED
+// EXPORT WEIGHTS AS EXCEL - UPDATED
 // ======================
 
 app.get("/export-weights", requireAuth, async (req, res) => {
   try {
-    // UPDATED: Using COLLECTION_INSPECTIONS
     const filesResponse = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_INSPECTIONS,
       [Query.orderAsc("filename"), Query.limit(1000)]
     );
 
-    const weightsData = filesResponse.documents.map(file => ({
-      filename: file.filename.replace(/\.txt$/i, ''),
-      weight: file.weight || null,
-      uploaded_at: file.uploaded_at
-    }));
+    // Sort by filename number
+    const sortedFiles = filesResponse.documents.sort((a, b) => {
+      const numA = parseInt((a.filename.match(/^\d+/) || ['0'])[0], 10);
+      const numB = parseInt((b.filename.match(/^\d+/) || ['0'])[0], 10);
+      return numA - numB;
+    });
 
-    res.json(weightsData);
+    // Filter out files with null weights
+    const filteredFiles = sortedFiles.filter(file => file.weight !== null);
+
+    // Create worksheet data
+    const worksheetData = [
+      ['File Name', 'Weight'],
+      ...filteredFiles.map(file => [
+        file.filename.replace(/\.txt$/i, ''),
+        file.weight !== null ? parseFloat(file.weight).toFixed(1) : null
+      ])
+    ];
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+
+    // Auto-size columns
+    ws['!cols'] = [
+      { wch: 15 },
+      { wch: 12 }
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Weight Data');
+
+    // Generate buffer
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    // Generate filename with current date
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+    const filename = `weight_data_${dateStr}.xlsx`;
+
+    // Send file
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+
   } catch (error) {
     console.error("Error exporting weights:", error);
     res.status(500).json({ 
@@ -823,53 +850,67 @@ app.get("/export-weights", requireAuth, async (req, res) => {
 });
 
 // ======================
-// IMPORT WEIGHTS - NEW
+// IMPORT WEIGHTS FROM EXCEL - NEW
 // ======================
 
-app.post("/import-weights", requireWeightEditAuth, async (req, res) => {
+app.post("/import-weights", requireWeightEditAuth, upload.single('weightFile'), async (req, res) => {
   try {
-    const { weights } = req.body;
-    
-    if (!weights || !Array.isArray(weights)) {
+    if (!req.file) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Invalid weights data' 
+        error: 'No file uploaded' 
       });
     }
 
+    // Parse Excel file
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+    // Skip header row and process data
     let updated = 0;
     let notFound = [];
     
-    for (const item of weights) {
-      if (item.filename && item.weight !== null && item.weight !== undefined) {
-        try {
-          // Try with .txt extension first (most common)
-          const filenameWithExt = item.filename.includes('.txt') 
-            ? item.filename 
-            : `${item.filename}.txt`;
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (!row || row.length < 2) continue;
+      
+      const filename = String(row[0]).trim();
+      const weight = parseFloat(row[1]);
+      
+      if (!filename || isNaN(weight)) continue;
+
+      try {
+        // Try with .txt extension first (most common)
+        const filenameWithExt = filename.includes('.txt') 
+          ? filename 
+          : `${filename}.txt`;
+        
+        const result = await databases.listDocuments(
+          DATABASE_ID,
+          COLLECTION_INSPECTIONS,
+          [Query.equal('filename', filenameWithExt), Query.limit(1)]
+        );
+        
+        if (result.documents.length > 0) {
+          const inspection = result.documents[0];
+          // Format to 1 decimal place
+          const formattedWeight = parseFloat(weight.toFixed(1));
           
-          const result = await databases.listDocuments(
+          await databases.updateDocument(
             DATABASE_ID,
             COLLECTION_INSPECTIONS,
-            [Query.equal('filename', filenameWithExt), Query.limit(1)]
+            inspection.$id,
+            { weight: formattedWeight }
           );
-          
-          if (result.documents.length > 0) {
-            const inspection = result.documents[0];
-            await databases.updateDocument(
-              DATABASE_ID,
-              COLLECTION_INSPECTIONS,
-              inspection.$id,
-              { weight: parseFloat(item.weight) }
-            );
-            updated++;
-          } else {
-            notFound.push(item.filename);
-          }
-        } catch (err) {
-          console.error(`Failed to update ${item.filename}:`, err);
-          notFound.push(item.filename);
+          updated++;
+        } else {
+          notFound.push(filename);
         }
+      } catch (err) {
+        console.error(`Failed to update ${filename}:`, err);
+        notFound.push(filename);
       }
     }
     
@@ -888,7 +929,7 @@ app.post("/import-weights", requireWeightEditAuth, async (req, res) => {
 });
 
 // ======================
-// SUMMARY ROUTE - UPDATED
+// SUMMARY ROUTE
 // ======================
 
 app.get("/summary", requireAuth, async (req, res) => {
@@ -908,7 +949,6 @@ app.get("/summary", requireAuth, async (req, res) => {
 
     for (const fileId of fileIds) {
       try {
-        // UPDATED: Get inspection with embedded measurements
         const inspection = await databases.getDocument(
           DATABASE_ID,
           COLLECTION_INSPECTIONS,
@@ -917,7 +957,6 @@ app.get("/summary", requireAuth, async (req, res) => {
 
         files.push(inspection);
 
-        // Reconstruct measurements from stored fields
         const measurements = {
           A: { value: inspection.measurementA, isValid: inspection.isValidA },
           B: { value: inspection.measurementB, isValid: inspection.isValidB },
@@ -998,6 +1037,7 @@ app.listen(PORT, () => {
   console.log(`Authentication: ENABLED (Database Sessions)`);
   console.log(`Authorized weight editors: ${AUTHORIZED_USERS.join(', ')}`);
   console.log(`✨ 96% database reduction achieved!`);
+  console.log(`📊 Excel import/export enabled`);
 });
 
 module.exports = app;
