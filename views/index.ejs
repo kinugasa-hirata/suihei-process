@@ -27,6 +27,7 @@
       }
       .file-card:hover { box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); border-color: #adb5bd; }
       .file-card.selected { background-color: #e3f2fd; border-color: #0d6efd; box-shadow: 0 0 0 2px #0d6efd; }
+      .file-card.archive-selected { background-color: #fff3cd; border-color: #ffc107; box-shadow: 0 0 0 2px #ffc107; }
       .file-number { font-size: 2.5rem; font-weight: bold; color: #0d6efd; margin-bottom: 0.5rem; }
       .weight-section { margin-top: 0.5rem; padding: 8px; background: #fff; border-radius: 4px; }
       .weight-input {
@@ -55,6 +56,93 @@
         padding: 12px 24px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);
         z-index: 1000; display: flex; align-items: center; gap: 15px;
       }
+      .help-button {
+        position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px;
+        background: #0d6efd; color: white; border-radius: 50%;
+        border: none; box-shadow: 0 4px 12px rgba(13,110,253,0.4);
+        cursor: pointer; display: flex; align-items: center; justify-content: center;
+        font-size: 32px; font-weight: bold; transition: all 0.3s ease;
+        z-index: 1000;
+      }
+      .help-button:hover {
+        background: #0b5ed7; transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(13,110,253,0.5);
+      }
+      .help-modal {
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.6); z-index: 9999; align-items: center;
+        justify-content: center; overflow-y: auto; padding: 20px;
+      }
+      .help-modal-content {
+        background: white; border-radius: 12px; max-width: 800px; width: 100%;
+        max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      }
+      .help-modal-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white; padding: 24px 30px; border-radius: 12px 12px 0 0;
+        display: flex; justify-content: space-between; align-items: center;
+      }
+      .help-modal-header h2 {
+        margin: 0; font-size: 24px; font-weight: bold;
+      }
+      .help-modal-close {
+        background: rgba(255,255,255,0.2); border: none; color: white;
+        width: 36px; height: 36px; border-radius: 50%; font-size: 24px;
+        cursor: pointer; display: flex; align-items: center; justify-content: center;
+        transition: background 0.3s ease;
+      }
+      .help-modal-close:hover {
+        background: rgba(255,255,255,0.3);
+      }
+      .help-modal-body {
+        padding: 30px;
+      }
+      .help-section {
+        margin-bottom: 32px; padding-bottom: 24px;
+        border-bottom: 1px solid #e9ecef;
+      }
+      .help-section:last-child {
+        border-bottom: none; margin-bottom: 0;
+      }
+      .help-section-title {
+        color: #667eea; font-size: 20px; font-weight: bold;
+        margin-bottom: 16px; display: flex; align-items: center; gap: 10px;
+      }
+      .help-section-icon {
+        font-size: 24px;
+      }
+      .help-step {
+        margin-bottom: 16px; padding-left: 20px; position: relative;
+      }
+      .help-step-number {
+        position: absolute; left: 0; top: 2px;
+        background: #667eea; color: white; width: 24px; height: 24px;
+        border-radius: 50%; display: flex; align-items: center;
+        justify-content: center; font-size: 13px; font-weight: bold;
+      }
+      .help-step-content {
+        color: #495057; line-height: 1.6;
+      }
+      .help-note {
+        background: #fff3cd; border-left: 4px solid #ffc107;
+        padding: 12px 16px; margin: 16px 0; border-radius: 4px;
+        color: #856404;
+      }
+      .help-warning {
+        background: #f8d7da; border-left: 4px solid #dc3545;
+        padding: 12px 16px; margin: 16px 0; border-radius: 4px;
+        color: #721c24;
+      }
+      .help-tip {
+        background: #d1ecf1; border-left: 4px solid #17a2b8;
+        padding: 12px 16px; margin: 16px 0; border-radius: 4px;
+        color: #0c5460;
+      }
+      .help-kbd {
+        background: #f8f9fa; border: 1px solid #dee2e6;
+        border-radius: 4px; padding: 2px 8px; font-family: monospace;
+        font-size: 13px; color: #495057;
+      }
     </style>
   </head>
   <body>
@@ -81,6 +169,490 @@
 
     <div class="container">
       <h1 class="mb-4">水平ノズル検査</h1>
+
+      <!-- Help Button -->
+      <button class="help-button" onclick="openHelpModal()" title="ヘルプ・使い方">
+        ?
+      </button>
+
+      <!-- Help Modal -->
+      <div id="helpModal" class="help-modal">
+        <div class="help-modal-content">
+          <div class="help-modal-header">
+            <h2>📖 水平ノズル検査システム - 使い方ガイド</h2>
+            <button class="help-modal-close" onclick="closeHelpModal()">×</button>
+          </div>
+          <div class="help-modal-body">
+            
+            <!-- Section 1: Getting Started -->
+            <div class="help-section">
+              <div class="help-section-title">
+                <span class="help-section-icon">🚀</span>
+                はじめに
+              </div>
+              <div class="help-step-content">
+                このシステムは水平ノズルの測定データと重量データを管理し、検査成績書を作成するためのツールです。
+                測定データと重量データは別々のプロセスで登録でき、どちらを先に登録しても問題ありません。
+              </div>
+            </div>
+
+            <!-- Section 2: Upload Measurement Data -->
+            <div class="help-section">
+              <div class="help-section-title">
+                <span class="help-section-icon">📤</span>
+                測定データのアップロード
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">1</div>
+                <div class="help-step-content">
+                  <strong>「アップロード」ボタン</strong>をクリックして、測定データファイル（.txt形式）を選択します。
+                  複数ファイルを同時に選択できます。
+                </div>
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">2</div>
+                <div class="help-step-content">
+                  <strong>ロット番号入力ダイアログ</strong>が表示されるので、生産ロット番号を入力します（例：LOT-2025-001）。
+                </div>
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">3</div>
+                <div class="help-step-content">
+                  「確認」ボタンをクリックすると、ファイルがアップロードされ、自動的に測定値が計算されます。
+                </div>
+              </div>
+
+              <div class="help-note">
+                <strong>📝 注意：</strong> アップロードされたファイルは自動的にデータベースに保存され、
+                ファイル番号順に画面に表示されます。
+              </div>
+            </div>
+
+            <!-- Section 3: Weight Data Management -->
+            <div class="help-section">
+              <div class="help-section-title">
+                <span class="help-section-icon">⚖️</span>
+                重量データの管理
+              </div>
+
+              <div class="help-step-content" style="margin-bottom: 20px;">
+                重量データは測定データとは<strong>独立して管理</strong>されます。どちらを先に登録しても構いません。
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">1</div>
+                <div class="help-step-content">
+                  <strong>Excelファイルの準備：</strong> 
+                  <ul style="margin: 8px 0; padding-left: 20px;">
+                    <li>第1列：ファイル名（例：462 または 462.txt）</li>
+                    <li>第2列：重量（グラム単位、小数点1桁）</li>
+                    <li>1行目はヘッダー行（File Name, Weight）</li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">2</div>
+                <div class="help-step-content">
+                  <strong>「Data Import」ボタン</strong>をクリックして、Excelファイル（.xlsx または .xls）を選択します。
+                </div>
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">3</div>
+                <div class="help-step-content">
+                  インポート結果が表示されます：
+                  <ul style="margin: 8px 0; padding-left: 20px;">
+                    <li><strong>更新件数：</strong> 既存ファイルの重量を更新</li>
+                    <li><strong>新規作成件数：</strong> 測定データがまだない場合、重量のみ先行登録</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">4</div>
+                <div class="help-step-content">
+                  <strong>個別編集（naemura・iwatsukiのみ）：</strong>
+                  各ファイルカードの重量入力欄に直接入力して <span class="help-kbd">Enter</span> を押すか、
+                  「💾 重量データ保存」ボタンで一括保存できます。
+                </div>
+              </div>
+
+              <div class="help-tip">
+                <strong>💡 ヒント：</strong> 重量データを先にインポートした場合、測定データがアップロードされるまで
+                ファイルカードは画面に表示されません。両方のデータが揃うと自動的に表示されます。
+              </div>
+            </div>
+
+            <!-- Section 4: File Cards -->
+            <div class="help-section">
+              <div class="help-section-title">
+                <span class="help-section-icon">🗂️</span>
+                ファイルカードの操作
+              </div>
+              
+              <div class="help-step-content" style="margin-bottom: 16px;">
+                画面に表示される各ファイルカードには、以下の操作ができます：
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">1</div>
+                <div class="help-step-content">
+                  <strong>シングルクリック：</strong> 検査成績書作成用に選択（青色の枠）
+                </div>
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">2</div>
+                <div class="help-step-content">
+                  <strong>ダブルタップ（素早く2回クリック）：</strong> アーカイブ用に選択（黄色の枠）
+                </div>
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">3</div>
+                <div class="help-step-content">
+                  <strong>2秒長押し：</strong> データベースから完全削除（赤色のオーバーレイ表示）
+                </div>
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">4</div>
+                <div class="help-step-content">
+                  <strong>ファイル番号クリック：</strong> 詳細画面を開いて測定値の詳細を確認
+                </div>
+              </div>
+
+              <div class="help-warning">
+                <strong>⚠️ 警告：</strong> 長押し削除は<strong>完全削除</strong>です。データベースから完全に削除され、
+                復元できません。アーカイブ機能（非表示のみ）との違いに注意してください。
+              </div>
+            </div>
+
+            <!-- Section 5: Range Selection -->
+            <div class="help-section">
+              <div class="help-section-title">
+                <span class="help-section-icon">🎯</span>
+                範囲選択機能
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">1</div>
+                <div class="help-step-content">
+                  「始めのファイル」欄に開始ファイル番号を入力（例：240）
+                </div>
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">2</div>
+                <div class="help-step-content">
+                  「ファイル数」欄に選択したいファイルの数を入力（例：10）
+                </div>
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">3</div>
+                <div class="help-step-content">
+                  「選択」ボタンをクリックすると、指定範囲のファイルが一括で青色選択されます
+                </div>
+              </div>
+
+              <div class="help-note">
+                <strong>📝 例：</strong> 開始ファイル「240」、ファイル数「10」の場合、
+                240番から249番までの10ファイルが選択されます。
+              </div>
+            </div>
+
+            <!-- Section 6: Archive Function -->
+            <div class="help-section">
+              <div class="help-section-title">
+                <span class="help-section-icon">📦</span>
+                アーカイブ機能（完了済みファイルの非表示）
+              </div>
+              
+              <div class="help-step-content" style="margin-bottom: 16px;">
+                検査成績書を作成してクライアントに送付済みのファイルは、アーカイブして画面から非表示にできます。
+                <strong>データはデータベースに保持されます。</strong>
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">1</div>
+                <div class="help-step-content">
+                  完了したファイルカードを<strong>ダブルタップ</strong>（素早く2回クリック）して選択します。
+                  選択されたカードは<strong>黄色の枠</strong>で表示されます。
+                </div>
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">2</div>
+                <div class="help-step-content">
+                  複数のファイルをダブルタップで選択できます。選択数が右側のボタンに表示されます。
+                </div>
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">3</div>
+                <div class="help-step-content">
+                  「📦 完了済み (X件)」ボタンをクリックします。
+                </div>
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">4</div>
+                <div class="help-step-content">
+                  確認ダイアログが表示されるので、「OK」をクリックするとファイルが画面から非表示になります。
+                </div>
+              </div>
+
+              <div class="help-tip">
+                <strong>💡 ヒント：</strong> アーカイブされたファイルはデータベースに保存されており、
+                将来的にアーカイブビュー機能で閲覧・復元できるようになります。
+              </div>
+            </div>
+
+            <!-- Section 7: Inspection Sheet Creation -->
+            <div class="help-section">
+              <div class="help-section-title">
+                <span class="help-section-icon">📋</span>
+                検査成績書の作成
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">1</div>
+                <div class="help-step-content">
+                  検査成績書に含めたいファイルを<strong>シングルクリック</strong>で選択します（青色の枠）。
+                  または範囲選択機能を使用します。
+                </div>
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">2</div>
+                <div class="help-step-content">
+                  右側の「検査成績書作成へ」ボタンが「選択されたファイル：X」に変わります。
+                </div>
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">3</div>
+                <div class="help-step-content">
+                  ボタンをクリックすると、サマリーページに移動します。
+                </div>
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">4</div>
+                <div class="help-step-content">
+                  <strong>サマリーページで入力する項目：</strong>
+                  <ul style="margin: 8px 0; padding-left: 20px;">
+                    <li><strong>M項目（手動検査）：</strong> 合格/不合格を選択</li>
+                    <li><strong>N項目（目視検査）：</strong> 合格/不合格を選択</li>
+                    <li><strong>備考欄：</strong> 必要に応じてコメントを入力</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">5</div>
+                <div class="help-step-content">
+                  ページ下部の「検査成績書作成」ボタンをクリックします。
+                </div>
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">6</div>
+                <div class="help-step-content">
+                  検査成績書がPDF形式で生成されます。ブラウザの印刷機能を使用して：
+                  <ul style="margin: 8px 0; padding-left: 20px;">
+                    <li>送り先：「PDFに保存」を選択</li>
+                    <li>印刷ボタンをクリックしてPDFをダウンロード</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="help-note">
+                <strong>📝 注意：</strong> 検査成績書には、選択したすべてのファイルの測定データと
+                検査結果が含まれます。印刷前に内容を確認してください。
+              </div>
+            </div>
+
+            <!-- Section 8: File Details -->
+            <div class="help-section">
+              <div class="help-section-title">
+                <span class="help-section-icon">🔍</span>
+                ファイル詳細の確認
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">1</div>
+                <div class="help-step-content">
+                  ファイルカード上の<strong>ファイル番号</strong>（大きな青い数字）をクリックします。
+                </div>
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">2</div>
+                <div class="help-step-content">
+                  詳細ページが開き、以下の情報が表示されます：
+                  <ul style="margin: 8px 0; padding-left: 20px;">
+                    <li>すべての測定項目（A～L、G1～G4）の詳細値</li>
+                    <li>各項目の合格/不合格判定</li>
+                    <li>重量データ</li>
+                    <li>ロット番号</li>
+                    <li>アップロード日時</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">3</div>
+                <div class="help-step-content">
+                  詳細ページでも重量の編集が可能です（権限保持者のみ）。
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 9: Data Export -->
+            <div class="help-section">
+              <div class="help-section-title">
+                <span class="help-section-icon">💾</span>
+                データのエクスポート
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">1</div>
+                <div class="help-step-content">
+                  右側の「Data Export」ボタンをクリックします。
+                </div>
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">2</div>
+                <div class="help-step-content">
+                  現在登録されているすべてのファイルの重量データがExcel形式でダウンロードされます。
+                </div>
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">3</div>
+                <div class="help-step-content">
+                  ファイル名は「weight_data_YYYYMMDD.xlsx」形式で、現在の日付が含まれます。
+                </div>
+              </div>
+
+              <div class="help-tip">
+                <strong>💡 活用例：</strong> エクスポートしたExcelファイルを編集して、
+                再度インポートすることで重量データを一括更新できます。
+              </div>
+            </div>
+
+            <!-- Section 10: User Permissions -->
+            <div class="help-section">
+              <div class="help-section-title">
+                <span class="help-section-icon">👥</span>
+                ユーザー権限
+              </div>
+              
+              <div class="help-step-content">
+                このシステムには2種類のユーザー権限があります：
+              </div>
+
+              <div style="margin-top: 16px;">
+                <strong style="color: #155724;">✓ 重量編集可能ユーザー（naemura、iwatsuki）：</strong>
+                <ul style="margin: 8px 0; padding-left: 20px;">
+                  <li>測定データのアップロード</li>
+                  <li>重量データの編集・インポート</li>
+                  <li>ファイルの選択・アーカイブ・削除</li>
+                  <li>検査成績書の作成</li>
+                </ul>
+              </div>
+
+              <div style="margin-top: 16px;">
+                <strong style="color: #383d41;">📖 閲覧のみユーザー（その他）：</strong>
+                <ul style="margin: 8px 0; padding-left: 20px;">
+                  <li>測定データのアップロード</li>
+                  <li>ファイルの選択・アーカイブ・削除</li>
+                  <li>検査成績書の作成</li>
+                  <li>重量データの閲覧（編集不可）</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Section 11: Tips & Shortcuts -->
+            <div class="help-section">
+              <div class="help-section-title">
+                <span class="help-section-icon">⚡</span>
+                便利な機能とショートカット
+              </div>
+              
+              <div class="help-step">
+                <div class="help-step-number">1</div>
+                <div class="help-step-content">
+                  <strong>重量入力のキーボード操作：</strong> 
+                  重量を入力して <span class="help-kbd">Enter</span> キーを押すと、次のファイルの重量入力欄に自動的に移動します。
+                </div>
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">2</div>
+                <div class="help-step-content">
+                  <strong>色による状態識別：</strong>
+                  <ul style="margin: 8px 0; padding-left: 20px;">
+                    <li>青色枠 = 検査成績書用に選択</li>
+                    <li>黄色枠 = アーカイブ用に選択</li>
+                    <li>赤色オーバーレイ = 削除待機中</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">3</div>
+                <div class="help-step-content">
+                  <strong>検索とフィルタ：</strong> 
+                  ファイルは自動的にファイル番号順にソートされて表示されます。
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 12: Troubleshooting -->
+            <div class="help-section">
+              <div class="help-section-title">
+                <span class="help-section-icon">🔧</span>
+                トラブルシューティング
+              </div>
+              
+              <div class="help-step-content">
+                <strong>Q: 重量をインポートしたのにファイルが表示されない</strong><br>
+                A: 測定データがまだアップロードされていない可能性があります。測定データをアップロードすると自動的に表示されます。
+              </div>
+
+              <div class="help-step-content" style="margin-top: 16px;">
+                <strong>Q: ダブルタップがうまく動作しない</strong><br>
+                A: より速く2回クリックしてください。300ミリ秒以内に2回クリックする必要があります。
+              </div>
+
+              <div class="help-step-content" style="margin-top: 16px;">
+                <strong>Q: 重量編集ボタンが表示されない</strong><br>
+                A: 重量の編集はnaemuraとiwatsukiのみ可能です。権限がない場合は「閲覧のみ」と表示されます。
+              </div>
+
+              <div class="help-step-content" style="margin-top: 16px;">
+                <strong>Q: アーカイブしたファイルを元に戻したい</strong><br>
+                A: 現在はアーカイブビュー機能が未実装です。管理者に連絡してデータベースから復元してもらってください。
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="text-align: center; padding-top: 24px; border-top: 1px solid #e9ecef; color: #6c757d; font-size: 14px;">
+              <p style="margin: 0;">水平ノズル検査システム v2.2.0</p>
+              <p style="margin: 8px 0 0 0;">問題が発生した場合は、システム管理者にお問い合わせください。</p>
+            </div>
+
+          </div>
+        </div>
+      </div>
 
       <div class="top-row">
         <div class="column-left">
@@ -146,6 +718,7 @@
               </div>
             <% } %>
             <button id="viewSelectedBtn" class="btn btn-info" disabled>検査成績書作成へ</button>
+            <button id="archiveSelectedBtn" class="btn btn-warning" disabled>📦 選択を完了済みに</button>
             <button id="exportWeightsBtn" class="btn btn-secondary">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-download me-1" viewBox="0 0 16 16">
                 <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
@@ -225,6 +798,32 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+      // HELP MODAL FUNCTIONS
+      function openHelpModal() {
+        document.getElementById('helpModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+      }
+
+      function closeHelpModal() {
+        document.getElementById('helpModal').style.display = 'none';
+        document.body.style.overflow = 'auto'; // Re-enable scrolling
+      }
+
+      // Close modal when clicking outside
+      document.addEventListener('click', function(e) {
+        const modal = document.getElementById('helpModal');
+        if (e.target === modal) {
+          closeHelpModal();
+        }
+      });
+
+      // Close modal with Escape key
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          closeHelpModal();
+        }
+      });
+
       // GLOBAL FUNCTIONS
       function showLotDialog() {
         const filesInput = document.getElementById("files");
@@ -254,7 +853,11 @@
       document.addEventListener("DOMContentLoaded", function () {
         const fileCards = document.querySelectorAll(".file-card");
         const selectedFiles = new Set();
+        const archiveSelectedFiles = new Set();
         let pressTimer;
+        let archiveMode = false;
+        let lastTapTime = 0;
+        let lastTappedCard = null;
 
         const userCanEditWeights = <% if (canEditWeights) { %>true<% } else { %>false<% } %>;
 
@@ -394,21 +997,43 @@
           });
         }
 
-        function updateSummaryForm() {
+        function updateButtons() {
           const viewSelectedBtn = document.getElementById("viewSelectedBtn");
+          const archiveSelectedBtn = document.getElementById("archiveSelectedBtn");
           const selectedFilesInput = document.getElementById("selectedFilesInput");
-          if (selectedFiles.size > 0) {
-            viewSelectedBtn.disabled = false;
-            viewSelectedBtn.textContent = "選択されたファイル：" + selectedFiles.size;
-            selectedFilesInput.value = Array.from(selectedFiles).join(",");
-          } else {
+          
+          if (archiveMode) {
+            // Archive mode
             viewSelectedBtn.disabled = true;
             viewSelectedBtn.textContent = "検査成績書作成へ";
-            selectedFilesInput.value = "";
+            
+            if (archiveSelectedFiles.size > 0) {
+              archiveSelectedBtn.disabled = false;
+              archiveSelectedBtn.textContent = `📦 完了済み (${archiveSelectedFiles.size}件)`;
+            } else {
+              archiveSelectedBtn.disabled = true;
+              archiveSelectedBtn.textContent = "📦 選択を完了済みに";
+            }
+          } else {
+            // Normal selection mode
+            archiveSelectedBtn.disabled = true;
+            archiveSelectedBtn.textContent = "📦 選択を完了済みに";
+            
+            if (selectedFiles.size > 0) {
+              viewSelectedBtn.disabled = false;
+              viewSelectedBtn.textContent = "選択されたファイル：" + selectedFiles.size;
+              selectedFilesInput.value = Array.from(selectedFiles).join(",");
+            } else {
+              viewSelectedBtn.disabled = true;
+              viewSelectedBtn.textContent = "検査成績書作成へ";
+              selectedFilesInput.value = "";
+            }
           }
         }
 
         function toggleFileSelection(card) {
+          if (archiveMode) return; // Don't allow normal selection in archive mode
+          
           const fileId = card.dataset.fileId;
           if (card.classList.contains("selected")) {
             selectedFiles.delete(fileId);
@@ -417,11 +1042,40 @@
             selectedFiles.add(fileId);
             card.classList.add("selected");
           }
-          updateSummaryForm();
+          updateButtons();
+        }
+
+        function handleDoubleTap(card) {
+          const fileId = card.dataset.fileId;
+          
+          if (card.classList.contains("archive-selected")) {
+            archiveSelectedFiles.delete(fileId);
+            card.classList.remove("archive-selected");
+          } else {
+            archiveSelectedFiles.add(fileId);
+            card.classList.add("archive-selected");
+          }
+          
+          // Enter archive mode if any files are selected for archive
+          if (archiveSelectedFiles.size > 0 && !archiveMode) {
+            archiveMode = true;
+            // Clear normal selections
+            selectedFiles.clear();
+            fileCards.forEach(c => c.classList.remove("selected"));
+          } else if (archiveSelectedFiles.size === 0 && archiveMode) {
+            archiveMode = false;
+          }
+          
+          updateButtons();
         }
 
         window.selectFileRange = function (event) {
           event.preventDefault();
+          if (archiveMode) {
+            alert("アーカイブモードでは範囲選択はできません");
+            return;
+          }
+          
           const startFile = parseInt(document.getElementById("startFile").value);
           const fileCount = parseInt(document.getElementById("fileCount").value);
           if (isNaN(startFile) || isNaN(fileCount) || fileCount < 1) {
@@ -442,20 +1096,62 @@
               }
             }
           });
-          updateSummaryForm();
+          updateButtons();
         };
 
         document.getElementById("viewSelectedBtn").addEventListener("click", function (e) {
           e.preventDefault();
-          if (selectedFiles.size > 0) {
+          if (selectedFiles.size > 0 && !archiveMode) {
             document.getElementById("viewSelectedForm").submit();
+          }
+        });
+
+        // Archive button handler
+        document.getElementById("archiveSelectedBtn").addEventListener("click", async function (e) {
+          e.preventDefault();
+          
+          if (archiveSelectedFiles.size === 0) return;
+          
+          const confirmMsg = `${archiveSelectedFiles.size}件のファイルを完了済みにしますか？\n\n完了済みにすると、画面から非表示になりますが、データベースには保存されています。\n\n本当に実行しますか？`;
+          
+          if (!confirm(confirmMsg)) return;
+          
+          try {
+            const response = await fetch('/archive-files', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ fileIds: Array.from(archiveSelectedFiles) })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+              alert(`✓ ${result.archived}件のファイルを完了済みにしました`);
+              window.location.reload();
+            } else {
+              throw new Error(result.error || 'アーカイブに失敗しました');
+            }
+          } catch (error) {
+            console.error('Error:', error);
+            alert('❌ エラー: ' + error.message);
           }
         });
 
         fileCards.forEach(function(card) {
           card.addEventListener("click", function (e) {
             if (!e.target.closest("input") && !e.target.closest("a")) {
-              toggleFileSelection(this);
+              const currentTime = Date.now();
+              const timeDiff = currentTime - lastTapTime;
+              
+              // Double tap detection (within 300ms)
+              if (timeDiff < 300 && lastTappedCard === card) {
+                handleDoubleTap(card);
+              } else if (!archiveMode) {
+                toggleFileSelection(card);
+              }
+              
+              lastTapTime = currentTime;
+              lastTappedCard = card;
             }
           });
 
@@ -470,7 +1166,7 @@
             clearTimeout(pressTimer);
             if (card.classList.contains("deleting")) {
               card.classList.remove("deleting");
-              if (confirm("本当にファイル " + card.dataset.filename + " を削除しますか？")) {
+              if (confirm("本当にファイル " + card.dataset.filename + " を削除しますか？\n\n⚠️ この操作はデータベースからデータを完全に削除します。")) {
                 fetch("/delete-file", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
@@ -541,9 +1237,12 @@
               
               const result = await response.json();
               if (result.success) {
-                let message = `✓ ${result.updated}件の重量データをインポートしました`;
-                if (result.notFound && result.notFound.length > 0) {
-                  message += `\n\n⚠️ ${result.notFound.length}件が見つかりませんでした`;
+                let message = `✓ ${result.updated}件の重量データを更新`;
+                if (result.created > 0) {
+                  message += `\n✓ ${result.created}件の新規レコードを作成`;
+                }
+                if (result.errors && result.errors.length > 0) {
+                  message += `\n\n⚠️ ${result.errors.length}件でエラーが発生`;
                 }
                 alert(message);
                 window.location.reload();

@@ -486,11 +486,22 @@ app.get("/", requireAuth, async (req, res) => {
     const filesResponse = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_INSPECTIONS,
-      [Query.orderAsc("filename"), Query.limit(1000)]
+      [
+        Query.equal("is_archived", false),
+        Query.orderAsc("filename"), 
+        Query.limit(1000)
+      ]
     );
 
+    // Filter out weight-only records (records without measurement data)
+    // Only show cards where measurement data exists
+    const visibleFiles = filesResponse.documents.filter(file => {
+      // Check if at least one measurement field has actual data (not null or '-')
+      return file.measurementA && file.measurementA !== '-';
+    });
+
     res.render("index", {
-      files: filesResponse.documents,
+      files: visibleFiles,
       username: req.session.username,
       displayName: getDisplayName(req.session.username),
       canEditWeights: req.session.canEditWeights,
@@ -562,6 +573,7 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
             uploaded_at: new Date().toISOString(),
             weight: null,
             lot: req.body.lot ? parseInt(req.body.lot) : null,
+            is_archived: false,
             
             measurementA: String(measurements.A?.value || '-'),
             measurementB: String(measurements.B?.value || '-'),
@@ -850,7 +862,7 @@ app.get("/export-weights", requireAuth, async (req, res) => {
 });
 
 // ======================
-// IMPORT WEIGHTS FROM EXCEL - NEW
+// IMPORT WEIGHTS FROM EXCEL - UPDATED TO CREATE RECORDS
 // ======================
 
 app.post("/import-weights", requireWeightEditAuth, upload.single('weightFile'), async (req, res) => {
@@ -870,7 +882,8 @@ app.post("/import-weights", requireWeightEditAuth, upload.single('weightFile'), 
 
     // Skip header row and process data
     let updated = 0;
-    let notFound = [];
+    let created = 0;
+    let errors = [];
     
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
@@ -893,11 +906,12 @@ app.post("/import-weights", requireWeightEditAuth, upload.single('weightFile'), 
           [Query.equal('filename', filenameWithExt), Query.limit(1)]
         );
         
+        // Format to 1 decimal place
+        const formattedWeight = parseFloat(weight.toFixed(1));
+        
         if (result.documents.length > 0) {
+          // Update existing record
           const inspection = result.documents[0];
-          // Format to 1 decimal place
-          const formattedWeight = parseFloat(weight.toFixed(1));
-          
           await databases.updateDocument(
             DATABASE_ID,
             COLLECTION_INSPECTIONS,
@@ -906,24 +920,143 @@ app.post("/import-weights", requireWeightEditAuth, upload.single('weightFile'), 
           );
           updated++;
         } else {
-          notFound.push(filename);
+          // Create new record with weight only (no measurement data)
+          await databases.createDocument(
+            DATABASE_ID,
+            COLLECTION_INSPECTIONS,
+            ID.unique(),
+            {
+              filename: filenameWithExt,
+              lot: null,
+              weight: formattedWeight,
+              uploaded_at: new Date().toISOString(),
+              is_archived: false,
+              // All measurement fields null
+              measurementA: null, measurementB: null, measurementC: null,
+              measurementD: null, measurementE: null, measurementF: null,
+              measurementG1: null, measurementG2: null, measurementG3: null,
+              measurementG4: null, measurementH: null, measurementI: null,
+              measurementJ: null, measurementK: null, measurementL: null,
+              isValidA: null, isValidB: null, isValidC: null,
+              isValidD: null, isValidE: null, isValidF: null,
+              isValidG1: null, isValidG2: null, isValidG3: null,
+              isValidG4: null, isValidH: null, isValidI: null,
+              isValidJ: null, isValidK: null, isValidL: null
+            }
+          );
+          created++;
         }
       } catch (err) {
-        console.error(`Failed to update ${filename}:`, err);
-        notFound.push(filename);
+        console.error(`Failed to process ${filename}:`, err);
+        errors.push(filename);
       }
     }
     
     res.json({ 
       success: true, 
       updated: updated,
-      notFound: notFound.length > 0 ? notFound : undefined
+      created: created,
+      errors: errors.length > 0 ? errors : undefined
     });
   } catch (error) {
     console.error("Error importing weights:", error);
     res.status(500).json({ 
       success: false, 
       error: error.message 
+    });
+  }
+});
+
+// ======================
+// ARCHIVE FILES (Hide without deleting)
+// ======================
+
+app.post("/archive-files", requireAuth, async (req, res) => {
+  try {
+    const { fileIds } = req.body;
+    
+    if (!Array.isArray(fileIds) || fileIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No file IDs provided'
+      });
+    }
+
+    let archived = 0;
+    let errors = [];
+
+    for (const fileId of fileIds) {
+      try {
+        await databases.updateDocument(
+          DATABASE_ID,
+          COLLECTION_INSPECTIONS,
+          fileId,
+          { is_archived: true }
+        );
+        archived++;
+      } catch (err) {
+        console.error(`Failed to archive ${fileId}:`, err);
+        errors.push(fileId);
+      }
+    }
+
+    res.json({
+      success: true,
+      archived: archived,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    console.error("Error archiving files:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ======================
+// UNARCHIVE FILES (Restore visibility)
+// ======================
+
+app.post("/unarchive-files", requireAuth, async (req, res) => {
+  try {
+    const { fileIds } = req.body;
+    
+    if (!Array.isArray(fileIds) || fileIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No file IDs provided'
+      });
+    }
+
+    let unarchived = 0;
+    let errors = [];
+
+    for (const fileId of fileIds) {
+      try {
+        await databases.updateDocument(
+          DATABASE_ID,
+          COLLECTION_INSPECTIONS,
+          fileId,
+          { is_archived: false }
+        );
+        unarchived++;
+      } catch (err) {
+        console.error(`Failed to unarchive ${fileId}:`, err);
+        errors.push(fileId);
+      }
+    }
+
+    res.json({
+      success: true,
+      unarchived: unarchived,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    console.error("Error unarchiving files:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });
