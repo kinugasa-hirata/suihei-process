@@ -967,18 +967,41 @@ app.put("/api/inspections/advance-status", requireAuth, async (req, res) => {
 // FILE UPLOAD (TXT)
 // ======================
 
-app.post("/upload", requireAuth, upload.single("file"), async (req, res) => {
+app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
   try {
-    if (!req.file) {
+    if (!req.files || req.files.length === 0) {
       return res.status(400).json({ 
         success: false, 
         error: "No file uploaded" 
       });
     }
 
-    const fileContent = req.file.buffer.toString("utf-8");
+    // Process each uploaded file
+    const allResults = { successful: [], failed: [], updated: [] };
+
+    for (const file of req.files) {
+      try {
+        await processSingleUpload(file, req, allResults);
+      } catch (err) {
+        allResults.failed.push({ filename: file.originalname, error: err.message });
+      }
+    }
+
+    if (allResults.successful.length === 0 && allResults.updated.length === 0) {
+      return res.status(400).json({ success: false, error: allResults.failed.map(f => f.error).join(', ') });
+    }
+
+    return res.json({ success: true, results: allResults });
+  } catch (error) {
+    console.error("Upload error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+async function processSingleUpload(file, req, results) {
+    const fileContent = file.buffer.toString("utf-8");
     const parsedData = parseTxtFile(fileContent);
-    const filename = req.file.originalname;
+    const filename = file.originalname;
 
     const existingFiles = await databases.listDocuments(
       DATABASE_ID,
@@ -1014,17 +1037,12 @@ app.post("/upload", requireAuth, upload.single("file"), async (req, res) => {
             ...validations
           }
         );
-        return res.json({ 
-          success: true, 
-          message: `File ${filename} updated with measurement data`,
-          updated: true
-        });
+        results.updated.push({ filename });
+        return;
       } else {
-        // Real data already exists — reject to prevent overwrite
-        return res.status(400).json({
-          success: false,
-          error: `File ${filename} already has measurement data`
-        });
+        // Real data already exists — skip with error
+        results.failed.push({ filename, error: `${filename} already has measurement data` });
+        return;
       }
     }
 
@@ -1045,19 +1063,8 @@ app.post("/upload", requireAuth, upload.single("file"), async (req, res) => {
       }
     );
 
-    res.json({ 
-      success: true, 
-      message: `File ${filename} uploaded successfully`,
-      updated: false
-    });
-  } catch (error) {
-    console.error("Upload error:", error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
-    });
-  }
-});
+    results.successful.push({ filename });
+}
 
 // ======================
 // FILE DATA RETRIEVAL
