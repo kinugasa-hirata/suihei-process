@@ -419,11 +419,10 @@ function parseTxtFile(fileContent) {
       };
     } else if (type === "DISTANCE") {
       // Format: index;DISTANCE;;x;y;z;;;;;distance_value
-      // The actual distance is the last non-empty numeric value
-      const numericParts = parts.slice(3).map(safeFloat).filter(v => v !== null);
+      // parts[3] = x coordinate = the actual depth/distance measurement (use abs value)
       data.measurements[index]["DISTANCE"] = {
         type: "DISTANCE",
-        y: numericParts.length > 0 ? Math.abs(numericParts[numericParts.length - 1]) : null
+        y: safeFloat(parts[3]) !== null ? Math.abs(safeFloat(parts[3])) : null
       };
     }
   });
