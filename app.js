@@ -376,49 +376,55 @@ app.post("/logout", async (req, res) => {
 // ======================
 
 function parseTxtFile(fileContent) {
-  const lines = fileContent.split("\n").map(line => line.trim());
+  const lines = fileContent.split("\n").map(line => line.trim()).filter(l => l.length > 0);
+  // Key structure: measurements[index][type] = {...}
+  // This handles duplicate indices with different types (e.g. idx=1 CIRCLE, idx=1 PT-COMP)
   const data = { measurements: {} };
+
+  const safeFloat = s => { const v = parseFloat(s); return isNaN(v) ? null : v; };
 
   lines.forEach((line) => {
     if (line.startsWith("Lot No.")) {
       const lotMatch = line.match(/Lot No\.\s*:\s*(.+)/);
       if (lotMatch) data.lot = lotMatch[1].trim();
-    } else {
-      const circleMatch = line.match(/^(\d+)\s+CIRCLE\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
-      if (circleMatch) {
-        const index = parseInt(circleMatch[1]);
-        data.measurements[index] = {
-          type: "CIRCLE",
-          x: parseFloat(circleMatch[2]),
-          y: parseFloat(circleMatch[3]),
-          z: parseFloat(circleMatch[4]),
-          diameter: parseFloat(circleMatch[5]),
-          roundness: parseFloat(circleMatch[6])
-        };
-      }
+      return;
+    }
 
-      const ptCompMatch = line.match(/^(\d+)\s+PT-COMP\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
-      if (ptCompMatch) {
-        const index = parseInt(ptCompMatch[1]);
-        data.measurements[index] = {
-          type: "PT-COMP",
-          x: parseFloat(ptCompMatch[2]),
-          y: parseFloat(ptCompMatch[3]),
-          z: parseFloat(ptCompMatch[4])
-        };
-      }
+    const parts = line.split(";").map(p => p.trim());
+    if (parts.length < 2) return;
 
-      const distanceMatch = line.match(/^(\d+)\s+DISTANCE\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
-      if (distanceMatch) {
-        const index = parseInt(distanceMatch[1]);
-        data.measurements[index] = {
-          type: "DISTANCE",
-          x: parseFloat(distanceMatch[2]),
-          y: parseFloat(distanceMatch[3]),
-          z: parseFloat(distanceMatch[4]),
-          distance: parseFloat(distanceMatch[5])
-        };
-      }
+    const index = parseInt(parts[0]);
+    const type = parts[1];
+    if (isNaN(index)) return;
+
+    if (!data.measurements[index]) data.measurements[index] = {};
+
+    if (type === "CIRCLE" && parts.length >= 12) {
+      // Format: index;CIRCLE;count;x;y;z;rx;ry;rz;;diameter;roundness
+      data.measurements[index]["CIRCLE"] = {
+        type: "CIRCLE",
+        x: safeFloat(parts[3]),
+        y: safeFloat(parts[4]),
+        z: safeFloat(parts[5]),
+        diameter: safeFloat(parts[10]),
+        roundness: safeFloat(parts[11])
+      };
+    } else if (type === "PT-COMP" && parts.length >= 6) {
+      // Format: index;PT-COMP;count;x;y;z
+      data.measurements[index]["PT-COMP"] = {
+        type: "PT-COMP",
+        x: Math.abs(safeFloat(parts[3])),
+        y: safeFloat(parts[4]),
+        z: safeFloat(parts[5])
+      };
+    } else if (type === "DISTANCE") {
+      // Format: index;DISTANCE;;x;y;z;;;;;distance_value
+      // The actual distance is the last non-empty numeric value
+      const numericParts = parts.slice(3).map(safeFloat).filter(v => v !== null);
+      data.measurements[index]["DISTANCE"] = {
+        type: "DISTANCE",
+        y: numericParts.length > 0 ? Math.abs(numericParts[numericParts.length - 1]) : null
+      };
     }
   });
 
@@ -427,27 +433,31 @@ function parseTxtFile(fileContent) {
 
 function extractMeasurementValue(parsedData, measureKey) {
   const config = measurementMapping[measureKey];
-  
   if (!config) return null;
-  
+
   if (config.type === 'AVERAGE') {
     const values = config.indices
       .map(indexConfig => {
-        const measurement = parsedData.measurements[indexConfig.index];
-        if (!measurement || measurement.type !== indexConfig.type) return null;
+        // New structure: measurements[index][type]
+        const byIndex = parsedData.measurements[indexConfig.index];
+        const measurement = byIndex && byIndex[indexConfig.type];
+        if (!measurement) return null;
         return measurement[indexConfig.field];
       })
       .filter(v => v !== null);
-    
+
     if (values.length === 0) return null;
     const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
     return config.absolute ? Math.abs(avg) : avg;
   }
-  
-  const measurement = parsedData.measurements[config.index];
-  if (!measurement || measurement.type !== config.type) return null;
-  
+
+  // New structure: measurements[index][type]
+  const byIndex = parsedData.measurements[config.index];
+  const measurement = byIndex && byIndex[config.type];
+  if (!measurement) return null;
+
   const value = measurement[config.field];
+  if (value === null || value === undefined) return null;
   return config.absolute ? Math.abs(value) : value;
 }
 
@@ -1016,7 +1026,8 @@ async function processSingleUpload(file, req, results) {
     const dbKeys = Object.keys(measurementMapping).filter(k => k !== 'M' && k !== 'N');
     dbKeys.forEach(key => {
       const value = extractMeasurementValue(parsedData, key);
-      measurements[`measurement${key}`] = value;
+      // Appwrite stores measurements as String — convert numeric values
+      measurements[`measurement${key}`] = value !== null ? String(value) : '-';
       validations[`isValid${key}`] = isValidMeasurement(value, key);
     });
 
