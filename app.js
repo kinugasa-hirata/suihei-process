@@ -1012,7 +1012,9 @@ async function processSingleUpload(file, req, results) {
     const measurements = {};
     const validations = {};
 
-    Object.keys(measurementMapping).forEach(key => {
+    // Skip M and N — they are manual/visual fields not stored in Appwrite
+    const dbKeys = Object.keys(measurementMapping).filter(k => k !== 'M' && k !== 'N');
+    dbKeys.forEach(key => {
       const value = extractMeasurementValue(parsedData, key);
       measurements[`measurement${key}`] = value;
       validations[`isValid${key}`] = isValidMeasurement(value, key);
