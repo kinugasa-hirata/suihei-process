@@ -495,7 +495,6 @@ app.get("/", requireAuth, async (req, res) => {
     const showArchived = req.query.archived === 'true';
     const queries = [
       Query.equal('is_archived', showArchived),
-      Query.notEqual('status', 'shipped'),   // Never show shipped items in main view
       Query.orderDesc('uploaded_at'),
       Query.limit(1000)
     ];
@@ -506,17 +505,20 @@ app.get("/", requireAuth, async (req, res) => {
       queries
     );
 
-    const files = result.documents.map(doc => {
-      const status = doc.status || 'finished_inspection';
-      const statusCfg = STATUS_CONFIG[status] || STATUS_CONFIG['finished_inspection'];
-      return {
-        ...doc,
-        fileNumber: doc.filename ? doc.filename.replace(/\.(txt|TXT)$/, '') : 'Unknown',
-        statusColor: statusCfg.color,
-        statusOpacity: statusCfg.opacity,
-        statusLabel: statusCfg.label
-      };
-    });
+    const files = result.documents
+      .filter(doc => doc.status !== 'shipped')           // exclude shipped
+      .filter(doc => doc.measurementA && doc.measurementA !== '-')  // exclude placeholders (no real data yet)
+      .map(doc => {
+        const status = doc.status || 'finished_inspection';
+        const statusCfg = STATUS_CONFIG[status] || STATUS_CONFIG['finished_inspection'];
+        return {
+          ...doc,
+          fileNumber: doc.filename ? doc.filename.replace(/\.(txt|TXT)$/, '') : 'Unknown',
+          statusColor: statusCfg.color,
+          statusOpacity: statusCfg.opacity,
+          statusLabel: statusCfg.label
+        };
+      });
 
     res.render("index", {
       files: files,
@@ -557,14 +559,13 @@ app.get("/stock-management", requireAuth, async (req, res) => {
       DATABASE_ID,
       COLLECTION_INSPECTIONS,
       [
-        Query.notEqual('status', 'shipped'),
         Query.equal('is_archived', false),
         Query.orderDesc('uploaded_at'),
         Query.limit(1000)
       ]
     );
 
-    // Group inspections by status
+    // Group inspections by status (filter shipped, treat NULL as finished_inspection)
     const inspectionsByStatus = {
       upcoming_import: [],
       imported: [],
@@ -576,8 +577,11 @@ app.get("/stock-management", requireAuth, async (req, res) => {
     const importFileMap = {};
     inspectionsResult.documents.forEach(doc => {
       const status = doc.status || 'finished_inspection';
-      if (inspectionsByStatus[status]) {
+      if (status === 'shipped') return;  // skip shipped
+      if (inspectionsByStatus[status] !== undefined) {
         inspectionsByStatus[status].push(doc);
+      } else {
+        inspectionsByStatus['finished_inspection'].push(doc);
       }
       if (doc.import_id) {
         if (!importFileMap[doc.import_id]) importFileMap[doc.import_id] = [];
@@ -762,40 +766,61 @@ app.post("/api/imports", requireAuth, async (req, res) => {
     // Step 2: Find the last file number and create sequential placeholders
     const lastNumber = await getLastFileNumber();
     const createdFiles = [];
+    const errors = [];
 
     for (let i = 1; i <= qty; i++) {
       const fileNumber = lastNumber + i;
       const filename = `${fileNumber}.txt`;
 
       try {
-        const doc = await databases.createDocument(
+        // Match exact same fields as real upload to satisfy Appwrite schema
+        await databases.createDocument(
           DATABASE_ID,
           COLLECTION_INSPECTIONS,
           ID.unique(),
           {
             filename: filename,
-            lot: null,
-            weight: null,
             uploaded_at: new Date().toISOString(),
+            weight: null,
+            lot: null,
             is_archived: false,
             status: 'upcoming_import',
             import_id: importDoc.$id,
-            measurementA: null, measurementB: null, measurementC: null,
-            measurementD: null, measurementE: null, measurementF: null,
-            measurementG1: null, measurementG2: null, measurementG3: null,
-            measurementG4: null, measurementH: null, measurementI: null,
-            measurementJ: null, measurementK: null, measurementL: null,
+            // Measurements - use '-' as placeholder (same as real upload)
+            measurementA: '-', measurementB: '-', measurementC: '-',
+            measurementD: '-', measurementE: '-', measurementF: '-',
+            measurementG1: '-', measurementG2: '-', measurementG3: '-',
+            measurementG4: '-', measurementH: '-', measurementI: '-',
+            measurementJ: '-', measurementK: '-', measurementL: '-',
+            // Validity flags - null until real data arrives
             isValidA: null, isValidB: null, isValidC: null,
             isValidD: null, isValidE: null, isValidF: null,
             isValidG1: null, isValidG2: null, isValidG3: null,
             isValidG4: null, isValidH: null, isValidI: null,
-            isValidJ: null, isValidK: null, isValidL: null
+            isValidJ: null, isValidK: null, isValidL: null,
+            // Status fields
+            inspectionStatus: 'pending',
+            failedMeasurements: ''
           }
         );
         createdFiles.push(filename);
       } catch (err) {
-        console.error(`Failed to create placeholder ${filename}:`, err);
+        console.error(`Failed to create placeholder ${filename}:`, err.message);
+        errors.push({ file: filename, error: err.message });
       }
+    }
+
+    if (errors.length > 0) {
+      console.error('Some placeholders failed:', JSON.stringify(errors));
+      // Still return success for the import, but note errors
+      return res.json({
+        success: true,
+        import: importDoc,
+        createdFiles: createdFiles,
+        startNumber: lastNumber + 1,
+        endNumber: lastNumber + qty,
+        errors: errors
+      });
     }
 
     res.json({
