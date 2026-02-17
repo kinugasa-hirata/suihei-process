@@ -776,6 +776,7 @@ app.post("/api/imports", requireAuth, async (req, res) => {
 
     // Step 2: Find the last file number and create sequential placeholders
     const lastNumber = await getLastFileNumber();
+    const lotNumber = lastNumber + 1;  // Lot = youngest (lowest) number in the batch
     const createdFiles = [];
     const errors = [];
 
@@ -793,7 +794,7 @@ app.post("/api/imports", requireAuth, async (req, res) => {
             filename: filename,
             uploaded_at: new Date().toISOString(),
             weight: null,
-            lot: null,
+            lot: lotNumber,  // All files in batch share the same lot (lowest number)
             is_archived: false,
             status: 'upcoming_import',
             import_id: importDoc.$id,
