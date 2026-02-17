@@ -626,6 +626,88 @@
               </div>
             </div>
 
+            <!-- Section: Stock Management -->
+            <div class="help-section">
+              <div class="help-section-title">
+                <span class="help-section-icon">📦</span>
+                在庫管理システム
+              </div>
+
+              <div class="help-step-content" style="margin-bottom: 20px;">
+                在庫管理システムを使用して、注文、入荷、製品ステータスを一元管理できます。
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">1</div>
+                <div class="help-step-content">
+                  <strong>アクセス方法：</strong>
+                  右側のアクションボタンエリアにある<strong>「在庫管理」ボタン</strong>（青色）をクリックします。
+                </div>
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">2</div>
+                <div class="help-step-content">
+                  <strong>3つのタブ：</strong>
+                  <ul>
+                    <li><strong>注文管理：</strong> 顧客からの注文を記録・追跡</li>
+                    <li><strong>入荷管理：</strong> 製品の入荷予定を管理</li>
+                    <li><strong>在庫状況：</strong> すべての製品をステータス別に表示</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">3</div>
+                <div class="help-step-content">
+                  <strong>注文の作成：</strong>
+                  <ul>
+                    <li>注文管理タブで「新規注文」ボタンをクリック</li>
+                    <li>数量と納期を入力</li>
+                    <li>ステータスを選択（保留中/処理中/完了/キャンセル）</li>
+                    <li>「保存」をクリック</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">4</div>
+                <div class="help-step-content">
+                  <strong>入荷予定の登録：</strong>
+                  <ul>
+                    <li>入荷管理タブで「新規入荷予定」ボタンをクリック</li>
+                    <li>数量と予定日を入力</li>
+                    <li>実際に入荷したら「実際の入荷日」と「入荷済」ステータスを設定</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="help-step">
+                <div class="help-step-number">5</div>
+                <div class="help-step-content">
+                  <strong>製品ステータスの確認：</strong>
+                  在庫状況タブでは、製品が5つのステージに分類されます：
+                  <ul>
+                    <li><strong>入荷予定：</strong> まだ到着していない製品</li>
+                    <li><strong>入荷済：</strong> 到着したが検査前（薄いグレー）</li>
+                    <li><strong>検査中：</strong> 測定ファイルがアップロードされた製品（グレー）</li>
+                    <li><strong>検査完了：</strong> すべてのデータが揃った製品（濃いグレー）</li>
+                    <li><strong>出荷済：</strong> 顧客に発送済み（非表示）</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="help-tip">
+                <strong>💡 ヒント：</strong> 測定ファイル（.txt）をアップロードすると、
+                自動的にステータスが「検査中」に設定されます。
+              </div>
+
+              <div class="help-note">
+                <strong>📝 注意：</strong> メイン画面のファイルカードは、ステータスに応じて
+                背景色の濃さが変わります。完了した製品ほど濃い色で表示されます。
+              </div>
+            </div>
+
             <!-- Section 12: Troubleshooting -->
             <div class="help-section">
               <div class="help-section-title">
@@ -744,6 +826,13 @@
               Data Export (.xlsx)
             </button>
             <input type="file" id="weightFileInput" accept=".xlsx,.xls" style="display: none;" />
+            <!-- NEW: Stock Management Button -->
+            <a href="/stock-management" class="btn btn-info" style="color: white; display: flex; align-items: center; justify-content: center; text-decoration: none;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-seam me-1" viewBox="0 0 16 16">
+                <path d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5l2.404.961L10.404 2l-2.218-.887zm3.564 1.426L5.596 5 8 5.961 14.154 3.5l-2.404-.961zm3.25 1.7-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.762V6.838L1 4.239v7.923l6.5 2.6zM7.443.184a1.5 1.5 0 0 1 1.114 0l7.129 2.852A.5.5 0 0 1 16 3.5v8.662a1 1 0 0 1-.629.928l-7.185 2.874a.5.5 0 0 1-.372 0L.63 13.09a1 1 0 0 1-.63-.928V3.5a.5.5 0 0 1 .314-.464L7.443.184z"/>
+              </svg>
+              在庫管理
+            </a>
           </div>
         </div>
       </div>
@@ -769,7 +858,7 @@
           var match = file.filename.match(/^(\d+)/);
           if (match) { fileNumber = match[1]; }
         %>
-        <div class="file-card" data-file-id="<%= file.$id %>" data-filename="<%= file.filename %>">
+        <div class="file-card" data-file-id="<%= file.$id %>" data-filename="<%= file.filename %>"  <% if (file.statusColor) { %>style="background-color: <%= file.statusColor %>; opacity: <%= file.statusOpacity %>;"<% } %>>
           <div class="delete-overlay">Release to Delete</div>
           <div class="file-content">
             <div class="file-number"><%= fileNumber %></div>
