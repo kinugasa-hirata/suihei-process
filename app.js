@@ -986,13 +986,6 @@ app.post("/upload", requireAuth, upload.single("file"), async (req, res) => {
       [Query.equal('filename', filename), Query.limit(1)]
     );
 
-    if (existingFiles.documents.length > 0) {
-      return res.status(400).json({
-        success: false,
-        error: `File ${filename} already exists`
-      });
-    }
-
     const measurements = {};
     const validations = {};
 
@@ -1002,6 +995,40 @@ app.post("/upload", requireAuth, upload.single("file"), async (req, res) => {
       validations[`isValid${key}`] = isValidMeasurement(value, key);
     });
 
+    if (existingFiles.documents.length > 0) {
+      const existingDoc = existingFiles.documents[0];
+      const isPlaceholder = !existingDoc.measurementA || existingDoc.measurementA === '-';
+
+      if (isPlaceholder) {
+        // Placeholder exists from import schedule — fill in the real measurement data
+        await databases.updateDocument(
+          DATABASE_ID,
+          COLLECTION_INSPECTIONS,
+          existingDoc.$id,
+          {
+            uploaded_at: new Date().toISOString(),
+            is_archived: false,
+            status: 'inspection',
+            // Keep existing lot and import_id from placeholder, only overwrite measurements
+            ...measurements,
+            ...validations
+          }
+        );
+        return res.json({ 
+          success: true, 
+          message: `File ${filename} updated with measurement data`,
+          updated: true
+        });
+      } else {
+        // Real data already exists — reject to prevent overwrite
+        return res.status(400).json({
+          success: false,
+          error: `File ${filename} already has measurement data`
+        });
+      }
+    }
+
+    // No existing file — create fresh
     await databases.createDocument(
       DATABASE_ID,
       COLLECTION_INSPECTIONS,
@@ -1012,7 +1039,7 @@ app.post("/upload", requireAuth, upload.single("file"), async (req, res) => {
         weight: null,
         uploaded_at: new Date().toISOString(),
         is_archived: false,
-        status: 'inspection', // Default status when uploaded
+        status: 'inspection',
         ...measurements,
         ...validations
       }
@@ -1020,7 +1047,8 @@ app.post("/upload", requireAuth, upload.single("file"), async (req, res) => {
 
     res.json({ 
       success: true, 
-      message: `File ${filename} uploaded successfully` 
+      message: `File ${filename} uploaded successfully`,
+      updated: false
     });
   } catch (error) {
     console.error("Upload error:", error);
