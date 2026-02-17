@@ -573,6 +573,12 @@ app.get("/stock-management", requireAuth, async (req, res) => {
       finished_inspection: []
     };
 
+    // Helper: extract numeric file number for sorting DESC
+    const fileNum = doc => {
+      const m = doc.filename && doc.filename.match(/^(\d+)/);
+      return m ? parseInt(m[1]) : 0;
+    };
+
     // Also build a map of import_id -> list of filenames for the imports table
     const importFileMap = {};
     inspectionsResult.documents.forEach(doc => {
@@ -587,6 +593,11 @@ app.get("/stock-management", requireAuth, async (req, res) => {
         if (!importFileMap[doc.import_id]) importFileMap[doc.import_id] = [];
         importFileMap[doc.import_id].push(doc.filename);
       }
+    });
+
+    // Sort each section ASC by file number (lowest first: 492, 493, 494...)
+    Object.keys(inspectionsByStatus).forEach(key => {
+      inspectionsByStatus[key].sort((a, b) => fileNum(a) - fileNum(b));
     });
 
     // Attach linked_files to each import
