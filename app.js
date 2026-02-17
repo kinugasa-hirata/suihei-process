@@ -495,6 +495,7 @@ app.get("/", requireAuth, async (req, res) => {
     const showArchived = req.query.archived === 'true';
     const queries = [
       Query.equal('is_archived', showArchived),
+      Query.notEqual('status', 'shipped'),   // Never show shipped items in main view
       Query.orderDesc('uploaded_at'),
       Query.limit(1000)
     ];
@@ -505,13 +506,17 @@ app.get("/", requireAuth, async (req, res) => {
       queries
     );
 
-    const files = result.documents.map(doc => ({
-      ...doc,
-      fileNumber: doc.filename ? doc.filename.replace(/\.(txt|TXT)$/, '') : 'Unknown',
-      statusColor: STATUS_CONFIG[doc.status]?.color || STATUS_CONFIG['finished_inspection'].color,
-      statusOpacity: STATUS_CONFIG[doc.status]?.opacity ?? STATUS_CONFIG['finished_inspection'].opacity,
-      statusLabel: STATUS_CONFIG[doc.status]?.label || STATUS_CONFIG['finished_inspection'].label
-    }));
+    const files = result.documents.map(doc => {
+      const status = doc.status || 'finished_inspection';
+      const statusCfg = STATUS_CONFIG[status] || STATUS_CONFIG['finished_inspection'];
+      return {
+        ...doc,
+        fileNumber: doc.filename ? doc.filename.replace(/\.(txt|TXT)$/, '') : 'Unknown',
+        statusColor: statusCfg.color,
+        statusOpacity: statusCfg.opacity,
+        statusLabel: statusCfg.label
+      };
+    });
 
     res.render("index", {
       files: files,
