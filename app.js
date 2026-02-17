@@ -462,19 +462,27 @@ function isValidMeasurement(value, measureKey) {
 
 function processGValues(measurements) {
   const gKeys = ['G1', 'G2', 'G3', 'G4'];
+
+  // Parse numeric values safely - DB stores them as strings (e.g. "8.020")
   const validGValues = gKeys
-    .map(key => measurements[key])
-    .filter(m => m && m.value !== null && m.value !== undefined && m.isValid === true);
-  
+    .map(key => {
+      const m = measurements[key];
+      if (!m || m.value === null || m.value === undefined || m.value === '-') return null;
+      const numeric = parseFloat(m.value);
+      if (isNaN(numeric)) return null;
+      return { value: numeric, isValid: m.isValid };
+    })
+    .filter(m => m !== null);
+
   if (validGValues.length === 0) {
     return { value: null, isValid: null };
   }
-  
+
   const gSum = validGValues.reduce((sum, m) => sum + m.value, 0);
   const gAverage = gSum / validGValues.length;
   const gRange = validationRanges['G1'];
   const gIsValid = gAverage >= gRange.min && gAverage <= gRange.max;
-  
+
   return { value: gAverage, isValid: gIsValid };
 }
 
