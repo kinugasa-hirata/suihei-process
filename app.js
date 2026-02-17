@@ -572,16 +572,28 @@ app.get("/stock-management", requireAuth, async (req, res) => {
       finished_inspection: []
     };
 
+    // Also build a map of import_id -> list of filenames for the imports table
+    const importFileMap = {};
     inspectionsResult.documents.forEach(doc => {
       const status = doc.status || 'finished_inspection';
       if (inspectionsByStatus[status]) {
         inspectionsByStatus[status].push(doc);
       }
+      if (doc.import_id) {
+        if (!importFileMap[doc.import_id]) importFileMap[doc.import_id] = [];
+        importFileMap[doc.import_id].push(doc.filename);
+      }
     });
+
+    // Attach linked_files to each import
+    const importsWithFiles = importsResult.documents.map(imp => ({
+      ...imp,
+      linked_files: importFileMap[imp.$id] || []
+    }));
 
     res.render("stock-management", {
       orders: ordersResult.documents,
-      imports: importsResult.documents,
+      imports: importsWithFiles,
       inspectionsByStatus: inspectionsByStatus,
       statusConfig: STATUS_CONFIG,
       username: req.session.username,
@@ -675,7 +687,53 @@ app.delete("/api/orders/:orderId", requireAuth, async (req, res) => {
 // IMPORT MANAGEMENT API
 // ======================
 
-// Create new import
+// Helper: find the highest file number in inspections collection
+async function getLastFileNumber() {
+  try {
+    const result = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      [Query.orderDesc('uploaded_at'), Query.limit(500)]
+    );
+    let max = 0;
+    result.documents.forEach(doc => {
+      const match = doc.filename && doc.filename.match(/^(\d+)/);
+      if (match) {
+        const num = parseInt(match[1]);
+        if (num > max) max = num;
+      }
+    });
+    return max;
+  } catch (e) {
+    console.error('Error getting last file number:', e);
+    return 0;
+  }
+}
+
+// Helper: bulk update inspection status by import_id
+async function updateInspectionStatusByImport(importId, newStatus) {
+  try {
+    const result = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      [Query.equal('import_id', importId), Query.limit(500)]
+    );
+    for (const doc of result.documents) {
+      await databases.updateDocument(
+        DATABASE_ID,
+        COLLECTION_INSPECTIONS,
+        doc.$id,
+        { status: newStatus }
+      );
+    }
+    return result.documents.length;
+  } catch (e) {
+    console.error('Error bulk updating statuses:', e);
+    return 0;
+  }
+}
+
+// Create new import + auto-generate placeholder file records
 app.post("/api/imports", requireAuth, async (req, res) => {
   try {
     const { quantity, scheduled_date } = req.body;
@@ -687,25 +745,73 @@ app.post("/api/imports", requireAuth, async (req, res) => {
       });
     }
 
+    const qty = parseInt(quantity);
+
+    // Step 1: Create the import record
     const importDoc = await databases.createDocument(
       DATABASE_ID,
       COLLECTION_IMPORTS,
       ID.unique(),
       {
-        quantity: parseInt(quantity),
+        quantity: qty,
         scheduled_date: scheduled_date,
         status: 'scheduled'
       }
     );
 
-    res.json({ success: true, import: importDoc });
+    // Step 2: Find the last file number and create sequential placeholders
+    const lastNumber = await getLastFileNumber();
+    const createdFiles = [];
+
+    for (let i = 1; i <= qty; i++) {
+      const fileNumber = lastNumber + i;
+      const filename = `${fileNumber}.txt`;
+
+      try {
+        const doc = await databases.createDocument(
+          DATABASE_ID,
+          COLLECTION_INSPECTIONS,
+          ID.unique(),
+          {
+            filename: filename,
+            lot: null,
+            weight: null,
+            uploaded_at: new Date().toISOString(),
+            is_archived: false,
+            status: 'upcoming_import',
+            import_id: importDoc.$id,
+            measurementA: null, measurementB: null, measurementC: null,
+            measurementD: null, measurementE: null, measurementF: null,
+            measurementG1: null, measurementG2: null, measurementG3: null,
+            measurementG4: null, measurementH: null, measurementI: null,
+            measurementJ: null, measurementK: null, measurementL: null,
+            isValidA: null, isValidB: null, isValidC: null,
+            isValidD: null, isValidE: null, isValidF: null,
+            isValidG1: null, isValidG2: null, isValidG3: null,
+            isValidG4: null, isValidH: null, isValidI: null,
+            isValidJ: null, isValidK: null, isValidL: null
+          }
+        );
+        createdFiles.push(filename);
+      } catch (err) {
+        console.error(`Failed to create placeholder ${filename}:`, err);
+      }
+    }
+
+    res.json({
+      success: true,
+      import: importDoc,
+      createdFiles: createdFiles,
+      startNumber: lastNumber + 1,
+      endNumber: lastNumber + qty
+    });
   } catch (error) {
     console.error("Error creating import:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// Update import
+// Update import + sync linked inspection statuses
 app.put("/api/imports/:importId", requireAuth, async (req, res) => {
   try {
     const { importId } = req.params;
@@ -724,7 +830,14 @@ app.put("/api/imports/:importId", requireAuth, async (req, res) => {
       updateData
     );
 
-    res.json({ success: true, import: importDoc });
+    // Sync linked inspection statuses when import status changes
+    let updatedCount = 0;
+    if (status === 'arrived') {
+      // Import arrived → move linked inspections to 'imported'
+      updatedCount = await updateInspectionStatusByImport(importId, 'imported');
+    }
+
+    res.json({ success: true, import: importDoc, updatedInspections: updatedCount });
   } catch (error) {
     console.error("Error updating import:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -775,6 +888,40 @@ app.put("/api/inspections/:inspectionId/status", requireAuth, async (req, res) =
     res.json({ success: true, inspection: inspection });
   } catch (error) {
     console.error("Error updating inspection status:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Bulk advance all inspections from one status to another
+app.put("/api/inspections/advance-status", requireAuth, async (req, res) => {
+  try {
+    const { fromStatus, toStatus } = req.body;
+
+    if (!fromStatus || !toStatus || !STATUS_CONFIG[fromStatus] || !STATUS_CONFIG[toStatus]) {
+      return res.status(400).json({ success: false, error: 'Invalid status values' });
+    }
+
+    // Fetch all docs with fromStatus
+    const result = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      [Query.equal('status', fromStatus), Query.limit(500)]
+    );
+
+    let updated = 0;
+    for (const doc of result.documents) {
+      await databases.updateDocument(
+        DATABASE_ID,
+        COLLECTION_INSPECTIONS,
+        doc.$id,
+        { status: toStatus }
+      );
+      updated++;
+    }
+
+    res.json({ success: true, updated: updated });
+  } catch (error) {
+    console.error("Error advancing status:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
