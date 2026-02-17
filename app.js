@@ -838,7 +838,7 @@ app.post("/upload", requireAuth, upload.single("file"), async (req, res) => {
 // FILE DATA RETRIEVAL
 // ======================
 
-app.get("/file-data/:fileId", requireAuth, async (req, res) => {
+app.get("/files/:fileId", requireAuth, async (req, res) => {
   try {
     const inspection = await databases.getDocument(
       DATABASE_ID,
