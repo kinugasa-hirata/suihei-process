@@ -331,7 +331,11 @@
                       <th>注文日</th>
                       <th>数量</th>
                       <th>納期</th>
+<<<<<<< HEAD
                       <th>在庫状況</th>
+=======
+                      <th>在庫状況</th> <!-- *** NEW COLUMN *** -->
+>>>>>>> 673349848b749f20ffdc01700a14636dbcaac34a
                       <th>ステータス</th>
                       <th>操作</th>
                     </tr>
@@ -343,7 +347,11 @@
                         <td><%= order.quantity %> 個</td>
                         <td><%= new Date(order.due_date).toLocaleDateString('ja-JP') %></td>
                         
+<<<<<<< HEAD
                         <!-- Stock Availability Column -->
+=======
+                        <!-- *** NEW: STOCK AVAILABILITY COLUMN *** -->
+>>>>>>> 673349848b749f20ffdc01700a14636dbcaac34a
                         <td>
                           <% if (order.stockAvailability) { %>
                             <div style="display: inline-flex; align-items: center; gap: 0.5rem;">
@@ -351,10 +359,20 @@
                               <span style="color: <%= order.stockAvailability.color %>; font-weight: 600; font-size: 0.875rem;">
                                 <%= order.stockAvailability.label %>
                               </span>
+<<<<<<< HEAD
+=======
+                              
+                              <!-- Show shortage count if insufficient -->
+>>>>>>> 673349848b749f20ffdc01700a14636dbcaac34a
                               <% if (order.stockAvailability.status === 'insufficient') { %>
                                 <span style="color: #dc3545; font-size: 0.75rem;">
                                   (<%= order.stockAvailability.available %>/<%= order.stockAvailability.needed %>)
                                 </span>
+<<<<<<< HEAD
+=======
+                                
+                              <!-- Show allocated file range if sufficient -->
+>>>>>>> 673349848b749f20ffdc01700a14636dbcaac34a
                               <% } else if (order.stockAvailability.allocatedItems && order.stockAvailability.allocatedItems.length > 0) { %>
                                 <%
                                   const items = order.stockAvailability.allocatedItems;
@@ -371,6 +389,10 @@
                           <% } %>
                         </td>
                         
+<<<<<<< HEAD
+=======
+                        <!-- *** UPDATED STATUS LABELS *** -->
+>>>>>>> 673349848b749f20ffdc01700a14636dbcaac34a
                         <td>
                           <span class="status-badge status-<%= order.status %>">
                             <%= order.status === 'pending' ? '保留中' :
@@ -378,6 +400,7 @@
                                 order.status === 'completed' ? '出荷済' : 'キャンセル' %>
                           </span>
                         </td>
+                        
                         <td>
                           <button class="btn btn-sm btn-outline-primary btn-action" onclick="editOrder('<%= order.$id %>')">
                             <span class="material-icons" style="font-size: 16px;">edit</span>
@@ -391,9 +414,6 @@
                   </tbody>
                 </table>
               </div>
-            <% } %>
-          </div>
-        </div>
 
         <!-- Imports Tab -->
         <div class="tab-pane fade" id="imports" role="tabpanel">
@@ -557,8 +577,13 @@
             <label for="orderStatus" class="form-label form-label-custom">ステータス</label>
             <select class="form-select" id="orderStatus" name="status">
               <option value="pending">保留中</option>
+<<<<<<< HEAD
               <option value="processing">注文確定</option>
               <option value="completed">出荷済</option>
+=======
+              <option value="processing">注文確定</option> <!-- *** UPDATED *** -->
+              <option value="completed">出荷済</option>     <!-- *** UPDATED *** -->
+>>>>>>> 673349848b749f20ffdc01700a14636dbcaac34a
               <option value="cancelled">キャンセル</option>
             </select>
           </div>
