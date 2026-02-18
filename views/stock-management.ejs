@@ -331,6 +331,7 @@
                       <th>注文日</th>
                       <th>数量</th>
                       <th>納期</th>
+                      <th>在庫状況</th> <!-- *** NEW COLUMN *** -->
                       <th>ステータス</th>
                       <th>操作</th>
                     </tr>
@@ -341,13 +342,48 @@
                         <td><%= new Date(order.$createdAt).toLocaleDateString('ja-JP') %></td>
                         <td><%= order.quantity %> 個</td>
                         <td><%= new Date(order.due_date).toLocaleDateString('ja-JP') %></td>
+                        
+                        <!-- *** NEW: STOCK AVAILABILITY COLUMN *** -->
+                        <td>
+                          <% if (order.stockAvailability) { %>
+                            <div style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                              <span style="font-size: 1.2rem;"><%= order.stockAvailability.icon %></span>
+                              <span style="color: <%= order.stockAvailability.color %>; font-weight: 600; font-size: 0.875rem;">
+                                <%= order.stockAvailability.label %>
+                              </span>
+                              
+                              <!-- Show shortage count if insufficient -->
+                              <% if (order.stockAvailability.status === 'insufficient') { %>
+                                <span style="color: #dc3545; font-size: 0.75rem;">
+                                  (<%= order.stockAvailability.available %>/<%= order.stockAvailability.needed %>)
+                                </span>
+                                
+                              <!-- Show allocated file range if sufficient -->
+                              <% } else if (order.stockAvailability.allocatedItems && order.stockAvailability.allocatedItems.length > 0) { %>
+                                <%
+                                  const items = order.stockAvailability.allocatedItems;
+                                  const firstNum = parseInt(items[0].filename.replace('.txt',''));
+                                  const lastNum = parseInt(items[items.length-1].filename.replace('.txt',''));
+                                %>
+                                <span style="color: #6c757d; font-size: 0.75rem;">
+                                  (<%= firstNum %> ~ <%= lastNum %>)
+                                </span>
+                              <% } %>
+                            </div>
+                          <% } else { %>
+                            <span style="color: #999;">-</span>
+                          <% } %>
+                        </td>
+                        
+                        <!-- *** UPDATED STATUS LABELS *** -->
                         <td>
                           <span class="status-badge status-<%= order.status %>">
                             <%= order.status === 'pending' ? '保留中' :
-                                order.status === 'processing' ? '処理中' :
-                                order.status === 'completed' ? '完了' : 'キャンセル' %>
+                                order.status === 'processing' ? '注文確定' :
+                                order.status === 'completed' ? '出荷済' : 'キャンセル' %>
                           </span>
                         </td>
+                        
                         <td>
                           <button class="btn btn-sm btn-outline-primary btn-action" onclick="editOrder('<%= order.$id %>')">
                             <span class="material-icons" style="font-size: 16px;">edit</span>
@@ -361,9 +397,6 @@
                   </tbody>
                 </table>
               </div>
-            <% } %>
-          </div>
-        </div>
 
         <!-- Imports Tab -->
         <div class="tab-pane fade" id="imports" role="tabpanel">
@@ -527,8 +560,8 @@
             <label for="orderStatus" class="form-label form-label-custom">ステータス</label>
             <select class="form-select" id="orderStatus" name="status">
               <option value="pending">保留中</option>
-              <option value="processing">処理中</option>
-              <option value="completed">完了</option>
+              <option value="processing">注文確定</option> <!-- *** UPDATED *** -->
+              <option value="completed">出荷済</option>     <!-- *** UPDATED *** -->
               <option value="cancelled">キャンセル</option>
             </select>
           </div>
