@@ -1,7 +1,6 @@
 // app.js - EFFICIENT SCHEMA VERSION WITH STOCK MANAGEMENT
 // Updated: Added stock management system for orders and imports
-// Modified: Excel import/export, Status tracking, Order management
-// Fixed: GET /logout route added, requireAuth error handling improved
+// Modified: Excel import/export, Status tracking, Order management, Ship order functionality
 
 const express = require("express");
 const multer = require("multer");
@@ -107,8 +106,8 @@ const measurementMapping = {
   'C': { index: 1, type: 'DISTANCE', field: 'y', absolute: true },
   'D': { index: 4, type: 'PT-COMP', field: 'x', absolute: true },
   'E': { index: 8, type: 'CIRCLE', field: 'diameter', absolute: false },
-  'F': { 
-    type: 'AVERAGE', 
+  'F': {
+    type: 'AVERAGE',
     indices: [
       { index: 2, type: 'CIRCLE', field: 'diameter' },
       { index: 4, type: 'CIRCLE', field: 'diameter' },
@@ -182,23 +181,18 @@ function generateSessionId() {
 
 async function getSession(sessionId) {
   if (!sessionId) return null;
-  
   try {
     const sessions = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_SESSIONS,
       [Query.equal('session_id', sessionId), Query.limit(1)]
     );
-    
     if (sessions.documents.length === 0) return null;
-    
     const session = sessions.documents[0];
-    
     if (new Date(session.expires_at) < new Date()) {
       await databases.deleteDocument(DATABASE_ID, COLLECTION_SESSIONS, session.$id);
       return null;
     }
-    
     return session;
   } catch (error) {
     console.error('Error getting session:', error);
@@ -209,38 +203,36 @@ async function getSession(sessionId) {
 async function createSession(username) {
   const sessionId = generateSessionId();
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  
-  const doc = await databases.createDocument(
-    DATABASE_ID,
-    COLLECTION_SESSIONS,
-    ID.unique(),
-    {
-      session_id: sessionId,
-      username: username,
-      can_edit_weights: canEditWeights(username),
-      created_at: new Date().toISOString(),
-      expires_at: expiresAt.toISOString()
-    }
-  );
-  return sessionId;
+  try {
+    await databases.createDocument(
+      DATABASE_ID,
+      COLLECTION_SESSIONS,
+      ID.unique(),
+      {
+        session_id: sessionId,
+        username: username,
+        can_edit_weights: canEditWeights(username),
+        created_at: new Date().toISOString(),
+        expires_at: expiresAt.toISOString()
+      }
+    );
+    return sessionId;
+  } catch (error) {
+    console.error(`[SESSION] Error creating session:`, error);
+    throw error;
+  }
 }
 
 async function deleteSession(sessionId) {
   if (!sessionId) return;
-  
   try {
     const sessions = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_SESSIONS,
       [Query.equal('session_id', sessionId), Query.limit(1)]
     );
-    
     if (sessions.documents.length > 0) {
-      await databases.deleteDocument(
-        DATABASE_ID,
-        COLLECTION_SESSIONS,
-        sessions.documents[0].$id
-      );
+      await databases.deleteDocument(DATABASE_ID, COLLECTION_SESSIONS, sessions.documents[0].$id);
     }
   } catch (error) {
     console.error('Error deleting session:', error);
@@ -255,19 +247,16 @@ async function requireAuth(req, res, next) {
   try {
     const sessionId = req.cookies.session_id;
     const session = await getSession(sessionId);
-    
     if (!session) {
       return res.redirect('/login');
     }
-    
     req.session = {
       username: session.username,
       canEditWeights: session.can_edit_weights
     };
-    
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
+    console.error('Auth error:', error);
     res.clearCookie('session_id');
     return res.redirect('/login');
   }
@@ -277,26 +266,20 @@ async function requireWeightEditAuth(req, res, next) {
   try {
     const sessionId = req.cookies.session_id;
     const session = await getSession(sessionId);
-    
     if (!session || !session.can_edit_weights) {
-      return res.status(403).json({ 
-        success: false, 
-        error: 'Not authorized to edit weights. Only naemura and iwatsuki can edit weights.' 
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to edit weights. Only naemura and iwatsuki can edit weights.'
       });
     }
-    
     req.session = {
       username: session.username,
       canEditWeights: session.can_edit_weights
     };
-    
     next();
   } catch (error) {
-    console.error('Weight auth middleware error:', error);
-    return res.status(403).json({ 
-      success: false, 
-      error: 'Authentication error. Please log in again.' 
-    });
+    console.error('Weight auth error:', error);
+    return res.status(403).json({ success: false, error: 'Authentication error' });
   }
 }
 
@@ -310,54 +293,37 @@ app.get("/login", (req, res) => {
 
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
-  
   if (!username || !password) {
-    return res.render("login", { 
-      error: "Username and password are required" 
-    });
+    return res.render("login", { error: "Username and password are required" });
   }
-  
   if (!isValidPassword(password)) {
-    return res.render("login", { 
-      error: "Password must be exactly 4 digits" 
-    });
+    return res.render("login", { error: "Password must be exactly 4 digits" });
   }
-  
   try {
     const sessionId = await createSession(username);
-    
     res.cookie('session_id', sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 24 * 60 * 60 * 1000,
       sameSite: 'lax'
     });
-    
     try {
-      await databases.createDocument(
-        DATABASE_ID,
-        COLLECTION_LOGIN_LOGS,
-        ID.unique(),
-        {
-          username: username,
-          login_time: new Date().toISOString(),
-          can_edit_weights: canEditWeights(username)
-        }
-      );
+      await databases.createDocument(DATABASE_ID, COLLECTION_LOGIN_LOGS, ID.unique(), {
+        username: username,
+        login_time: new Date().toISOString(),
+        can_edit_weights: canEditWeights(username)
+      });
     } catch (logError) {
       console.error('Error logging login:', logError);
     }
-    
     res.redirect("/");
   } catch (error) {
     console.error('Login error:', error);
-    res.render("login", { 
-      error: "Login failed. Please try again." 
-    });
+    res.render("login", { error: "Login failed. Please try again." });
   }
 });
 
-// POST logout (from form submissions)
+// Support both POST and GET logout for Vercel compatibility
 app.post("/logout", async (req, res) => {
   const sessionId = req.cookies.session_id;
   await deleteSession(sessionId);
@@ -365,7 +331,6 @@ app.post("/logout", async (req, res) => {
   res.redirect('/login');
 });
 
-// GET logout (for direct URL access and links) ← NEW
 app.get("/logout", async (req, res) => {
   const sessionId = req.cookies.session_id;
   await deleteSession(sessionId);
@@ -380,7 +345,6 @@ app.get("/logout", async (req, res) => {
 function parseTxtFile(fileContent) {
   const lines = fileContent.split("\n").map(line => line.trim()).filter(l => l.length > 0);
   const data = { measurements: {} };
-
   const safeFloat = s => { const v = parseFloat(s); return isNaN(v) ? null : v; };
 
   lines.forEach((line) => {
@@ -389,31 +353,23 @@ function parseTxtFile(fileContent) {
       if (lotMatch) data.lot = lotMatch[1].trim();
       return;
     }
-
     const parts = line.split(";").map(p => p.trim());
     if (parts.length < 2) return;
-
     const index = parseInt(parts[0]);
     const type = parts[1];
     if (isNaN(index)) return;
-
     if (!data.measurements[index]) data.measurements[index] = {};
 
     if (type === "CIRCLE" && parts.length >= 12) {
       data.measurements[index]["CIRCLE"] = {
         type: "CIRCLE",
-        x: safeFloat(parts[3]),
-        y: safeFloat(parts[4]),
-        z: safeFloat(parts[5]),
-        diameter: safeFloat(parts[10]),
-        roundness: safeFloat(parts[11])
+        x: safeFloat(parts[3]), y: safeFloat(parts[4]), z: safeFloat(parts[5]),
+        diameter: safeFloat(parts[10]), roundness: safeFloat(parts[11])
       };
     } else if (type === "PT-COMP" && parts.length >= 6) {
       data.measurements[index]["PT-COMP"] = {
         type: "PT-COMP",
-        x: Math.abs(safeFloat(parts[3])),
-        y: safeFloat(parts[4]),
-        z: safeFloat(parts[5])
+        x: Math.abs(safeFloat(parts[3])), y: safeFloat(parts[4]), z: safeFloat(parts[5])
       };
     } else if (type === "DISTANCE") {
       data.measurements[index]["DISTANCE"] = {
@@ -422,14 +378,12 @@ function parseTxtFile(fileContent) {
       };
     }
   });
-
   return data;
 }
 
 function extractMeasurementValue(parsedData, measureKey) {
   const config = measurementMapping[measureKey];
   if (!config) return null;
-
   if (config.type === 'AVERAGE') {
     const values = config.indices
       .map(indexConfig => {
@@ -439,16 +393,13 @@ function extractMeasurementValue(parsedData, measureKey) {
         return measurement[indexConfig.field];
       })
       .filter(v => v !== null);
-
     if (values.length === 0) return null;
     const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
     return config.absolute ? Math.abs(avg) : avg;
   }
-
   const byIndex = parsedData.measurements[config.index];
   const measurement = byIndex && byIndex[config.type];
   if (!measurement) return null;
-
   const value = measurement[config.field];
   if (value === null || value === undefined) return null;
   return config.absolute ? Math.abs(value) : value;
@@ -463,7 +414,6 @@ function isValidMeasurement(value, measureKey) {
 
 function processGValues(measurements) {
   const gKeys = ['G1', 'G2', 'G3', 'G4'];
-
   const validGValues = gKeys
     .map(key => {
       const m = measurements[key];
@@ -473,16 +423,11 @@ function processGValues(measurements) {
       return { value: numeric, isValid: m.isValid };
     })
     .filter(m => m !== null);
-
-  if (validGValues.length === 0) {
-    return { value: null, isValid: null };
-  }
-
+  if (validGValues.length === 0) return { value: null, isValid: null };
   const gSum = validGValues.reduce((sum, m) => sum + m.value, 0);
   const gAverage = gSum / validGValues.length;
   const gRange = validationRanges['G1'];
   const gIsValid = gAverage >= gRange.min && gAverage <= gRange.max;
-
   return { value: gAverage, isValid: gIsValid };
 }
 
@@ -493,17 +438,11 @@ function processGValues(measurements) {
 app.get("/", requireAuth, async (req, res) => {
   try {
     const showArchived = req.query.archived === 'true';
-    const queries = [
+    const result = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, [
       Query.equal('is_archived', showArchived),
       Query.orderDesc('uploaded_at'),
       Query.limit(1000)
-    ];
-
-    const result = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      queries
-    );
+    ]);
 
     const files = result.documents
       .filter(doc => doc.status !== 'shipped')
@@ -521,12 +460,10 @@ app.get("/", requireAuth, async (req, res) => {
       });
 
     res.render("index", {
-      files: files,
-      username: req.session.username,
+      files, username: req.session.username,
       displayName: getDisplayName(req.session.username),
       canEditWeights: req.session.canEditWeights,
-      showArchived: showArchived,
-      statusConfig: STATUS_CONFIG
+      showArchived, statusConfig: STATUS_CONFIG
     });
   } catch (error) {
     console.error("Error fetching files:", error);
@@ -540,61 +477,30 @@ app.get("/", requireAuth, async (req, res) => {
 
 function calculateStockAvailability(orderQuantity, inspections) {
   const availableStock = inspections
-    .filter(item => item.status && item.status !== 'shipped')
-    .map(item => ({
-      ...item,
-      fileNumber: parseInt(item.filename.replace('.txt', ''))
-    }))
+    .filter(item => item.status && item.status !== 'shipped' && item.status !== 'upcoming_import')
+    .map(item => ({ ...item, fileNumber: parseInt(item.filename.replace('.txt', '')) }))
     .filter(item => !isNaN(item.fileNumber))
     .sort((a, b) => a.fileNumber - b.fileNumber);
 
   const needed = parseInt(orderQuantity);
-  
+
   if (availableStock.length < needed) {
     return {
-      status: 'insufficient',
-      color: '#fd7e14',
-      icon: '⚠️',
-      label: '在庫不足',
-      available: availableStock.length,
-      needed: needed,
-      allocatedItems: []
+      status: 'insufficient', color: '#fd7e14', icon: '⚠️', label: '在庫不足',
+      available: availableStock.length, needed, allocatedItems: []
     };
   }
 
   const allocated = availableStock.slice(0, needed);
-  
-  const hasUpcomingImport = allocated.some(item => item.status === 'upcoming_import');
-  const hasImportedOrInspection = allocated.some(item => 
-    item.status === 'imported' || item.status === 'inspection'
-  );
-  const allFinished = allocated.every(item => item.status === 'finished_inspection');
+  const hasImportedOrInspection = allocated.some(i => i.status === 'imported' || i.status === 'inspection');
+  const allFinished = allocated.every(i => i.status === 'finished_inspection');
 
   if (allFinished) {
-    return {
-      status: 'ready',
-      color: '#198754',
-      icon: '✓',
-      label: '出荷可能',
-      allocatedItems: allocated
-    };
-  } else if (hasUpcomingImport) {
-    return {
-      status: 'uncertain',
-      color: '#ffc107',
-      icon: '⚠',
-      label: '入荷予定含む',
-      allocatedItems: allocated
-    };
+    return { status: 'ready', color: '#198754', icon: '✓', label: '出荷可能', allocatedItems: allocated };
   } else if (hasImportedOrInspection) {
-    return {
-      status: 'processing',
-      color: '#6c757d',
-      icon: '◐',
-      label: '検査中含む',
-      allocatedItems: allocated
-    };
+    return { status: 'processing', color: '#6c757d', icon: '◐', label: '検査中含む', allocatedItems: allocated };
   }
+  return { status: 'uncertain', color: '#ffc107', icon: '⚠', label: '確認中', allocatedItems: allocated };
 }
 
 // ======================
@@ -603,44 +509,35 @@ function calculateStockAvailability(orderQuantity, inspections) {
 
 app.get("/stock-management", requireAuth, async (req, res) => {
   try {
-    const ordersResult = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTION_ORDERS,
-      [Query.orderAsc('due_date'), Query.limit(100)]
-    );
+    // Fetch active orders only (exclude completed)
+    const ordersResult = await databases.listDocuments(DATABASE_ID, COLLECTION_ORDERS, [
+      Query.notEqual('status', 'completed'),
+      Query.orderAsc('due_date'),
+      Query.limit(100)
+    ]);
 
-    const importsResult = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTION_IMPORTS,
-      [Query.orderAsc('scheduled_date'), Query.limit(100)]
-    );
+    // Fetch scheduled imports only (exclude arrived)
+    const importsResult = await databases.listDocuments(DATABASE_ID, COLLECTION_IMPORTS, [
+      Query.equal('status', 'scheduled'),
+      Query.orderAsc('scheduled_date'),
+      Query.limit(100)
+    ]);
 
-    const inspectionsResult = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      [
-        Query.equal('is_archived', false),
-        Query.orderDesc('uploaded_at'),
-        Query.limit(1000)
-      ]
-    );
+    // Fetch all inspections
+    const inspectionsResult = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, [
+      Query.equal('is_archived', false),
+      Query.orderDesc('uploaded_at'),
+      Query.limit(1000)
+    ]);
 
-    const inspectionsByStatus = {
-      upcoming_import: [],
-      imported: [],
-      inspection: [],
-      finished_inspection: []
-    };
-
-    const fileNum = doc => {
-      const m = doc.filename && doc.filename.match(/^(\d+)/);
-      return m ? parseInt(m[1]) : 0;
-    };
-
+    // Group inspections by status - skip shipped and upcoming_import
+    const inspectionsByStatus = { imported: [], inspection: [], finished_inspection: [] };
+    const fileNum = doc => { const m = doc.filename && doc.filename.match(/^(\d+)/); return m ? parseInt(m[1]) : 0; };
     const importFileMap = {};
+
     inspectionsResult.documents.forEach(doc => {
       const status = doc.status || 'finished_inspection';
-      if (status === 'shipped') return;
+      if (status === 'shipped' || status === 'upcoming_import') return;
       if (inspectionsByStatus[status] !== undefined) {
         inspectionsByStatus[status].push(doc);
       } else {
@@ -656,16 +553,10 @@ app.get("/stock-management", requireAuth, async (req, res) => {
       inspectionsByStatus[key].sort((a, b) => fileNum(a) - fileNum(b));
     });
 
-    const ordersWithStock = ordersResult.documents.map(order => {
-      const stockCheck = calculateStockAvailability(
-        order.quantity,
-        inspectionsResult.documents
-      );
-      return {
-        ...order,
-        stockAvailability: stockCheck
-      };
-    });
+    const ordersWithStock = ordersResult.documents.map(order => ({
+      ...order,
+      stockAvailability: calculateStockAvailability(order.quantity, inspectionsResult.documents)
+    }));
 
     const importsWithFiles = importsResult.documents.map(imp => ({
       ...imp,
@@ -675,7 +566,7 @@ app.get("/stock-management", requireAuth, async (req, res) => {
     res.render("stock-management", {
       orders: ordersWithStock,
       imports: importsWithFiles,
-      inspectionsByStatus: inspectionsByStatus,
+      inspectionsByStatus,
       statusConfig: STATUS_CONFIG,
       username: req.session.username,
       displayName: getDisplayName(req.session.username),
@@ -691,67 +582,40 @@ app.get("/stock-management", requireAuth, async (req, res) => {
 // ORDER MANAGEMENT API
 // ======================
 
+app.get("/api/orders/:orderId", requireAuth, async (req, res) => {
+  try {
+    const order = await databases.getDocument(DATABASE_ID, COLLECTION_ORDERS, req.params.orderId);
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.post("/api/orders", requireAuth, async (req, res) => {
   try {
     const { quantity, due_date } = req.body;
-
     if (!quantity || !due_date) {
-      return res.status(400).json({
-        success: false,
-        error: 'Quantity and due date are required'
-      });
+      return res.status(400).json({ success: false, error: 'Quantity and due date are required' });
     }
-
-    const order = await databases.createDocument(
-      DATABASE_ID,
-      COLLECTION_ORDERS,
-      ID.unique(),
-      {
-        quantity: parseInt(quantity),
-        due_date: due_date,
-        status: 'pending'
-      }
-    );
-
-    res.json({ success: true, order: order });
+    const order = await databases.createDocument(DATABASE_ID, COLLECTION_ORDERS, ID.unique(), {
+      quantity: parseInt(quantity), due_date, status: 'pending'
+    });
+    res.json({ success: true, order });
   } catch (error) {
     console.error("Error creating order:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-app.get("/api/orders/:orderId", requireAuth, async (req, res) => {
-  try {
-    const order = await databases.getDocument(
-      DATABASE_ID,
-      COLLECTION_ORDERS,
-      req.params.orderId
-    );
-    res.json(order);
-  } catch (error) {
-    console.error("Error fetching order:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 app.put("/api/orders/:orderId", requireAuth, async (req, res) => {
   try {
-    const { orderId } = req.params;
     const { quantity, due_date, status } = req.body;
-
     const updateData = {};
     if (quantity !== undefined) updateData.quantity = parseInt(quantity);
     if (due_date !== undefined) updateData.due_date = due_date;
     if (status !== undefined) updateData.status = status;
-
-    const order = await databases.updateDocument(
-      DATABASE_ID,
-      COLLECTION_ORDERS,
-      orderId,
-      updateData
-    );
-
-    res.json({ success: true, order: order });
+    const order = await databases.updateDocument(DATABASE_ID, COLLECTION_ORDERS, req.params.orderId, updateData);
+    res.json({ success: true, order });
   } catch (error) {
     console.error("Error updating order:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -760,17 +624,48 @@ app.put("/api/orders/:orderId", requireAuth, async (req, res) => {
 
 app.delete("/api/orders/:orderId", requireAuth, async (req, res) => {
   try {
-    const { orderId } = req.params;
-
-    await databases.deleteDocument(
-      DATABASE_ID,
-      COLLECTION_ORDERS,
-      orderId
-    );
-
+    await databases.deleteDocument(DATABASE_ID, COLLECTION_ORDERS, req.params.orderId);
     res.json({ success: true });
   } catch (error) {
     console.error("Error deleting order:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ======================
+// SHIP ORDER API
+// Marks order as completed, all allocated items as shipped
+// Items disappear from all views
+// ======================
+
+app.put("/api/orders/:orderId/ship", requireAuth, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { itemIds } = req.body;
+
+    if (!Array.isArray(itemIds) || itemIds.length === 0) {
+      return res.status(400).json({ success: false, error: 'No item IDs provided' });
+    }
+
+    // Mark order as completed
+    await databases.updateDocument(DATABASE_ID, COLLECTION_ORDERS, orderId, { status: 'completed' });
+
+    // Mark all allocated items as shipped
+    let shippedCount = 0;
+    const errors = [];
+    for (const itemId of itemIds) {
+      try {
+        await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, itemId, { status: 'shipped' });
+        shippedCount++;
+      } catch (err) {
+        console.error(`Failed to ship item ${itemId}:`, err);
+        errors.push(itemId);
+      }
+    }
+
+    res.json({ success: true, shippedCount, errors: errors.length > 0 ? errors : undefined });
+  } catch (error) {
+    console.error("Error shipping order:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -781,18 +676,13 @@ app.delete("/api/orders/:orderId", requireAuth, async (req, res) => {
 
 async function getLastFileNumber() {
   try {
-    const result = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      [Query.orderDesc('uploaded_at'), Query.limit(500)]
-    );
+    const result = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, [
+      Query.orderDesc('uploaded_at'), Query.limit(500)
+    ]);
     let max = 0;
     result.documents.forEach(doc => {
       const match = doc.filename && doc.filename.match(/^(\d+)/);
-      if (match) {
-        const num = parseInt(match[1]);
-        if (num > max) max = num;
-      }
+      if (match) { const num = parseInt(match[1]); if (num > max) max = num; }
     });
     return max;
   } catch (e) {
@@ -803,18 +693,11 @@ async function getLastFileNumber() {
 
 async function updateInspectionStatusByImport(importId, newStatus) {
   try {
-    const result = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      [Query.equal('import_id', importId), Query.limit(500)]
-    );
+    const result = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, [
+      Query.equal('import_id', importId), Query.limit(500)
+    ]);
     for (const doc of result.documents) {
-      await databases.updateDocument(
-        DATABASE_ID,
-        COLLECTION_INSPECTIONS,
-        doc.$id,
-        { status: newStatus }
-      );
+      await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, doc.$id, { status: newStatus });
     }
     return result.documents.length;
   } catch (e) {
@@ -823,29 +706,25 @@ async function updateInspectionStatusByImport(importId, newStatus) {
   }
 }
 
+app.get("/api/imports/:importId", requireAuth, async (req, res) => {
+  try {
+    const imp = await databases.getDocument(DATABASE_ID, COLLECTION_IMPORTS, req.params.importId);
+    res.json(imp);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.post("/api/imports", requireAuth, async (req, res) => {
   try {
     const { quantity, scheduled_date } = req.body;
-
     if (!quantity || !scheduled_date) {
-      return res.status(400).json({
-        success: false,
-        error: 'Quantity and scheduled date are required'
-      });
+      return res.status(400).json({ success: false, error: 'Quantity and scheduled date are required' });
     }
-
     const qty = parseInt(quantity);
-
-    const importDoc = await databases.createDocument(
-      DATABASE_ID,
-      COLLECTION_IMPORTS,
-      ID.unique(),
-      {
-        quantity: qty,
-        scheduled_date: scheduled_date,
-        status: 'scheduled'
-      }
-    );
+    const importDoc = await databases.createDocument(DATABASE_ID, COLLECTION_IMPORTS, ID.unique(), {
+      quantity: qty, scheduled_date, status: 'scheduled'
+    });
 
     const lastNumber = await getLastFileNumber();
     const lotNumber = lastNumber + 1;
@@ -855,34 +734,19 @@ app.post("/api/imports", requireAuth, async (req, res) => {
     for (let i = 1; i <= qty; i++) {
       const fileNumber = lastNumber + i;
       const filename = `${fileNumber}.txt`;
-
       try {
-        await databases.createDocument(
-          DATABASE_ID,
-          COLLECTION_INSPECTIONS,
-          ID.unique(),
-          {
-            filename: filename,
-            uploaded_at: new Date().toISOString(),
-            weight: null,
-            lot: lotNumber,
-            is_archived: false,
-            status: 'upcoming_import',
-            import_id: importDoc.$id,
-            measurementA: '-', measurementB: '-', measurementC: '-',
-            measurementD: '-', measurementE: '-', measurementF: '-',
-            measurementG1: '-', measurementG2: '-', measurementG3: '-',
-            measurementG4: '-', measurementH: '-', measurementI: '-',
-            measurementJ: '-', measurementK: '-', measurementL: '-',
-            isValidA: null, isValidB: null, isValidC: null,
-            isValidD: null, isValidE: null, isValidF: null,
-            isValidG1: null, isValidG2: null, isValidG3: null,
-            isValidG4: null, isValidH: null, isValidI: null,
-            isValidJ: null, isValidK: null, isValidL: null,
-            inspectionStatus: 'pending',
-            failedMeasurements: ''
-          }
-        );
+        await databases.createDocument(DATABASE_ID, COLLECTION_INSPECTIONS, ID.unique(), {
+          filename, uploaded_at: new Date().toISOString(), weight: null, lot: lotNumber,
+          is_archived: false, status: 'upcoming_import', import_id: importDoc.$id,
+          measurementA: '-', measurementB: '-', measurementC: '-', measurementD: '-',
+          measurementE: '-', measurementF: '-', measurementG1: '-', measurementG2: '-',
+          measurementG3: '-', measurementG4: '-', measurementH: '-', measurementI: '-',
+          measurementJ: '-', measurementK: '-', measurementL: '-',
+          isValidA: null, isValidB: null, isValidC: null, isValidD: null, isValidE: null,
+          isValidF: null, isValidG1: null, isValidG2: null, isValidG3: null, isValidG4: null,
+          isValidH: null, isValidI: null, isValidJ: null, isValidK: null, isValidL: null,
+          inspectionStatus: 'pending', failedMeasurements: ''
+        });
         createdFiles.push(filename);
       } catch (err) {
         console.error(`Failed to create placeholder ${filename}:`, err.message);
@@ -890,40 +754,13 @@ app.post("/api/imports", requireAuth, async (req, res) => {
       }
     }
 
-    if (errors.length > 0) {
-      return res.json({
-        success: true,
-        import: importDoc,
-        createdFiles: createdFiles,
-        startNumber: lastNumber + 1,
-        endNumber: lastNumber + qty,
-        errors: errors
-      });
-    }
-
     res.json({
-      success: true,
-      import: importDoc,
-      createdFiles: createdFiles,
-      startNumber: lastNumber + 1,
-      endNumber: lastNumber + qty
+      success: true, import: importDoc, createdFiles,
+      startNumber: lastNumber + 1, endNumber: lastNumber + qty,
+      errors: errors.length > 0 ? errors : undefined
     });
   } catch (error) {
     console.error("Error creating import:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.get("/api/imports/:importId", requireAuth, async (req, res) => {
-  try {
-    const imp = await databases.getDocument(
-      DATABASE_ID,
-      COLLECTION_IMPORTS,
-      req.params.importId
-    );
-    res.json(imp);
-  } catch (error) {
-    console.error("Error fetching import:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -932,19 +769,13 @@ app.put("/api/imports/:importId", requireAuth, async (req, res) => {
   try {
     const { importId } = req.params;
     const { quantity, scheduled_date, status, actual_date } = req.body;
-
     const updateData = {};
     if (quantity !== undefined) updateData.quantity = parseInt(quantity);
     if (scheduled_date !== undefined) updateData.scheduled_date = scheduled_date;
     if (status !== undefined) updateData.status = status;
     if (actual_date !== undefined) updateData.actual_date = actual_date;
 
-    const importDoc = await databases.updateDocument(
-      DATABASE_ID,
-      COLLECTION_IMPORTS,
-      importId,
-      updateData
-    );
+    const importDoc = await databases.updateDocument(DATABASE_ID, COLLECTION_IMPORTS, importId, updateData);
 
     let updatedCount = 0;
     if (status === 'arrived') {
@@ -960,14 +791,7 @@ app.put("/api/imports/:importId", requireAuth, async (req, res) => {
 
 app.delete("/api/imports/:importId", requireAuth, async (req, res) => {
   try {
-    const { importId } = req.params;
-
-    await databases.deleteDocument(
-      DATABASE_ID,
-      COLLECTION_IMPORTS,
-      importId
-    );
-
+    await databases.deleteDocument(DATABASE_ID, COLLECTION_IMPORTS, req.params.importId);
     res.json({ success: true });
   } catch (error) {
     console.error("Error deleting import:", error);
@@ -981,24 +805,14 @@ app.delete("/api/imports/:importId", requireAuth, async (req, res) => {
 
 app.put("/api/inspections/:inspectionId/status", requireAuth, async (req, res) => {
   try {
-    const { inspectionId } = req.params;
     const { status } = req.body;
-
     if (!status || !STATUS_CONFIG[status]) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid status'
-      });
+      return res.status(400).json({ success: false, error: 'Invalid status' });
     }
-
     const inspection = await databases.updateDocument(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      inspectionId,
-      { status: status }
+      DATABASE_ID, COLLECTION_INSPECTIONS, req.params.inspectionId, { status }
     );
-
-    res.json({ success: true, inspection: inspection });
+    res.json({ success: true, inspection });
   } catch (error) {
     console.error("Error updating inspection status:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -1008,29 +822,18 @@ app.put("/api/inspections/:inspectionId/status", requireAuth, async (req, res) =
 app.put("/api/inspections/advance-status", requireAuth, async (req, res) => {
   try {
     const { fromStatus, toStatus } = req.body;
-
     if (!fromStatus || !toStatus || !STATUS_CONFIG[fromStatus] || !STATUS_CONFIG[toStatus]) {
       return res.status(400).json({ success: false, error: 'Invalid status values' });
     }
-
-    const result = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      [Query.equal('status', fromStatus), Query.limit(500)]
-    );
-
+    const result = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, [
+      Query.equal('status', fromStatus), Query.limit(500)
+    ]);
     let updated = 0;
     for (const doc of result.documents) {
-      await databases.updateDocument(
-        DATABASE_ID,
-        COLLECTION_INSPECTIONS,
-        doc.$id,
-        { status: toStatus }
-      );
+      await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, doc.$id, { status: toStatus });
       updated++;
     }
-
-    res.json({ success: true, updated: updated });
+    res.json({ success: true, updated });
   } catch (error) {
     console.error("Error advancing status:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -1044,14 +847,9 @@ app.put("/api/inspections/advance-status", requireAuth, async (req, res) => {
 app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: "No file uploaded" 
-      });
+      return res.status(400).json({ success: false, error: "No file uploaded" });
     }
-
     const allResults = { successful: [], failed: [], updated: [] };
-
     for (const file of req.files) {
       try {
         await processSingleUpload(file, req, allResults);
@@ -1059,11 +857,9 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
         allResults.failed.push({ filename: file.originalname, error: err.message });
       }
     }
-
     if (allResults.successful.length === 0 && allResults.updated.length === 0) {
       return res.status(400).json({ success: false, error: allResults.failed.map(f => f.error).join(', ') });
     }
-
     return res.json({ success: true, results: allResults });
   } catch (error) {
     console.error("Upload error:", error);
@@ -1072,68 +868,47 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
 });
 
 async function processSingleUpload(file, req, results) {
-    const fileContent = file.buffer.toString("utf-8");
-    const parsedData = parseTxtFile(fileContent);
-    const filename = file.originalname;
+  const fileContent = file.buffer.toString("utf-8");
+  const parsedData = parseTxtFile(fileContent);
+  const filename = file.originalname;
 
-    const existingFiles = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      [Query.equal('filename', filename), Query.limit(1)]
-    );
+  const existingFiles = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, [
+    Query.equal('filename', filename), Query.limit(1)
+  ]);
 
-    const measurements = {};
-    const validations = {};
+  const measurements = {};
+  const validations = {};
+  const dbKeys = Object.keys(measurementMapping).filter(k => k !== 'M' && k !== 'N');
+  dbKeys.forEach(key => {
+    const value = extractMeasurementValue(parsedData, key);
+    measurements[`measurement${key}`] = value !== null ? String(value) : '-';
+    validations[`isValid${key}`] = isValidMeasurement(value, key);
+  });
 
-    const dbKeys = Object.keys(measurementMapping).filter(k => k !== 'M' && k !== 'N');
-    dbKeys.forEach(key => {
-      const value = extractMeasurementValue(parsedData, key);
-      measurements[`measurement${key}`] = value !== null ? String(value) : '-';
-      validations[`isValid${key}`] = isValidMeasurement(value, key);
-    });
-
-    if (existingFiles.documents.length > 0) {
-      const existingDoc = existingFiles.documents[0];
-      const isPlaceholder = !existingDoc.measurementA || existingDoc.measurementA === '-';
-
-      if (isPlaceholder) {
-        await databases.updateDocument(
-          DATABASE_ID,
-          COLLECTION_INSPECTIONS,
-          existingDoc.$id,
-          {
-            uploaded_at: new Date().toISOString(),
-            is_archived: false,
-            status: 'inspection',
-            ...measurements,
-            ...validations
-          }
-        );
-        results.updated.push({ filename });
-        return;
-      } else {
-        results.failed.push({ filename, error: `${filename} already has measurement data` });
-        return;
-      }
-    }
-
-    await databases.createDocument(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      ID.unique(),
-      {
-        filename: filename,
-        lot: parsedData.lot || null,
-        weight: null,
+  if (existingFiles.documents.length > 0) {
+    const existingDoc = existingFiles.documents[0];
+    const isPlaceholder = !existingDoc.measurementA || existingDoc.measurementA === '-';
+    if (isPlaceholder) {
+      await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, existingDoc.$id, {
         uploaded_at: new Date().toISOString(),
         is_archived: false,
         status: 'inspection',
         ...measurements,
         ...validations
-      }
-    );
+      });
+      results.updated.push({ filename });
+    } else {
+      results.failed.push({ filename, error: `${filename} already has measurement data` });
+    }
+    return;
+  }
 
-    results.successful.push({ filename });
+  await databases.createDocument(DATABASE_ID, COLLECTION_INSPECTIONS, ID.unique(), {
+    filename, lot: parsedData.lot || null, weight: null,
+    uploaded_at: new Date().toISOString(), is_archived: false, status: 'inspection',
+    ...measurements, ...validations
+  });
+  results.successful.push({ filename });
 }
 
 // ======================
@@ -1142,12 +917,7 @@ async function processSingleUpload(file, req, results) {
 
 app.get("/files/:fileId", requireAuth, async (req, res) => {
   try {
-    const inspection = await databases.getDocument(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      req.params.fileId
-    );
-
+    const inspection = await databases.getDocument(DATABASE_ID, COLLECTION_INSPECTIONS, req.params.fileId);
     const measurements = {
       A: { value: inspection.measurementA, isValid: inspection.isValidA },
       B: { value: inspection.measurementB, isValid: inspection.isValidB },
@@ -1165,16 +935,10 @@ app.get("/files/:fileId", requireAuth, async (req, res) => {
       K: { value: inspection.measurementK, isValid: inspection.isValidK },
       L: { value: inspection.measurementL, isValid: inspection.isValidL }
     };
-
     const gValue = processGValues(measurements);
-
     res.render("fileData", {
-      file: inspection,
-      measurements: measurements,
-      gValue: gValue,
-      validationRanges: validationRanges,
-      username: req.session.username,
-      displayName: getDisplayName(req.session.username),
+      file: inspection, measurements, gValue, validationRanges,
+      username: req.session.username, displayName: getDisplayName(req.session.username),
       canEditWeights: req.session.canEditWeights
     });
   } catch (error) {
@@ -1184,137 +948,116 @@ app.get("/files/:fileId", requireAuth, async (req, res) => {
 });
 
 // ======================
-// UPDATE WEIGHT
+// UPDATE WEIGHT (single)
+// Auto-advances: inspection/imported -> finished_inspection when weight set
 // ======================
 
 app.post("/update-weight", requireWeightEditAuth, async (req, res) => {
   try {
     const { fileId, weight } = req.body;
-
-    if (!fileId) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'File ID is required' 
-      });
-    }
+    if (!fileId) return res.status(400).json({ success: false, error: 'File ID is required' });
 
     const weightValue = weight && weight.trim() !== '' ? parseFloat(weight) : null;
-
     if (weightValue !== null && (isNaN(weightValue) || weightValue < 0)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Weight must be a positive number or empty'
-      });
+      return res.status(400).json({ success: false, error: 'Weight must be a positive number or empty' });
     }
 
     const formattedWeight = weightValue !== null ? weightValue.toFixed(1) : null;
+    const currentDoc = await databases.getDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId);
+    const updateData = { weight: formattedWeight };
 
-    await databases.updateDocument(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      fileId,
-      { weight: formattedWeight }
-    );
+    // Auto-advance status when weight is set
+    if (formattedWeight !== null &&
+        (currentDoc.status === 'inspection' || currentDoc.status === 'imported')) {
+      updateData.status = 'finished_inspection';
+    }
 
-    res.json({ 
-      success: true, 
-      weight: formattedWeight 
+    await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId, updateData);
+    res.json({
+      success: true, weight: formattedWeight,
+      statusUpdated: !!updateData.status, newStatus: updateData.status || currentDoc.status
     });
   } catch (error) {
     console.error("Error updating weight:", error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// Bulk weight update endpoint
+// ======================
+// UPDATE WEIGHTS (bulk)
+// Auto-advances status for each item
+// ======================
+
 app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
   try {
     const { weights } = req.body;
-
     if (!Array.isArray(weights) || weights.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Weights array is required'
-      });
+      return res.status(400).json({ success: false, error: 'No weights provided' });
     }
 
-    let count = 0;
-    for (const item of weights) {
-      if (!item.fileId || !item.weight) continue;
-      await databases.updateDocument(
-        DATABASE_ID,
-        COLLECTION_INSPECTIONS,
-        item.fileId,
-        { weight: String(parseFloat(item.weight).toFixed(1)) }
-      );
-      count++;
+    let updated = 0;
+    const errors = [];
+    for (const { fileId, weight } of weights) {
+      try {
+        const formattedWeight = parseFloat(weight).toFixed(1);
+        const currentDoc = await databases.getDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId);
+        const updateData = { weight: formattedWeight };
+        if (currentDoc.status === 'inspection' || currentDoc.status === 'imported') {
+          updateData.status = 'finished_inspection';
+        }
+        await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId, updateData);
+        updated++;
+      } catch (err) {
+        console.error(`Failed to update weight for ${fileId}:`, err);
+        errors.push(fileId);
+      }
     }
 
-    res.json({ success: true, count: count });
+    res.json({ success: true, count: updated, errors: errors.length > 0 ? errors : undefined });
   } catch (error) {
-    console.error("Error bulk updating weights:", error);
+    console.error("Error updating weights:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // ======================
 // WEIGHT EXCEL IMPORT
+// Auto-advances status for each item
 // ======================
 
 app.post("/import-weights", requireWeightEditAuth, upload.single("weightFile"), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ 
-        success: false, 
-        error: "No file uploaded" 
-      });
-    }
+    if (!req.file) return res.status(400).json({ success: false, error: "No file uploaded" });
 
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
 
-    let updated = 0;
-    let created = 0;
-    let errors = [];
+    let updated = 0, created = 0;
+    const errors = [];
 
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       if (!row || row.length < 2) continue;
-
       const filename = String(row[0]).trim();
       const weightStr = String(row[1]).trim();
-
       if (!filename || !weightStr) continue;
-
       const weight = parseFloat(weightStr);
-      if (isNaN(weight) || weight < 0) {
-        errors.push(filename);
-        continue;
-      }
+      if (isNaN(weight) || weight < 0) { errors.push(filename); continue; }
 
       const formattedWeight = weight.toFixed(1);
       const filenameWithExt = filename.endsWith('.txt') ? filename : `${filename}.txt`;
 
       try {
-        const result = await databases.listDocuments(
-          DATABASE_ID,
-          COLLECTION_INSPECTIONS,
-          [Query.equal('filename', filenameWithExt), Query.limit(1)]
-        );
+        const result = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, [
+          Query.equal('filename', filenameWithExt), Query.limit(1)
+        ]);
 
         if (result.documents.length > 0) {
           const inspection = result.documents[0];
-          await databases.updateDocument(
-            DATABASE_ID,
-            COLLECTION_INSPECTIONS,
-            inspection.$id,
-            { weight: formattedWeight }
-          );
+          const updateData = { weight: formattedWeight };
+          if (inspection.status === 'inspection' || inspection.status === 'imported') {
+            updateData.status = 'finished_inspection';
+          await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, inspection.$id, updateData);
           updated++;
         } else {
           await databases.createDocument(
@@ -1347,19 +1090,16 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("weightFile"), 
         errors.push(filename);
       }
     }
-    
-    res.json({ 
-      success: true, 
-      updated: updated,
-      created: created,
+
+    res.json({
+      success: true,
+      updated,
+      created,
       errors: errors.length > 0 ? errors : undefined
     });
   } catch (error) {
     console.error("Error importing weights:", error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -1411,86 +1151,40 @@ app.get("/export-weights", requireAuth, async (req, res) => {
 app.post("/archive-files", requireAuth, async (req, res) => {
   try {
     const { fileIds } = req.body;
-    
     if (!Array.isArray(fileIds) || fileIds.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'No file IDs provided'
-      });
+      return res.status(400).json({ success: false, error: 'No file IDs provided' });
     }
-
     let archived = 0;
     let errors = [];
-
     for (const fileId of fileIds) {
       try {
-        await databases.updateDocument(
-          DATABASE_ID,
-          COLLECTION_INSPECTIONS,
-          fileId,
-          { is_archived: true }
-        );
+        await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId, { is_archived: true });
         archived++;
-      } catch (err) {
-        console.error(`Failed to archive ${fileId}:`, err);
-        errors.push(fileId);
-      }
+      } catch (err) { errors.push(fileId); }
     }
-
-    res.json({
-      success: true,
-      archived: archived,
-      errors: errors.length > 0 ? errors : undefined
-    });
+    res.json({ success: true, archived, errors: errors.length > 0 ? errors : undefined });
   } catch (error) {
-    console.error("Error archiving files:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 app.post("/unarchive-files", requireAuth, async (req, res) => {
   try {
     const { fileIds } = req.body;
-    
     if (!Array.isArray(fileIds) || fileIds.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'No file IDs provided'
-      });
+      return res.status(400).json({ success: false, error: 'No file IDs provided' });
     }
-
     let unarchived = 0;
     let errors = [];
-
     for (const fileId of fileIds) {
       try {
-        await databases.updateDocument(
-          DATABASE_ID,
-          COLLECTION_INSPECTIONS,
-          fileId,
-          { is_archived: false }
-        );
+        await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId, { is_archived: false });
         unarchived++;
-      } catch (err) {
-        console.error(`Failed to unarchive ${fileId}:`, err);
-        errors.push(fileId);
-      }
+      } catch (err) { errors.push(fileId); }
     }
-
-    res.json({
-      success: true,
-      unarchived: unarchived,
-      errors: errors.length > 0 ? errors : undefined
-    });
+    res.json({ success: true, unarchived, errors: errors.length > 0 ? errors : undefined });
   } catch (error) {
-    console.error("Error unarchiving files:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -1501,20 +1195,10 @@ app.post("/unarchive-files", requireAuth, async (req, res) => {
 app.post("/delete-file", requireAuth, async (req, res) => {
   try {
     const { fileId } = req.body;
-
-    if (!fileId) {
-      return res.status(400).json({ success: false, error: 'File ID is required' });
-    }
-
-    await databases.deleteDocument(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      fileId
-    );
-
+    if (!fileId) return res.status(400).json({ success: false, error: 'File ID is required' });
+    await databases.deleteDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId);
     res.json({ success: true });
   } catch (error) {
-    console.error("Error deleting file:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1526,28 +1210,16 @@ app.post("/delete-file", requireAuth, async (req, res) => {
 app.get("/summary", requireAuth, async (req, res) => {
   try {
     const selectedFilesParam = req.query.selectedFiles || "";
-    const fileIds = selectedFilesParam
-      .split(",")
-      .map((id) => id.trim())
-      .filter((id) => id.length > 0);
-
-    if (fileIds.length === 0) {
-      return res.redirect("/");
-    }
+    const fileIds = selectedFilesParam.split(",").map(id => id.trim()).filter(id => id.length > 0);
+    if (fileIds.length === 0) return res.redirect("/");
 
     const files = [];
     const fileData = {};
 
     for (const fileId of fileIds) {
       try {
-        const inspection = await databases.getDocument(
-          DATABASE_ID,
-          COLLECTION_INSPECTIONS,
-          fileId
-        );
-
+        const inspection = await databases.getDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId);
         files.push(inspection);
-
         const measurements = {
           A: { value: inspection.measurementA, isValid: inspection.isValidA },
           B: { value: inspection.measurementB, isValid: inspection.isValidB },
@@ -1565,23 +1237,15 @@ app.get("/summary", requireAuth, async (req, res) => {
           K: { value: inspection.measurementK, isValid: inspection.isValidK },
           L: { value: inspection.measurementL, isValid: inspection.isValidL }
         };
-
         const gValue = processGValues(measurements);
-        
-        fileData[inspection.$id] = {
-          ...measurements,
-          G: gValue
-        };
-
+        fileData[inspection.$id] = { ...measurements, G: gValue };
       } catch (error) {
         console.error(`Error fetching inspection ${fileId}:`, error);
       }
     }
 
     res.render("summary", {
-      files: files,
-      fileData: fileData,
-      validationRanges: validationRanges,
+      files, fileData, validationRanges,
       username: req.session.username,
       displayName: getDisplayName(req.session.username),
       inspectorName: getDisplayName(req.session.username),
@@ -1597,38 +1261,15 @@ app.get("/summary", requireAuth, async (req, res) => {
 // ======================
 
 app.get("/health", (req, res) => {
-  res.json({
-    status: "OK",
-    database: "Appwrite",
-    schema: "Efficient with Stock Management",
-    timestamp: new Date().toISOString(),
-  });
+  res.json({ status: "OK", database: "Appwrite", schema: "v2.3 with Ship Order API", timestamp: new Date().toISOString() });
 });
 
-// ======================
-// ERROR HANDLERS
-// ======================
-
-app.use((req, res) => {
-  res.status(404).send("Page not found");
-});
-
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send("Something went wrong!");
-});
-
-// ======================
-// START SERVER
-// ======================
+app.use((req, res) => { res.status(404).send("Page not found"); });
+app.use((err, req, res, next) => { console.error(err.stack); res.status(500).send("Something went wrong!"); });
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Database: Appwrite (Efficient Schema with Stock Management)`);
-  console.log(`Authentication: ENABLED (Database Sessions)`);
-  console.log(`Authorized weight editors: ${AUTHORIZED_USERS.join(', ')}`);
-  console.log(`✨ Stock Management System Enabled`);
-  console.log(`📊 Excel import/export enabled`);
+  console.log(`✨ Stock Management v2.3 - Ship Order API + Weight Auto-Promotion`);
 });
 
 module.exports = app;
