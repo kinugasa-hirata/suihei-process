@@ -543,6 +543,70 @@ app.get("/", requireAuth, async (req, res) => {
   }
 });
 
+// Calculate if we have enough stock to fulfill an order
+function calculateStockAvailability(orderQuantity, inspections) {
+  // Filter available stock (not shipped, not null status)
+  const availableStock = inspections
+    .filter(item => item.status && item.status !== 'shipped')
+    .map(item => ({
+      ...item,
+      fileNumber: parseInt(item.filename.replace('.txt', ''))
+    }))
+    .filter(item => !isNaN(item.fileNumber))
+    .sort((a, b) => a.fileNumber - b.fileNumber); // Sort ASC (476, 477, 478...)
+
+  const needed = parseInt(orderQuantity);
+  
+  // Check if we have enough
+  if (availableStock.length < needed) {
+    return {
+      status: 'insufficient',
+      color: '#fd7e14', // Orange
+      icon: '⚠️',
+      label: '在庫不足',
+      available: availableStock.length,
+      needed: needed,
+      allocatedItems: []
+    };
+  }
+
+  // Allocate from youngest (lowest) file numbers first
+  const allocated = availableStock.slice(0, needed);
+  
+  // Determine status based on allocated items
+  const hasUpcomingImport = allocated.some(item => item.status === 'upcoming_import');
+  const hasImportedOrInspection = allocated.some(item => 
+    item.status === 'imported' || item.status === 'inspection'
+  );
+  const allFinished = allocated.every(item => item.status === 'finished_inspection');
+
+  if (allFinished) {
+    return {
+      status: 'ready',
+      color: '#198754', // Green
+      icon: '✓',
+      label: '出荷可能',
+      allocatedItems: allocated
+    };
+  } else if (hasUpcomingImport) {
+    return {
+      status: 'uncertain',
+      color: '#ffc107', // Yellow
+      icon: '⚠',
+      label: '入荷予定含む',
+      allocatedItems: allocated
+    };
+  } else if (hasImportedOrInspection) {
+    return {
+      status: 'processing',
+      color: '#6c757d', // Gray
+      icon: '◐',
+      label: '検査中含む',
+      allocatedItems: allocated
+    };
+  }
+}
+
 // ======================
 // STOCK MANAGEMENT VIEW
 // ======================
@@ -609,6 +673,19 @@ app.get("/stock-management", requireAuth, async (req, res) => {
       inspectionsByStatus[key].sort((a, b) => fileNum(a) - fileNum(b));
     });
 
+    // *** NEW: Calculate stock availability for each order ***
+    const ordersWithStock = ordersResult.documents.map(order => {
+      const stockCheck = calculateStockAvailability(
+        order.quantity,
+        inspectionsResult.documents
+      );
+      
+      return {
+        ...order,
+        stockAvailability: stockCheck
+      };
+    });
+
     // Attach linked_files to each import
     const importsWithFiles = importsResult.documents.map(imp => ({
       ...imp,
@@ -616,7 +693,7 @@ app.get("/stock-management", requireAuth, async (req, res) => {
     }));
 
     res.render("stock-management", {
-      orders: ordersResult.documents,
+      orders: ordersWithStock,  // *** CHANGED: Use ordersWithStock instead of ordersResult.documents ***
       imports: importsWithFiles,
       inspectionsByStatus: inspectionsByStatus,
       statusConfig: STATUS_CONFIG,
