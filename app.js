@@ -475,98 +475,208 @@ app.get("/", requireAuth, async (req, res) => {
 // STOCK AVAILABILITY CALCULATION
 // ======================
 
-function calculateStockAvailability(orderQuantity, inspections) {
+function calculateStockAvailability(orderQuantity, inspections, allOrders, currentOrder) {
+  // Sort orders by due date (earliest first) - earlier orders get priority
+  const sortedOrders = allOrders
+    .filter(o => o.$id !== currentOrder.$id) // Exclude the current order
+    .sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+  
+  // Track which stock items are already allocated to earlier orders
+  const allocatedStock = new Set();
+  
+  // Process each order that has priority (earlier due date)
+  for (const order of sortedOrders) {
+    if (new Date(order.due_date) < new Date(currentOrder.due_date)) {
+      const orderQty = parseInt(order.quantity);
+      
+      // Get available stock for this prior order (excluding already allocated)
+      const availableForPriorOrder = inspections
+        .filter(item => item.status && item.status !== 'shipped')
+        .filter(item => !allocatedStock.has(item.$id))
+        .map(item => ({
+          ...item,
+          fileNumber: parseInt(item.filename.replace('.txt', ''))
+        }))
+        .filter(item => !isNaN(item.fileNumber))
+        .sort((a, b) => a.fileNumber - b.fileNumber); // Allocate from lowest file numbers
+      
+      // Allocate stock to this prior order
+      availableForPriorOrder.slice(0, orderQty).forEach(item => {
+        allocatedStock.add(item.$id);
+      });
+    }
+  }
+  
+  // NOW check what's available for THIS order (after prior orders took their share)
   const availableStock = inspections
-    .filter(item => item.status && item.status !== 'shipped' && item.status !== 'upcoming_import')
-    .map(item => ({ ...item, fileNumber: parseInt(item.filename.replace('.txt', '')) }))
+    .filter(item => item.status && item.status !== 'shipped')
+    .filter(item => !allocatedStock.has(item.$id)) // Exclude already allocated to earlier orders
+    .map(item => ({
+      ...item,
+      fileNumber: parseInt(item.filename.replace('.txt', ''))
+    }))
     .filter(item => !isNaN(item.fileNumber))
-    .sort((a, b) => a.fileNumber - b.fileNumber);
+    .sort((a, b) => a.fileNumber - b.fileNumber); // Sort ASC (476, 477, 478...)
 
   const needed = parseInt(orderQuantity);
-
+  
+  // Check if we have enough stock for this order
   if (availableStock.length < needed) {
+    const shortage = needed - availableStock.length;
+    
     return {
-      status: 'insufficient', color: '#fd7e14', icon: '⚠️', label: '在庫不足',
-      available: availableStock.length, needed, allocatedItems: []
+      status: 'insufficient',
+      color: '#fd7e14', // Orange
+      icon: '⚠️',
+      label: '在庫不足',
+      available: availableStock.length,
+      needed: needed,
+      shortage: shortage,
+      allocatedItems: availableStock // Show what we DO have available
     };
   }
 
+  // We have enough - allocate stock for this order
   const allocated = availableStock.slice(0, needed);
-  const hasImportedOrInspection = allocated.some(i => i.status === 'imported' || i.status === 'inspection');
-  const allFinished = allocated.every(i => i.status === 'finished_inspection');
+  
+  // Determine status based on the quality of allocated items
+  const hasUpcomingImport = allocated.some(item => item.status === 'upcoming_import');
+  const hasImportedOrInspection = allocated.some(item => 
+    item.status === 'imported' || item.status === 'inspection'
+  );
+  const allFinished = allocated.every(item => item.status === 'finished_inspection');
 
   if (allFinished) {
-    return { status: 'ready', color: '#198754', icon: '✓', label: '出荷可能', allocatedItems: allocated };
+    return {
+      status: 'ready',
+      color: '#198754', // Green
+      icon: '✓',
+      label: '出荷可能',
+      allocatedItems: allocated
+    };
+  } else if (hasUpcomingImport) {
+    return {
+      status: 'uncertain',
+      color: '#ffc107', // Yellow
+      icon: '⚠',
+      label: '入荷予定含む',
+      allocatedItems: allocated
+    };
   } else if (hasImportedOrInspection) {
-    return { status: 'processing', color: '#6c757d', icon: '◐', label: '検査中含む', allocatedItems: allocated };
+    return {
+      status: 'processing',
+      color: '#6c757d', // Gray
+      icon: '◐',
+      label: '検査中含む',
+      allocatedItems: allocated
+    };
   }
-  return { status: 'uncertain', color: '#ffc107', icon: '⚠', label: '確認中', allocatedItems: allocated };
+  
+  // Fallback (should never reach here)
+  return {
+    status: 'unknown',
+    color: '#6c757d',
+    icon: '?',
+    label: '不明',
+    allocatedItems: allocated
+  };
 }
 
-// ======================
-// STOCK MANAGEMENT VIEW
-// ======================
+// ==============================================
+// REPLACE THE /stock-management ROUTE IN app.js
+// This is the COMPLETE route with time-aware stock allocation
+// ==============================================
 
 app.get("/stock-management", requireAuth, async (req, res) => {
   try {
-    // Fetch active orders only (exclude completed)
-    const ordersResult = await databases.listDocuments(DATABASE_ID, COLLECTION_ORDERS, [
-      Query.notEqual('status', 'completed'),
-      Query.orderAsc('due_date'),
-      Query.limit(100)
-    ]);
+    // Fetch all orders sorted by due date
+    const ordersResult = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_ORDERS,
+      [Query.orderAsc('due_date'), Query.limit(100)]
+    );
 
-    // Fetch scheduled imports only (exclude arrived)
-    const importsResult = await databases.listDocuments(DATABASE_ID, COLLECTION_IMPORTS, [
-      Query.equal('status', 'scheduled'),
-      Query.orderAsc('scheduled_date'),
-      Query.limit(100)
-    ]);
+    // Fetch imports
+    const importsResult = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_IMPORTS,
+      [Query.orderAsc('scheduled_date'), Query.limit(100)]
+    );
 
-    // Fetch all inspections
-    const inspectionsResult = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, [
-      Query.equal('is_archived', false),
-      Query.orderDesc('uploaded_at'),
-      Query.limit(1000)
-    ]);
+    // Fetch all inspections (not archived)
+    const inspectionsResult = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      [
+        Query.equal('is_archived', false),
+        Query.orderDesc('uploaded_at'),
+        Query.limit(1000)
+      ]
+    );
 
-    // Group inspections by status - skip shipped and upcoming_import
-    const inspectionsByStatus = { imported: [], inspection: [], finished_inspection: [] };
-    const fileNum = doc => { const m = doc.filename && doc.filename.match(/^(\d+)/); return m ? parseInt(m[1]) : 0; };
+    // Group inspections by status for the inventory tab
+    const inspectionsByStatus = {
+      upcoming_import: [],
+      imported: [],
+      inspection: [],
+      finished_inspection: []
+    };
+
+    // Helper: extract numeric file number
+    const fileNum = doc => {
+      const m = doc.filename && doc.filename.match(/^(\d+)/);
+      return m ? parseInt(m[1]) : 0;
+    };
+
+    // Build a map of import_id -> list of filenames
     const importFileMap = {};
-
     inspectionsResult.documents.forEach(doc => {
       const status = doc.status || 'finished_inspection';
-      if (status === 'shipped' || status === 'upcoming_import') return;
+      if (status === 'shipped') return;  // Skip shipped items
+      
       if (inspectionsByStatus[status] !== undefined) {
         inspectionsByStatus[status].push(doc);
       } else {
         inspectionsByStatus['finished_inspection'].push(doc);
       }
+      
       if (doc.import_id) {
         if (!importFileMap[doc.import_id]) importFileMap[doc.import_id] = [];
         importFileMap[doc.import_id].push(doc.filename);
       }
     });
 
+    // Sort each section ASC by file number (lowest first)
     Object.keys(inspectionsByStatus).forEach(key => {
       inspectionsByStatus[key].sort((a, b) => fileNum(a) - fileNum(b));
     });
 
-    const ordersWithStock = ordersResult.documents.map(order => ({
-      ...order,
-      stockAvailability: calculateStockAvailability(order.quantity, inspectionsResult.documents)
-    }));
+    // *** TIME-AWARE STOCK CALCULATION ***
+    // Calculate stock availability for each order, considering priority by due date
+    const ordersWithStock = ordersResult.documents.map(order => {
+      const stockCheck = calculateStockAvailability(
+        order.quantity,
+        inspectionsResult.documents,
+        ordersResult.documents, // *** CRITICAL: Pass all orders ***
+        order                   // *** CRITICAL: Pass current order ***
+      );
+      
+      return {
+        ...order,
+        stockAvailability: stockCheck
+      };
+    });
 
+    // Attach linked files to each import
     const importsWithFiles = importsResult.documents.map(imp => ({
       ...imp,
       linked_files: importFileMap[imp.$id] || []
     }));
 
     res.render("stock-management", {
-      orders: ordersWithStock,
+      orders: ordersWithStock,  // Orders with time-aware stock availability
       imports: importsWithFiles,
-      inspectionsByStatus,
+      inspectionsByStatus: inspectionsByStatus,
       statusConfig: STATUS_CONFIG,
       username: req.session.username,
       displayName: getDisplayName(req.session.username),
