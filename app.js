@@ -1057,6 +1057,7 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("weightFile"), 
           const updateData = { weight: formattedWeight };
           if (inspection.status === 'inspection' || inspection.status === 'imported') {
             updateData.status = 'finished_inspection';
+          }
           await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, inspection.$id, updateData);
           updated++;
         } else {
