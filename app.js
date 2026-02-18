@@ -543,9 +543,11 @@ app.get("/", requireAuth, async (req, res) => {
   }
 });
 
-// Calculate if we have enough stock to fulfill an order
+// ======================
+// STOCK AVAILABILITY CALCULATION
+// ======================
+
 function calculateStockAvailability(orderQuantity, inspections) {
-  // Filter available stock (not shipped, not null status)
   const availableStock = inspections
     .filter(item => item.status && item.status !== 'shipped')
     .map(item => ({
@@ -553,15 +555,14 @@ function calculateStockAvailability(orderQuantity, inspections) {
       fileNumber: parseInt(item.filename.replace('.txt', ''))
     }))
     .filter(item => !isNaN(item.fileNumber))
-    .sort((a, b) => a.fileNumber - b.fileNumber); // Sort ASC (476, 477, 478...)
+    .sort((a, b) => a.fileNumber - b.fileNumber);
 
   const needed = parseInt(orderQuantity);
   
-  // Check if we have enough
   if (availableStock.length < needed) {
     return {
       status: 'insufficient',
-      color: '#fd7e14', // Orange
+      color: '#fd7e14',
       icon: '⚠️',
       label: '在庫不足',
       available: availableStock.length,
@@ -570,10 +571,8 @@ function calculateStockAvailability(orderQuantity, inspections) {
     };
   }
 
-  // Allocate from youngest (lowest) file numbers first
   const allocated = availableStock.slice(0, needed);
   
-  // Determine status based on allocated items
   const hasUpcomingImport = allocated.some(item => item.status === 'upcoming_import');
   const hasImportedOrInspection = allocated.some(item => 
     item.status === 'imported' || item.status === 'inspection'
@@ -583,7 +582,7 @@ function calculateStockAvailability(orderQuantity, inspections) {
   if (allFinished) {
     return {
       status: 'ready',
-      color: '#198754', // Green
+      color: '#198754',
       icon: '✓',
       label: '出荷可能',
       allocatedItems: allocated
@@ -591,7 +590,7 @@ function calculateStockAvailability(orderQuantity, inspections) {
   } else if (hasUpcomingImport) {
     return {
       status: 'uncertain',
-      color: '#ffc107', // Yellow
+      color: '#ffc107',
       icon: '⚠',
       label: '入荷予定含む',
       allocatedItems: allocated
@@ -599,7 +598,7 @@ function calculateStockAvailability(orderQuantity, inspections) {
   } else if (hasImportedOrInspection) {
     return {
       status: 'processing',
-      color: '#6c757d', // Gray
+      color: '#6c757d',
       icon: '◐',
       label: '検査中含む',
       allocatedItems: allocated
