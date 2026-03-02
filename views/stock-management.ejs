@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" />
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     <style>
-<<<<<<< HEAD
       body {
         background-color: #f5f5f5;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -271,56 +270,6 @@
       .stock-indicator.processing { background: #e2e3e5; color: #41464b; }
       .stock-indicator.uncertain  { background: #fff3cd; color: #856404; }
       .stock-indicator.insufficient { background: #f8d7da; color: #842029; }
-=======
-      body { background-color: #f5f5f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-      .container { max-width: 1400px; margin-top: 2rem; padding-bottom: 3rem; }
-      .header-section { background: white; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-      .header-title { font-size: 2rem; font-weight: 700; color: #2c3e50; margin-bottom: 0.5rem; }
-      .header-subtitle { color: #7f8c8d; font-size: 1.1rem; }
-      .nav-tabs-custom { border-bottom: 3px solid #e9ecef; margin-bottom: 2rem; }
-      .nav-tabs-custom .nav-link { color: #6c757d; font-weight: 600; border: none; padding: 1rem 2rem; transition: all 0.3s; }
-      .nav-tabs-custom .nav-link:hover { color: #0d6efd; border-color: transparent; }
-      .nav-tabs-custom .nav-link.active { color: #0d6efd; border: none; border-bottom: 3px solid #0d6efd; background: transparent; }
-      .section-card { background: white; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-      .section-title { font-size: 1.5rem; font-weight: 700; color: #2c3e50; margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid #e9ecef; }
-      .table-responsive { border-radius: 8px; overflow: hidden; }
-      .custom-table { margin-bottom: 0; }
-      .custom-table thead { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-      .custom-table thead th { padding: 1rem; font-weight: 600; border: none; }
-      .custom-table tbody td { padding: 1rem; vertical-align: middle; }
-      .custom-table tbody tr:hover { background-color: #f8f9fa; }
-      .status-badge { padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.875rem; font-weight: 600; display: inline-block; }
-      .status-pending { background-color: #fff3cd; color: #856404; }
-      .status-processing { background-color: #cfe2ff; color: #084298; }
-      .status-completed { background-color: #d1e7dd; color: #0f5132; }
-      .status-cancelled { background-color: #f8d7da; color: #842029; }
-      .status-scheduled { background-color: #e7f3ff; color: #055160; }
-      .status-arrived { background-color: #d1e7dd; color: #0f5132; }
-      .btn-action { padding: 0.25rem 0.75rem; font-size: 0.875rem; margin: 0 0.25rem; }
-      .empty-state { text-align: center; padding: 3rem; color: #6c757d; }
-      .empty-state .material-icons { font-size: 4rem; color: #dee2e6; margin-bottom: 1rem; }
-      .stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem; }
-      .stock-item { background: white; border-radius: 8px; padding: 1rem; text-align: center; border: 2px solid #dee2e6; transition: all 0.3s ease; cursor: pointer; }
-      .stock-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateY(-2px); }
-      .stock-item-number { font-size: 1.8rem; font-weight: bold; color: #0d6efd; margin-bottom: 0.5rem; }
-      .stock-item-weight { font-size: 0.9rem; color: #666; }
-      .status-section { margin-bottom: 2rem; }
-      .status-section-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
-      .status-section-title { font-size: 1.2rem; font-weight: 600; margin: 0; }
-      .status-section-count { padding: 0.25rem 0.75rem; border-radius: 20px; font-weight: 600; }
-      .user-info-header { position: fixed; top: 20px; right: 20px; background: white; padding: 12px 24px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); z-index: 1000; display: flex; align-items: center; gap: 15px; }
-      .modal-backdrop-custom { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9998; }
-      .modal-backdrop-custom.show { display: block; }
-      .modal-custom { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); z-index: 9999; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; }
-      .modal-custom.show { display: block; }
-      .modal-header-custom { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 12px 12px 0 0; }
-      .modal-body-custom { padding: 2rem; }
-      .form-label-custom { font-weight: 600; color: #2c3e50; margin-bottom: 0.5rem; }
-      .back-to-main { position: fixed; bottom: 30px; left: 30px; background: #6c757d; color: white; padding: 1rem 1.5rem; border-radius: 50px; text-decoration: none; box-shadow: 0 4px 12px rgba(108,117,125,0.4); transition: all 0.3s; z-index: 1000; display: flex; align-items: center; gap: 0.5rem; }
-      .back-to-main:hover { background: #5a6268; transform: scale(1.05); color: white; }
-      .btn-ship { background: linear-gradient(135deg, #198754, #0f5132); color: white; border: none; padding: 0.3rem 0.8rem; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s; }
-      .btn-ship:hover { opacity: 0.85; transform: scale(1.05); }
->>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     </style>
   </head>
   <body>
@@ -331,9 +280,11 @@
         <div style="font-weight: 600; color: #2c3e50;"><%= displayName %></div>
         <div style="font-size: 0.875rem; color: #6c757d;">在庫管理</div>
       </div>
-      <a href="/logout" class="btn btn-sm btn-outline-secondary" onclick="return confirm('ログアウトしますか？')">
-        <span class="material-icons" style="font-size: 18px;">logout</span>
-      </a>
+      <form action="/logout" method="POST" style="margin: 0;">
+        <button type="submit" class="btn btn-sm btn-outline-secondary">
+          <span class="material-icons" style="font-size: 18px;">logout</span>
+        </button>
+      </form>
     </div>
 
     <!-- Back to Main -->
@@ -374,11 +325,7 @@
       <!-- Tab Content -->
       <div class="tab-content" id="managementTabContent">
 
-<<<<<<< HEAD
         <!-- ==================== ORDERS TAB ==================== -->
-=======
-        <!-- ===================== ORDERS TAB ===================== -->
->>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
         <div class="tab-pane fade show active" id="orders" role="tabpanel">
           <div class="section-card">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -403,7 +350,6 @@
                       <th>注文日</th>
                       <th>数量</th>
                       <th>納期</th>
-                      <th>在庫状況</th>
                       <th>ステータス</th>
                       <th>在庫状況</th>
                       <th>操作</th>
@@ -418,38 +364,8 @@
                         <td><%= new Date(order.$createdAt).toLocaleDateString('ja-JP') %></td>
                         <td><%= order.quantity %> 個</td>
                         <td><%= new Date(order.due_date).toLocaleDateString('ja-JP') %></td>
-
-                        <!-- Stock Availability -->
-                        <td>
-                          <% if (order.stockAvailability) { %>
-                            <div style="display: inline-flex; align-items: center; gap: 0.5rem;">
-                              <span style="font-size: 1.2rem;"><%= order.stockAvailability.icon %></span>
-                              <span style="color: <%= order.stockAvailability.color %>; font-weight: 600; font-size: 0.875rem;">
-                                <%= order.stockAvailability.label %>
-                              </span>
-                              <% if (order.stockAvailability.status === 'insufficient') { %>
-                                <span style="color: #dc3545; font-size: 0.75rem;">
-                                  (<%= order.stockAvailability.available %>/<%= order.stockAvailability.needed %>)
-                                </span>
-                              <% } else if (order.stockAvailability.allocatedItems && order.stockAvailability.allocatedItems.length > 0) { %>
-                                <%
-                                  const items = order.stockAvailability.allocatedItems;
-                                  const firstNum = parseInt(items[0].filename.replace('.txt',''));
-                                  const lastNum = parseInt(items[items.length-1].filename.replace('.txt',''));
-                                %>
-                                <span style="color: #6c757d; font-size: 0.75rem;">
-                                  (<%= firstNum %> ~ <%= lastNum %>)
-                                </span>
-                              <% } %>
-                            </div>
-                          <% } else { %>
-                            <span style="color: #999;">-</span>
-                          <% } %>
-                        </td>
-
                         <td>
                           <span class="status-badge status-<%= order.status %>">
-<<<<<<< HEAD
                             <%= order.status === 'pending'     ? '保留中' :
                                 order.status === 'processing'  ? '処理中' :
                                 order.status === 'completed'   ? '完了'   :
@@ -478,33 +394,11 @@
                             <span class="material-icons" style="font-size: 16px;">local_shipping</span>
                           </button>
                           <button class="btn btn-sm btn-outline-primary btn-action" title="編集" onclick="editOrder('<%= order.$id %>')">
-=======
-                            <%= order.status === 'pending' ? '保留中' :
-                                order.status === 'processing' ? '注文確定' :
-                                order.status === 'completed' ? '出荷済' : 'キャンセル' %>
-                          </span>
-                        </td>
-
-                        <!-- Actions: Edit, Delete, Ship -->
-                        <td style="white-space: nowrap;">
-                          <button class="btn btn-sm btn-outline-primary btn-action" onclick="editOrder('<%= order.$id %>')">
->>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
                             <span class="material-icons" style="font-size: 16px;">edit</span>
                           </button>
                           <button class="btn btn-sm btn-outline-danger btn-action" title="削除" onclick="deleteOrder('<%= order.$id %>')">
                             <span class="material-icons" style="font-size: 16px;">delete</span>
                           </button>
-                          <% if (order.stockAvailability && order.stockAvailability.allocatedItems && order.stockAvailability.allocatedItems.length > 0) { %>
-                            <%
-                              const allocIds = order.stockAvailability.allocatedItems.map(i => i.$id);
-                              const allocIdsJson = JSON.stringify(allocIds).replace(/"/g, '&quot;');
-                            %>
-                            <button class="btn-ship btn-action" 
-                              onclick="shipOrder('<%= order.$id %>', <%= order.quantity %>, '<%= allocIdsJson %>')">
-                              <span class="material-icons" style="font-size: 14px;">local_shipping</span>
-                              出荷
-                            </button>
-                          <% } %>
                         </td>
                       </tr>
                     <% }); %>
@@ -515,12 +409,7 @@
           </div>
         </div>
 
-<<<<<<< HEAD
         <!-- ==================== IMPORTS TAB ==================== -->
-=======
-        <!-- ===================== IMPORTS TAB ===================== -->
-        <!-- Only shows imports that have NOT arrived yet (status = scheduled) -->
->>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
         <div class="tab-pane fade" id="imports" role="tabpanel">
           <div class="section-card">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -531,15 +420,10 @@
               </button>
             </div>
 
-            <%
-              // Only show scheduled (not arrived) imports
-              const pendingImports = imports.filter(imp => imp.status !== 'arrived');
-            %>
-
-            <% if (pendingImports.length === 0) { %>
+            <% if (imports.length === 0) { %>
               <div class="empty-state">
                 <span class="material-icons">local_shipping</span>
-                <p>入荷予定中のものはありません</p>
+                <p>入荷予定がありません</p>
                 <button class="btn btn-success" onclick="openImportModal()">入荷予定を作成</button>
               </div>
             <% } else { %>
@@ -549,7 +433,6 @@
                     <tr>
                       <th>作成日</th>
                       <th>予定数量</th>
-                      <th>ファイル番号</th>
                       <th>予定日</th>
                       <th>実際の入荷日</th>
                       <th>ステータス</th>
@@ -557,24 +440,10 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <% pendingImports.forEach(imp => { %>
-                      <%
-                        const linked = imp.linked_files || [];
-                        const nums = linked.map(f => parseInt(f.replace('.txt',''))).filter(n => !isNaN(n)).sort((a,b)=>a-b);
-                        const fileRange = nums.length > 0
-                          ? (nums.length === 1 ? nums[0] : nums[0] + ' ～ ' + nums[nums.length-1])
-                          : '-';
-                      %>
+                    <% imports.forEach(imp => { %>
                       <tr>
                         <td><%= new Date(imp.$createdAt).toLocaleDateString('ja-JP') %></td>
                         <td><%= imp.quantity %> 個</td>
-                        <td>
-                          <% if (nums.length > 0) { %>
-                            <span style="font-size:0.85rem; font-weight:600; color:#0d6efd;"><%= fileRange %></span>
-                          <% } else { %>
-                            <span style="color:#999; font-size:0.8rem;">-</span>
-                          <% } %>
-                        </td>
                         <td><%= new Date(imp.scheduled_date).toLocaleDateString('ja-JP') %></td>
                         <td><%= imp.actual_date ? new Date(imp.actual_date).toLocaleDateString('ja-JP') : '-' %></td>
                         <td>
@@ -599,7 +468,6 @@
           </div>
         </div>
 
-<<<<<<< HEAD
         <!-- ==================== INVENTORY TAB ==================== -->
         <div class="tab-pane fade" id="inventory" role="tabpanel">
 
@@ -624,95 +492,29 @@
               </div>
             <% } %>
           </div>
-=======
-        <!-- ===================== INVENTORY TAB ===================== -->
-        <!-- Shows: imported → inspection → finished_inspection -->
-        <!-- upcoming_import and shipped are excluded -->
-        <div class="tab-pane fade" id="inventory" role="tabpanel">
-          <%
-          const statusSections = [
-            {
-              key: 'imported',
-              label: '入荷済 (Imported)',
-              next: 'inspection',
-              nextLabel: '検査中へ →',
-              bg: 'linear-gradient(135deg,#868e96 0%,#6c757d 100%)',
-              cardBg: 'rgba(233,236,239,0.5)',
-              textColor: 'white',
-              countBg: 'rgba(255,255,255,0.2)'
-            },
-            {
-              key: 'inspection',
-              label: '検査中 (In Inspection)',
-              next: 'finished_inspection',
-              nextLabel: '検査完了へ →',
-              bg: 'linear-gradient(135deg,#6ea8fe 0%,#0d6efd 100%)',
-              cardBg: 'rgba(222,226,230,0.67)',
-              textColor: 'white',
-              countBg: 'rgba(255,255,255,0.2)'
-            },
-            {
-              key: 'finished_inspection',
-              label: '検査完了 (Ready to Ship)',
-              next: 'shipped',
-              nextLabel: '出荷OK →',
-              bg: 'linear-gradient(135deg,#75b798 0%,#198754 100%)',
-              cardBg: '#ced4da',
-              textColor: 'white',
-              countBg: 'rgba(255,255,255,0.2)'
-            }
-          ];
-          %>
->>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
 
-          <% statusSections.forEach(section => { %>
+          <!-- Imported -->
           <div class="status-section">
-            <div class="status-section-header" style="background: <%= section.bg %>;">
-              <h3 class="status-section-title" style="color: <%= section.textColor %>"><%= section.label %></h3>
-              <div style="display:flex; align-items:center; gap: 0.75rem;">
-                <% if (inspectionsByStatus[section.key] && inspectionsByStatus[section.key].length > 0 && section.next !== 'shipped') { %>
-                  <button class="btn btn-sm btn-light" style="font-size:0.75rem; padding: 2px 10px; opacity:0.9;"
-                    onclick="advanceAllStatus('<%= section.key %>', '<%= section.next %>', '<%= section.nextLabel %>')">
-                    <%= section.nextLabel %>
-                  </button>
-                <% } %>
-                <span class="status-section-count" style="background: <%= section.countBg %>; color: <%= section.textColor %>;">
-                  <%= inspectionsByStatus[section.key] ? inspectionsByStatus[section.key].length : 0 %>
-                </span>
-              </div>
+            <div class="status-section-header" style="background: linear-gradient(135deg, #868e96 0%, #6c757d 100%);">
+              <h3 class="status-section-title">入荷済 (Imported)</h3>
+              <span class="status-section-count"><%= inspectionsByStatus.imported.length %></span>
             </div>
-            <% if (!inspectionsByStatus[section.key] || inspectionsByStatus[section.key].length === 0) { %>
+            <% if (inspectionsByStatus.imported.length === 0) { %>
               <div class="empty-state" style="padding: 1.5rem;">
-                <p style="margin: 0; font-size: 0.9rem; color: #999;">製品はありません</p>
+                <p style="margin: 0; font-size: 0.9rem;">入荷済の製品はありません</p>
               </div>
             <% } else { %>
               <div class="stock-grid">
-                <% inspectionsByStatus[section.key].forEach(item => { %>
-                  <div class="stock-item" style="background: <%= section.cardBg %>; position: relative;">
-                    <div class="stock-item-number" onclick="viewItem('<%= item.$id %>')" style="cursor:pointer;">
-                      <%= item.filename.replace('.txt', '') %>
-                    </div>
+                <% inspectionsByStatus.imported.forEach(item => { %>
+                  <div class="stock-item" style="background: rgba(233, 236, 239, 0.5);" onclick="viewItem('<%= item.$id %>')">
+                    <div class="stock-item-number"><%= item.filename.replace('.txt', '') %></div>
                     <div class="stock-item-weight"><%= item.weight ? item.weight + ' g' : '-' %></div>
-                    <% if (section.next === 'shipped') { %>
-                      <!-- Final step: mark as shipped individually -->
-                      <button class="btn btn-sm" style="margin-top:4px; font-size:0.65rem; padding:2px 6px; background:#198754; color:white; border:none; border-radius:4px; width:100%;"
-                        onclick="event.stopPropagation(); changeItemStatus('<%= item.$id %>', 'shipped', '<%= item.filename.replace('.txt','') %>')">
-                        出荷OK ✓
-                      </button>
-                    <% } else { %>
-                      <button class="btn btn-sm" style="margin-top:4px; font-size:0.65rem; padding:2px 6px; background:rgba(0,0,0,0.15); color:inherit; border:none; border-radius:4px; width:100%;"
-                        onclick="event.stopPropagation(); changeItemStatus('<%= item.$id %>', '<%= section.next %>', '<%= item.filename.replace('.txt','') %>')">
-                        → 次へ
-                      </button>
-                    <% } %>
                   </div>
                 <% }); %>
               </div>
             <% } %>
           </div>
-          <% }); %>
 
-<<<<<<< HEAD
           <!-- In Inspection -->
           <div class="status-section">
             <div class="status-section-header" style="background: linear-gradient(135deg, #6ea8fe 0%, #0d6efd 100%);">
@@ -756,11 +558,6 @@
               </div>
             <% } %>
           </div>
-=======
-        </div>
-      </div>
-    </div>
->>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
 
         </div><!-- end Inventory tab -->
       </div><!-- end tab-content -->
@@ -769,7 +566,9 @@
     <!-- ==================== ORDER MODAL ==================== -->
     <div class="modal-backdrop-custom" id="orderModalBackdrop" onclick="closeOrderModal()"></div>
     <div class="modal-custom" id="orderModal">
-      <div class="modal-header-custom"><h3 style="margin: 0;">注文管理</h3></div>
+      <div class="modal-header-custom">
+        <h3 style="margin: 0;">注文管理</h3>
+      </div>
       <div class="modal-body-custom">
         <form id="orderForm">
           <input type="hidden" id="orderId" name="orderId">
@@ -785,14 +584,9 @@
             <label for="orderStatus" class="form-label form-label-custom">ステータス</label>
             <select class="form-select" id="orderStatus" name="status">
               <option value="pending">保留中</option>
-<<<<<<< HEAD
               <option value="processing">処理中</option>
               <option value="completed">完了</option>
               <option value="shipped">出荷済</option>
-=======
-              <option value="processing">注文確定</option>
-              <option value="completed">出荷済</option>
->>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
               <option value="cancelled">キャンセル</option>
             </select>
           </div>
@@ -807,7 +601,9 @@
     <!-- ==================== IMPORT MODAL ==================== -->
     <div class="modal-backdrop-custom" id="importModalBackdrop" onclick="closeImportModal()"></div>
     <div class="modal-custom" id="importModal">
-      <div class="modal-header-custom"><h3 style="margin: 0;">入荷管理</h3></div>
+      <div class="modal-header-custom">
+        <h3 style="margin: 0;">入荷管理</h3>
+      </div>
       <div class="modal-body-custom">
         <form id="importForm">
           <input type="hidden" id="importId" name="importId">
@@ -840,7 +636,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-<<<<<<< HEAD
 
       // ======================
       // SHIP ORDER
@@ -892,9 +687,6 @@
       // ORDER MODAL
       // ======================
 
-=======
-      // ===================== ORDER MODAL =====================
->>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
       function openOrderModal(orderId = null) {
         if (orderId) {
           fetch(`/api/orders/${orderId}`)
@@ -925,7 +717,6 @@
         try {
           const response = await fetch(`/api/orders/${orderId}`, { method: 'DELETE' });
           const result = await response.json();
-<<<<<<< HEAD
           if (result.success) {
             location.reload();
           } else {
@@ -934,11 +725,6 @@
         } catch (error) {
           alert('エラーが発生しました: ' + error.message);
         }
-=======
-          if (result.success) { location.reload(); }
-          else { alert('削除に失敗しました: ' + result.error); }
-        } catch (error) { alert('エラーが発生しました: ' + error.message); }
->>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
       }
 
       document.getElementById('orderForm').addEventListener('submit', async (e) => {
@@ -953,7 +739,6 @@
         try {
           const url    = orderId ? `/api/orders/${orderId}` : '/api/orders';
           const method = orderId ? 'PUT' : 'POST';
-<<<<<<< HEAD
           const response = await fetch(url, {
             method,
             headers: { 'Content-Type': 'application/json' },
@@ -974,47 +759,6 @@
       // IMPORT MODAL
       // ======================
 
-=======
-          const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-          const result = await response.json();
-          if (result.success) { location.reload(); }
-          else { alert('保存に失敗しました: ' + result.error); }
-        } catch (error) { alert('エラーが発生しました: ' + error.message); }
-      });
-
-      // ===================== SHIP ORDER =====================
-      async function shipOrder(orderId, quantity, allocatedIdsJson) {
-        let allocatedIds;
-        try { allocatedIds = JSON.parse(allocatedIdsJson); }
-        catch (e) { allocatedIds = []; }
-
-        if (allocatedIds.length === 0) {
-          alert('出荷可能な製品が割り当てられていません。');
-          return;
-        }
-
-        if (!confirm(`${quantity}個を出荷済みにしますか？\n関連する製品がすべてのビューから消えます。`)) return;
-
-        try {
-          const response = await fetch(`/api/orders/${orderId}/ship`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ itemIds: allocatedIds })
-          });
-          const result = await response.json();
-          if (result.success) {
-            alert(`✅ 出荷完了！\n${result.shippedCount}件の製品を出荷済みにしました。`);
-            location.reload();
-          } else {
-            alert('エラー: ' + result.error);
-          }
-        } catch (error) {
-          alert('エラー: ' + error.message);
-        }
-      }
-
-      // ===================== IMPORT MODAL =====================
->>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
       function openImportModal(importId = null) {
         if (importId) {
           fetch(`/api/imports/${importId}`)
@@ -1046,7 +790,6 @@
         try {
           const response = await fetch(`/api/imports/${importId}`, { method: 'DELETE' });
           const result = await response.json();
-<<<<<<< HEAD
           if (result.success) {
             location.reload();
           } else {
@@ -1055,11 +798,6 @@
         } catch (error) {
           alert('エラーが発生しました: ' + error.message);
         }
-=======
-          if (result.success) { location.reload(); }
-          else { alert('削除に失敗しました: ' + result.error); }
-        } catch (error) { alert('エラーが発生しました: ' + error.message); }
->>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
       }
 
       document.getElementById('importForm').addEventListener('submit', async (e) => {
@@ -1075,81 +813,28 @@
         try {
           const url    = importId ? `/api/imports/${importId}` : '/api/imports';
           const method = importId ? 'PUT' : 'POST';
-<<<<<<< HEAD
           const response = await fetch(url, {
             method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
           });
-=======
-          const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
->>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
           const result = await response.json();
           if (result.success) {
-            if (!importId && result.createdFiles && result.createdFiles.length > 0) {
-              alert(`✅ 入荷予定を作成しました！\n📦 ${result.createdFiles.length}件のファイルを自動作成:\n番号 ${result.startNumber} ～ ${result.endNumber}`);
-            }
-            if (importId && result.updatedInspections > 0) {
-              alert(`✅ 入荷済に更新しました！\n${result.updatedInspections}件のファイルが「入荷済」に移動しました。`);
-            }
             location.reload();
           } else {
             alert('保存に失敗しました: ' + result.error);
           }
-        } catch (error) { alert('エラーが発生しました: ' + error.message); }
+        } catch (error) {
+          alert('エラーが発生しました: ' + error.message);
+        }
       });
 
-<<<<<<< HEAD
       // ======================
       // VIEW ITEM
       // ======================
 
-=======
-      // ===================== INVENTORY HELPERS =====================
->>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
       function viewItem(itemId) {
-        window.open(`/files/${itemId}`, '_blank');
-      }
-
-      async function changeItemStatus(itemId, newStatus, fileNumber) {
-        const statusLabels = {
-          imported: '入荷済', inspection: '検査中',
-          finished_inspection: '検査完了', shipped: '出荷OK'
-        };
-        const label = statusLabels[newStatus] || newStatus;
-        if (!confirm(`ファイル ${fileNumber} を「${label}」に変更しますか？`)) return;
-        try {
-          const response = await fetch(`/api/inspections/${itemId}/status`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus })
-          });
-          const result = await response.json();
-          if (result.success) { location.reload(); }
-          else { alert('更新に失敗しました: ' + result.error); }
-        } catch (error) { alert('エラー: ' + error.message); }
-      }
-
-      async function advanceAllStatus(currentStatus, nextStatus, label) {
-        const statusLabels = {
-          imported: '入荷済', inspection: '検査中',
-          finished_inspection: '検査完了', shipped: '出荷OK'
-        };
-        const currentLabel = statusLabels[currentStatus] || currentStatus;
-        const nextLabel = statusLabels[nextStatus] || nextStatus;
-        if (!confirm(`「${currentLabel}」のすべてのファイルを「${nextLabel}」に移動しますか？`)) return;
-        try {
-          const response = await fetch('/api/inspections/advance-status', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fromStatus: currentStatus, toStatus: nextStatus })
-          });
-          const result = await response.json();
-          if (result.success) {
-            alert(`✅ ${result.updated}件を「${nextLabel}」に移動しました`);
-            location.reload();
-          } else { alert('更新に失敗しました: ' + result.error); }
-        } catch (error) { alert('エラー: ' + error.message); }
+        window.open(`/file-data/${itemId}`, '_blank');
       }
 
     </script>
