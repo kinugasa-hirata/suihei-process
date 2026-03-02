@@ -99,16 +99,29 @@
         font-weight: 600;
         display: inline-block;
       }
-      .status-pending { background-color: #fff3cd; color: #856404; }
-      .status-processing { background-color: #cfe2ff; color: #084298; }
-      .status-completed { background-color: #d1e7dd; color: #0f5132; }
-      .status-cancelled { background-color: #f8d7da; color: #842029; }
-      .status-scheduled { background-color: #e7f3ff; color: #055160; }
-      .status-arrived { background-color: #d1e7dd; color: #0f5132; }
+      .status-pending     { background-color: #fff3cd; color: #856404; }
+      .status-processing  { background-color: #cfe2ff; color: #084298; }
+      .status-completed   { background-color: #d1e7dd; color: #0f5132; }
+      .status-cancelled   { background-color: #f8d7da; color: #842029; }
+      .status-scheduled   { background-color: #e7f3ff; color: #055160; }
+      .status-arrived     { background-color: #d1e7dd; color: #0f5132; }
       .btn-action {
         padding: 0.25rem 0.75rem;
         font-size: 0.875rem;
         margin: 0 0.25rem;
+      }
+      .btn-ship {
+        background-color: #0d6efd;
+        color: white;
+        border: none;
+      }
+      .btn-ship:hover {
+        background-color: #0b5ed7;
+        color: white;
+      }
+      .btn-ship:disabled {
+        background-color: #adb5bd;
+        cursor: not-allowed;
       }
       .empty-state {
         text-align: center;
@@ -189,21 +202,16 @@
       .modal-backdrop-custom {
         display: none;
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
         background: rgba(0,0,0,0.5);
         z-index: 9998;
       }
-      .modal-backdrop-custom.show {
-        display: block;
-      }
+      .modal-backdrop-custom.show { display: block; }
       .modal-custom {
         display: none;
         position: fixed;
-        top: 50%;
-        left: 50%;
+        top: 50%; left: 50%;
         transform: translate(-50%, -50%);
         background: white;
         border-radius: 12px;
@@ -214,18 +222,14 @@
         max-height: 90vh;
         overflow-y: auto;
       }
-      .modal-custom.show {
-        display: block;
-      }
+      .modal-custom.show { display: block; }
       .modal-header-custom {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         padding: 1.5rem;
         border-radius: 12px 12px 0 0;
       }
-      .modal-body-custom {
-        padding: 2rem;
-      }
+      .modal-body-custom { padding: 2rem; }
       .form-label-custom {
         font-weight: 600;
         color: #2c3e50;
@@ -252,6 +256,20 @@
         transform: scale(1.05);
         color: white;
       }
+      /* Stock availability indicator in Orders table */
+      .stock-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+      .stock-indicator.ready      { background: #d1e7dd; color: #0f5132; }
+      .stock-indicator.processing { background: #e2e3e5; color: #41464b; }
+      .stock-indicator.uncertain  { background: #fff3cd; color: #856404; }
+      .stock-indicator.insufficient { background: #f8d7da; color: #842029; }
     </style>
   </head>
   <body>
@@ -279,7 +297,7 @@
       <!-- Header -->
       <div class="header-section">
         <h1 class="header-title">在庫管理システム</h1>
-        <p class="header-subtitle">Stock Management System - Orders, Imports & Inventory</p>
+        <p class="header-subtitle">Stock Management System - Orders, Imports &amp; Inventory</p>
       </div>
 
       <!-- Navigation Tabs -->
@@ -306,7 +324,8 @@
 
       <!-- Tab Content -->
       <div class="tab-content" id="managementTabContent">
-        <!-- Orders Tab -->
+
+        <!-- ==================== ORDERS TAB ==================== -->
         <div class="tab-pane fade show active" id="orders" role="tabpanel">
           <div class="section-card">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -332,27 +351,52 @@
                       <th>数量</th>
                       <th>納期</th>
                       <th>ステータス</th>
+                      <th>在庫状況</th>
                       <th>操作</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <% orders.forEach(order => { %>
+                    <% orders.forEach(order => {
+                      const stock = order.stockAvailability;
+                      const allocIds = stock.allocatedItems.map(i => i.$id).join(',');
+                    %>
                       <tr>
                         <td><%= new Date(order.$createdAt).toLocaleDateString('ja-JP') %></td>
                         <td><%= order.quantity %> 個</td>
                         <td><%= new Date(order.due_date).toLocaleDateString('ja-JP') %></td>
                         <td>
                           <span class="status-badge status-<%= order.status %>">
-                            <%= order.status === 'pending' ? '保留中' :
-                                order.status === 'processing' ? '処理中' :
-                                order.status === 'completed' ? '完了' : 'キャンセル' %>
+                            <%= order.status === 'pending'     ? '保留中' :
+                                order.status === 'processing'  ? '処理中' :
+                                order.status === 'completed'   ? '完了'   :
+                                order.status === 'shipped'     ? '出荷済' : 'キャンセル' %>
                           </span>
                         </td>
                         <td>
-                          <button class="btn btn-sm btn-outline-primary btn-action" onclick="editOrder('<%= order.$id %>')">
+                          <span class="stock-indicator <%= stock.status %>">
+                            <%= stock.icon %> <%= stock.label %>
+                            <% if (stock.status === 'insufficient') { %>
+                              (<%= stock.available %>/<%= stock.needed %>)
+                            <% } %>
+                          </span>
+                        </td>
+                        <td>
+                          <!-- Ship button — uses data attributes to safely pass IDs (avoids HTML encoding bug) -->
+                          <button
+                            class="btn btn-sm btn-ship btn-action"
+                            title="出荷"
+                            data-order-id="<%= order.$id %>"
+                            data-quantity="<%= order.quantity %>"
+                            data-item-ids="<%= allocIds %>"
+                            onclick="shipOrderFromBtn(this)"
+                            <%= stock.status === 'insufficient' ? 'disabled' : '' %>
+                          >
+                            <span class="material-icons" style="font-size: 16px;">local_shipping</span>
+                          </button>
+                          <button class="btn btn-sm btn-outline-primary btn-action" title="編集" onclick="editOrder('<%= order.$id %>')">
                             <span class="material-icons" style="font-size: 16px;">edit</span>
                           </button>
-                          <button class="btn btn-sm btn-outline-danger btn-action" onclick="deleteOrder('<%= order.$id %>')">
+                          <button class="btn btn-sm btn-outline-danger btn-action" title="削除" onclick="deleteOrder('<%= order.$id %>')">
                             <span class="material-icons" style="font-size: 16px;">delete</span>
                           </button>
                         </td>
@@ -365,7 +409,7 @@
           </div>
         </div>
 
-        <!-- Imports Tab -->
+        <!-- ==================== IMPORTS TAB ==================== -->
         <div class="tab-pane fade" id="imports" role="tabpanel">
           <div class="section-card">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -424,8 +468,9 @@
           </div>
         </div>
 
-        <!-- Inventory Tab -->
+        <!-- ==================== INVENTORY TAB ==================== -->
         <div class="tab-pane fade" id="inventory" role="tabpanel">
+
           <!-- Upcoming Import -->
           <div class="status-section">
             <div class="status-section-header" style="background: rgba(0,0,0,0.05);">
@@ -513,11 +558,12 @@
               </div>
             <% } %>
           </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- Order Modal -->
+        </div><!-- end Inventory tab -->
+      </div><!-- end tab-content -->
+    </div><!-- end container -->
+
+    <!-- ==================== ORDER MODAL ==================== -->
     <div class="modal-backdrop-custom" id="orderModalBackdrop" onclick="closeOrderModal()"></div>
     <div class="modal-custom" id="orderModal">
       <div class="modal-header-custom">
@@ -526,27 +572,24 @@
       <div class="modal-body-custom">
         <form id="orderForm">
           <input type="hidden" id="orderId" name="orderId">
-          
           <div class="mb-3">
             <label for="quantity" class="form-label form-label-custom">数量</label>
             <input type="number" class="form-control" id="quantity" name="quantity" min="1" required>
           </div>
-          
           <div class="mb-3">
             <label for="dueDate" class="form-label form-label-custom">納期</label>
             <input type="date" class="form-control" id="dueDate" name="due_date" required>
           </div>
-          
           <div class="mb-3">
             <label for="orderStatus" class="form-label form-label-custom">ステータス</label>
             <select class="form-select" id="orderStatus" name="status">
               <option value="pending">保留中</option>
               <option value="processing">処理中</option>
               <option value="completed">完了</option>
+              <option value="shipped">出荷済</option>
               <option value="cancelled">キャンセル</option>
             </select>
           </div>
-          
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary flex-grow-1">保存</button>
             <button type="button" class="btn btn-secondary" onclick="closeOrderModal()">キャンセル</button>
@@ -555,7 +598,7 @@
       </div>
     </div>
 
-    <!-- Import Modal -->
+    <!-- ==================== IMPORT MODAL ==================== -->
     <div class="modal-backdrop-custom" id="importModalBackdrop" onclick="closeImportModal()"></div>
     <div class="modal-custom" id="importModal">
       <div class="modal-header-custom">
@@ -564,22 +607,18 @@
       <div class="modal-body-custom">
         <form id="importForm">
           <input type="hidden" id="importId" name="importId">
-          
           <div class="mb-3">
             <label for="importQuantity" class="form-label form-label-custom">数量</label>
             <input type="number" class="form-control" id="importQuantity" name="quantity" min="1" required>
           </div>
-          
           <div class="mb-3">
             <label for="scheduledDate" class="form-label form-label-custom">予定日</label>
             <input type="date" class="form-control" id="scheduledDate" name="scheduled_date" required>
           </div>
-          
           <div class="mb-3">
             <label for="actualDate" class="form-label form-label-custom">実際の入荷日</label>
             <input type="date" class="form-control" id="actualDate" name="actual_date">
           </div>
-          
           <div class="mb-3">
             <label for="importStatus" class="form-label form-label-custom">ステータス</label>
             <select class="form-select" id="importStatus" name="status">
@@ -587,7 +626,6 @@
               <option value="arrived">入荷済</option>
             </select>
           </div>
-          
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-success flex-grow-1">保存</button>
             <button type="button" class="btn btn-secondary" onclick="closeImportModal()">キャンセル</button>
@@ -598,10 +636,59 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-      // Order Modal Functions
+
+      // ======================
+      // SHIP ORDER
+      // Reads IDs safely from data attributes (no JSON encoding issues).
+      // Sets order → 'shipped', sets all allocated products → 'shipped'.
+      // Both disappear from views; data is kept intact in Appwrite.
+      // ======================
+
+      function shipOrderFromBtn(btn) {
+        const orderId  = btn.dataset.orderId;
+        const quantity = btn.dataset.quantity;
+        const itemIds  = btn.dataset.itemIds ? btn.dataset.itemIds.split(',').filter(Boolean) : [];
+        shipOrder(orderId, quantity, itemIds);
+      }
+
+      async function shipOrder(orderId, quantity, itemIds) {
+        if (!itemIds || itemIds.length === 0) {
+          alert('出荷可能な製品が割り当てられていません');
+          return;
+        }
+
+        const confirmed = confirm(
+          `この注文を出荷済にしますか？\n` +
+          `対象製品: ${itemIds.length} 個\n\n` +
+          `注文と製品は画面から非表示になりますが、\nAppwriteのデータは保持されます。`
+        );
+        if (!confirmed) return;
+
+        try {
+          const response = await fetch(`/api/orders/${orderId}/ship`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ itemIds })
+          });
+          const result = await response.json();
+
+          if (result.success) {
+            alert(`出荷完了: ${result.shippedCount} 個の製品を出荷済に設定しました`);
+            location.reload();
+          } else {
+            alert('出荷処理に失敗しました: ' + result.error);
+          }
+        } catch (error) {
+          alert('エラーが発生しました: ' + error.message);
+        }
+      }
+
+      // ======================
+      // ORDER MODAL
+      // ======================
+
       function openOrderModal(orderId = null) {
         if (orderId) {
-          // Edit mode - fetch order data
           fetch(`/api/orders/${orderId}`)
             .then(r => r.json())
             .then(data => {
@@ -623,17 +710,13 @@
         document.getElementById('orderModal').classList.remove('show');
       }
 
-      function editOrder(orderId) {
-        openOrderModal(orderId);
-      }
+      function editOrder(orderId) { openOrderModal(orderId); }
 
       async function deleteOrder(orderId) {
         if (!confirm('この注文を削除してもよろしいですか？')) return;
-        
         try {
           const response = await fetch(`/api/orders/${orderId}`, { method: 'DELETE' });
           const result = await response.json();
-          
           if (result.success) {
             location.reload();
           } else {
@@ -646,7 +729,6 @@
 
       document.getElementById('orderForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        
         const formData = new FormData(e.target);
         const orderId = formData.get('orderId');
         const data = {
@@ -654,19 +736,15 @@
           due_date: formData.get('due_date'),
           status: formData.get('status')
         };
-        
         try {
-          const url = orderId ? `/api/orders/${orderId}` : '/api/orders';
+          const url    = orderId ? `/api/orders/${orderId}` : '/api/orders';
           const method = orderId ? 'PUT' : 'POST';
-          
           const response = await fetch(url, {
-            method: method,
+            method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
           });
-          
           const result = await response.json();
-          
           if (result.success) {
             location.reload();
           } else {
@@ -677,10 +755,12 @@
         }
       });
 
-      // Import Modal Functions
+      // ======================
+      // IMPORT MODAL
+      // ======================
+
       function openImportModal(importId = null) {
         if (importId) {
-          // Edit mode - fetch import data
           fetch(`/api/imports/${importId}`)
             .then(r => r.json())
             .then(data => {
@@ -703,17 +783,13 @@
         document.getElementById('importModal').classList.remove('show');
       }
 
-      function editImport(importId) {
-        openImportModal(importId);
-      }
+      function editImport(importId) { openImportModal(importId); }
 
       async function deleteImport(importId) {
         if (!confirm('この入荷予定を削除してもよろしいですか？')) return;
-        
         try {
           const response = await fetch(`/api/imports/${importId}`, { method: 'DELETE' });
           const result = await response.json();
-          
           if (result.success) {
             location.reload();
           } else {
@@ -726,28 +802,23 @@
 
       document.getElementById('importForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        
         const formData = new FormData(e.target);
         const importId = formData.get('importId');
         const data = {
-          quantity: formData.get('quantity'),
+          quantity:       formData.get('quantity'),
           scheduled_date: formData.get('scheduled_date'),
-          actual_date: formData.get('actual_date') || null,
-          status: formData.get('status')
+          actual_date:    formData.get('actual_date') || null,
+          status:         formData.get('status')
         };
-        
         try {
-          const url = importId ? `/api/imports/${importId}` : '/api/imports';
+          const url    = importId ? `/api/imports/${importId}` : '/api/imports';
           const method = importId ? 'PUT' : 'POST';
-          
           const response = await fetch(url, {
-            method: method,
+            method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
           });
-          
           const result = await response.json();
-          
           if (result.success) {
             location.reload();
           } else {
@@ -758,10 +829,14 @@
         }
       });
 
-      // View item function
+      // ======================
+      // VIEW ITEM
+      // ======================
+
       function viewItem(itemId) {
         window.open(`/file-data/${itemId}`, '_blank');
       }
+
     </script>
   </body>
 </html>
