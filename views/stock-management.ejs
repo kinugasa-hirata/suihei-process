@@ -270,6 +270,33 @@
       .stock-indicator.processing { background: #e2e3e5; color: #41464b; }
       .stock-indicator.uncertain  { background: #fff3cd; color: #856404; }
       .stock-indicator.insufficient { background: #f8d7da; color: #842029; }
+      /* Allocated product number chips */
+      .alloc-numbers {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        max-width: 300px;
+      }
+      .alloc-chip {
+        background: #e7f3ff;
+        color: #0d6efd;
+        border: 1px solid #b6d4fe;
+        border-radius: 12px;
+        padding: 0.1rem 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .alloc-chip.not-ready {
+        background: #fff3cd;
+        color: #856404;
+        border-color: #ffda6a;
+      }
+      .alloc-range {
+        font-size: 0.8rem;
+        color: #495057;
+        font-weight: 600;
+      }
     </style>
   </head>
   <body>
@@ -352,6 +379,7 @@
                       <th>納期</th>
                       <th>ステータス</th>
                       <th>在庫状況</th>
+                      <th>割当製品</th>
                       <th>操作</th>
                     </tr>
                   </thead>
@@ -359,6 +387,28 @@
                     <% orders.forEach(order => {
                       const stock = order.stockAvailability;
                       const allocIds = stock.allocatedItems.map(i => i.$id).join(',');
+                      // Build compact number display: sort numerically, show as range if consecutive
+                      const allocNums = stock.allocatedItems
+                        .map(i => ({ num: parseInt(i.filename.replace('.txt','')), status: i.status }))
+                        .filter(i => !isNaN(i.num))
+                        .sort((a,b) => a.num - b.num);
+                      // Group into consecutive ranges
+                      const ranges = [];
+                      let rangeStart = null, rangeLast = null, rangeReady = true;
+                      allocNums.forEach((item, idx) => {
+                        const isReady = item.status === 'finished_inspection';
+                        if (rangeStart === null) {
+                          rangeStart = item.num; rangeLast = item.num; rangeReady = isReady;
+                        } else if (item.num === rangeLast + 1 && isReady === rangeReady) {
+                          rangeLast = item.num;
+                        } else {
+                          ranges.push({ start: rangeStart, end: rangeLast, ready: rangeReady });
+                          rangeStart = item.num; rangeLast = item.num; rangeReady = isReady;
+                        }
+                        if (idx === allocNums.length - 1) {
+                          ranges.push({ start: rangeStart, end: rangeLast, ready: rangeReady });
+                        }
+                      });
                     %>
                       <tr>
                         <td><%= new Date(order.$createdAt).toLocaleDateString('ja-JP') %></td>
@@ -379,6 +429,19 @@
                               (<%= stock.available %>/<%= stock.needed %>)
                             <% } %>
                           </span>
+                        </td>
+                        <td>
+                          <% if (allocNums.length === 0) { %>
+                            <span style="color:#adb5bd; font-size:0.8rem;">-</span>
+                          <% } else { %>
+                            <div class="alloc-numbers">
+                              <% ranges.forEach(r => { %>
+                                <span class="alloc-chip <%= r.ready ? '' : 'not-ready' %>">
+                                  <%= r.start === r.end ? r.start : r.start + '～' + r.end %>
+                                </span>
+                              <% }); %>
+                            </div>
+                          <% } %>
                         </td>
                         <td>
                           <!-- Ship button — uses data attributes to safely pass IDs (avoids HTML encoding bug) -->
