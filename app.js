@@ -1,6 +1,11 @@
 // app.js - EFFICIENT SCHEMA VERSION WITH STOCK MANAGEMENT
+<<<<<<< HEAD
 // Updated: Ship order functionality - marks order as shipped, hides from Orders list,
 //          marks allocated products as shipped (hidden from all views, data kept in Appwrite)
+=======
+// Updated: Added stock management system for orders and imports
+// Modified: Excel import/export, Status tracking, Order management, Ship order functionality
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
 
 const express = require("express");
 const multer = require("multer");
@@ -244,6 +249,7 @@ async function deleteSession(sessionId) {
 // ======================
 
 async function requireAuth(req, res, next) {
+<<<<<<< HEAD
   const sessionId = req.cookies.session_id;
   const session = await getSession(sessionId);
   if (!session) {
@@ -270,6 +276,45 @@ async function requireWeightEditAuth(req, res, next) {
     canEditWeights: session.can_edit_weights
   };
   next();
+=======
+  try {
+    const sessionId = req.cookies.session_id;
+    const session = await getSession(sessionId);
+    if (!session) {
+      return res.redirect('/login');
+    }
+    req.session = {
+      username: session.username,
+      canEditWeights: session.can_edit_weights
+    };
+    next();
+  } catch (error) {
+    console.error('Auth error:', error);
+    res.clearCookie('session_id');
+    return res.redirect('/login');
+  }
+}
+
+async function requireWeightEditAuth(req, res, next) {
+  try {
+    const sessionId = req.cookies.session_id;
+    const session = await getSession(sessionId);
+    if (!session || !session.can_edit_weights) {
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to edit weights. Only naemura and iwatsuki can edit weights.'
+      });
+    }
+    req.session = {
+      username: session.username,
+      canEditWeights: session.can_edit_weights
+    };
+    next();
+  } catch (error) {
+    console.error('Weight auth error:', error);
+    return res.status(403).json({ success: false, error: 'Authentication error' });
+  }
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
 }
 
 // ======================
@@ -312,6 +357,7 @@ app.post("/login", async (req, res) => {
   }
 });
 
+// Support both POST and GET logout for Vercel compatibility
 app.post("/logout", async (req, res) => {
   const sessionId = req.cookies.session_id;
   await deleteSession(sessionId);
@@ -331,13 +377,15 @@ app.get("/logout", async (req, res) => {
 // ======================
 
 function parseTxtFile(fileContent) {
-  const lines = fileContent.split("\n").map(line => line.trim());
+  const lines = fileContent.split("\n").map(line => line.trim()).filter(l => l.length > 0);
   const data = { measurements: {} };
+  const safeFloat = s => { const v = parseFloat(s); return isNaN(v) ? null : v; };
 
   lines.forEach((line) => {
     if (line.startsWith("Lot No.")) {
       const lotMatch = line.match(/Lot No\.\s*:\s*(.+)/);
       if (lotMatch) data.lot = lotMatch[1].trim();
+<<<<<<< HEAD
     } else {
       const circleMatch = line.match(/^(\d+)\s+CIRCLE\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
       if (circleMatch) {
@@ -372,9 +420,35 @@ function parseTxtFile(fileContent) {
           distance: parseFloat(distanceMatch[5])
         };
       }
+=======
+      return;
+    }
+    const parts = line.split(";").map(p => p.trim());
+    if (parts.length < 2) return;
+    const index = parseInt(parts[0]);
+    const type = parts[1];
+    if (isNaN(index)) return;
+    if (!data.measurements[index]) data.measurements[index] = {};
+
+    if (type === "CIRCLE" && parts.length >= 12) {
+      data.measurements[index]["CIRCLE"] = {
+        type: "CIRCLE",
+        x: safeFloat(parts[3]), y: safeFloat(parts[4]), z: safeFloat(parts[5]),
+        diameter: safeFloat(parts[10]), roundness: safeFloat(parts[11])
+      };
+    } else if (type === "PT-COMP" && parts.length >= 6) {
+      data.measurements[index]["PT-COMP"] = {
+        type: "PT-COMP",
+        x: Math.abs(safeFloat(parts[3])), y: safeFloat(parts[4]), z: safeFloat(parts[5])
+      };
+    } else if (type === "DISTANCE") {
+      data.measurements[index]["DISTANCE"] = {
+        type: "DISTANCE",
+        y: safeFloat(parts[3]) !== null ? Math.abs(safeFloat(parts[3])) : null
+      };
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     }
   });
-
   return data;
 }
 
@@ -384,8 +458,9 @@ function extractMeasurementValue(parsedData, measureKey) {
   if (config.type === 'AVERAGE') {
     const values = config.indices
       .map(indexConfig => {
-        const measurement = parsedData.measurements[indexConfig.index];
-        if (!measurement || measurement.type !== indexConfig.type) return null;
+        const byIndex = parsedData.measurements[indexConfig.index];
+        const measurement = byIndex && byIndex[indexConfig.type];
+        if (!measurement) return null;
         return measurement[indexConfig.field];
       })
       .filter(v => v !== null);
@@ -393,9 +468,16 @@ function extractMeasurementValue(parsedData, measureKey) {
     const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
     return config.absolute ? Math.abs(avg) : avg;
   }
+<<<<<<< HEAD
   const measurement = parsedData.measurements[config.index];
   if (!measurement || measurement.type !== config.type) return null;
+=======
+  const byIndex = parsedData.measurements[config.index];
+  const measurement = byIndex && byIndex[config.type];
+  if (!measurement) return null;
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
   const value = measurement[config.field];
+  if (value === null || value === undefined) return null;
   return config.absolute ? Math.abs(value) : value;
 }
 
@@ -409,11 +491,23 @@ function isValidMeasurement(value, measureKey) {
 function processGValues(measurements) {
   const gKeys = ['G1', 'G2', 'G3', 'G4'];
   const validGValues = gKeys
+<<<<<<< HEAD
     .map(key => measurements[key])
     .filter(m => m && m.value !== null && m.value !== undefined && m.isValid === true);
   if (validGValues.length === 0) {
     return { value: null, isValid: null };
   }
+=======
+    .map(key => {
+      const m = measurements[key];
+      if (!m || m.value === null || m.value === undefined || m.value === '-') return null;
+      const numeric = parseFloat(m.value);
+      if (isNaN(numeric)) return null;
+      return { value: numeric, isValid: m.isValid };
+    })
+    .filter(m => m !== null);
+  if (validGValues.length === 0) return { value: null, isValid: null };
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
   const gSum = validGValues.reduce((sum, m) => sum + m.value, 0);
   const gAverage = gSum / validGValues.length;
   const gRange = validationRanges['G1'];
@@ -496,6 +590,7 @@ function calculateStockAvailability(orderQuantity, inspections, allOrders, curre
 app.get("/", requireAuth, async (req, res) => {
   try {
     const showArchived = req.query.archived === 'true';
+<<<<<<< HEAD
     const result = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_INSPECTIONS,
@@ -523,6 +618,34 @@ app.get("/", requireAuth, async (req, res) => {
       canEditWeights: req.session.canEditWeights,
       showArchived,
       statusConfig: STATUS_CONFIG
+=======
+    const result = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, [
+      Query.equal('is_archived', showArchived),
+      Query.orderDesc('uploaded_at'),
+      Query.limit(1000)
+    ]);
+
+    const files = result.documents
+      .filter(doc => doc.status !== 'shipped')
+      .filter(doc => doc.measurementA && doc.measurementA !== '-')
+      .map(doc => {
+        const status = doc.status || 'finished_inspection';
+        const statusCfg = STATUS_CONFIG[status] || STATUS_CONFIG['finished_inspection'];
+        return {
+          ...doc,
+          fileNumber: doc.filename ? doc.filename.replace(/\.(txt|TXT)$/, '') : 'Unknown',
+          statusColor: statusCfg.color,
+          statusOpacity: statusCfg.opacity,
+          statusLabel: statusCfg.label
+        };
+      });
+
+    res.render("index", {
+      files, username: req.session.username,
+      displayName: getDisplayName(req.session.username),
+      canEditWeights: req.session.canEditWeights,
+      showArchived, statusConfig: STATUS_CONFIG
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     });
   } catch (error) {
     console.error("Error fetching files:", error);
@@ -531,14 +654,134 @@ app.get("/", requireAuth, async (req, res) => {
 });
 
 // ======================
+<<<<<<< HEAD
 // STOCK MANAGEMENT VIEW
 // Orders with status 'shipped' are excluded from the Orders list.
 // Inspections with status 'shipped' are excluded from Inventory.
+=======
+// STOCK AVAILABILITY CALCULATION
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
 // ======================
+
+function calculateStockAvailability(orderQuantity, inspections, allOrders, currentOrder) {
+  // Sort orders by due date (earliest first) - earlier orders get priority
+  const sortedOrders = allOrders
+    .filter(o => o.$id !== currentOrder.$id) // Exclude the current order
+    .sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+  
+  // Track which stock items are already allocated to earlier orders
+  const allocatedStock = new Set();
+  
+  // Process each order that has priority (earlier due date)
+  for (const order of sortedOrders) {
+    if (new Date(order.due_date) < new Date(currentOrder.due_date)) {
+      const orderQty = parseInt(order.quantity);
+      
+      // Get available stock for this prior order (excluding already allocated)
+      const availableForPriorOrder = inspections
+        .filter(item => item.status && item.status !== 'shipped')
+        .filter(item => !allocatedStock.has(item.$id))
+        .map(item => ({
+          ...item,
+          fileNumber: parseInt(item.filename.replace('.txt', ''))
+        }))
+        .filter(item => !isNaN(item.fileNumber))
+        .sort((a, b) => a.fileNumber - b.fileNumber); // Allocate from lowest file numbers
+      
+      // Allocate stock to this prior order
+      availableForPriorOrder.slice(0, orderQty).forEach(item => {
+        allocatedStock.add(item.$id);
+      });
+    }
+  }
+  
+  // NOW check what's available for THIS order (after prior orders took their share)
+  const availableStock = inspections
+    .filter(item => item.status && item.status !== 'shipped')
+    .filter(item => !allocatedStock.has(item.$id)) // Exclude already allocated to earlier orders
+    .map(item => ({
+      ...item,
+      fileNumber: parseInt(item.filename.replace('.txt', ''))
+    }))
+    .filter(item => !isNaN(item.fileNumber))
+    .sort((a, b) => a.fileNumber - b.fileNumber); // Sort ASC (476, 477, 478...)
+
+  const needed = parseInt(orderQuantity);
+  
+  // Check if we have enough stock for this order
+  if (availableStock.length < needed) {
+    const shortage = needed - availableStock.length;
+    
+    return {
+      status: 'insufficient',
+      color: '#fd7e14', // Orange
+      icon: '⚠️',
+      label: '在庫不足',
+      available: availableStock.length,
+      needed: needed,
+      shortage: shortage,
+      allocatedItems: availableStock // Show what we DO have available
+    };
+  }
+
+  // We have enough - allocate stock for this order
+  const allocated = availableStock.slice(0, needed);
+  
+  // Determine status based on the quality of allocated items
+  const hasUpcomingImport = allocated.some(item => item.status === 'upcoming_import');
+  const hasImportedOrInspection = allocated.some(item => 
+    item.status === 'imported' || item.status === 'inspection'
+  );
+  const allFinished = allocated.every(item => item.status === 'finished_inspection');
+
+  if (allFinished) {
+    return {
+      status: 'ready',
+      color: '#198754', // Green
+      icon: '✓',
+      label: '出荷可能',
+      allocatedItems: allocated
+    };
+  } else if (hasUpcomingImport) {
+    return {
+      status: 'uncertain',
+      color: '#ffc107', // Yellow
+      icon: '⚠',
+      label: '入荷予定含む',
+      allocatedItems: allocated
+    };
+  } else if (hasImportedOrInspection) {
+    return {
+      status: 'processing',
+      color: '#6c757d', // Gray
+      icon: '◐',
+      label: '検査中含む',
+      allocatedItems: allocated
+    };
+  }
+  
+  // Fallback (should never reach here)
+  return {
+    status: 'unknown',
+    color: '#6c757d',
+    icon: '?',
+    label: '不明',
+    allocatedItems: allocated
+  };
+}
+
+// ==============================================
+// REPLACE THE /stock-management ROUTE IN app.js
+// This is the COMPLETE route with time-aware stock allocation
+// ==============================================
 
 app.get("/stock-management", requireAuth, async (req, res) => {
   try {
+<<<<<<< HEAD
     // Only fetch orders that are NOT shipped
+=======
+    // Fetch all orders sorted by due date
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     const ordersResult = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_ORDERS,
@@ -555,19 +798,26 @@ app.get("/stock-management", requireAuth, async (req, res) => {
       [Query.orderAsc('scheduled_date'), Query.limit(100)]
     );
 
+<<<<<<< HEAD
     // Fetch all inspections that are NOT shipped
+=======
+    // Fetch all inspections (not archived)
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     const inspectionsResult = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_INSPECTIONS,
       [
-        Query.notEqual('status', 'shipped'),
         Query.equal('is_archived', false),
         Query.orderDesc('uploaded_at'),
         Query.limit(1000)
       ]
     );
 
+<<<<<<< HEAD
     // Group inspections by status for the Inventory tab
+=======
+    // Group inspections by status for the inventory tab
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     const inspectionsByStatus = {
       upcoming_import: [],
       imported: [],
@@ -575,21 +825,52 @@ app.get("/stock-management", requireAuth, async (req, res) => {
       finished_inspection: []
     };
 
+    // Helper: extract numeric file number
+    const fileNum = doc => {
+      const m = doc.filename && doc.filename.match(/^(\d+)/);
+      return m ? parseInt(m[1]) : 0;
+    };
+
+    // Build a map of import_id -> list of filenames
+    const importFileMap = {};
     inspectionsResult.documents.forEach(doc => {
       const status = doc.status || 'finished_inspection';
+<<<<<<< HEAD
+=======
+      if (status === 'shipped') return;  // Skip shipped items
+      
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
       if (inspectionsByStatus[status] !== undefined) {
         inspectionsByStatus[status].push(doc);
+      } else {
+        inspectionsByStatus['finished_inspection'].push(doc);
+      }
+      
+      if (doc.import_id) {
+        if (!importFileMap[doc.import_id]) importFileMap[doc.import_id] = [];
+        importFileMap[doc.import_id].push(doc.filename);
       }
     });
 
+<<<<<<< HEAD
     // Calculate stock availability per order (time-aware, priority by due date)
     // We need ALL orders (including shipped ones) for the allocation algorithm?
     // No — shipped orders' products are already marked shipped so they won't appear
     // in inspectionsResult anyway. We only need active orders for priority sorting.
+=======
+    // Sort each section ASC by file number (lowest first)
+    Object.keys(inspectionsByStatus).forEach(key => {
+      inspectionsByStatus[key].sort((a, b) => fileNum(a) - fileNum(b));
+    });
+
+    // *** TIME-AWARE STOCK CALCULATION ***
+    // Calculate stock availability for each order, considering priority by due date
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     const ordersWithStock = ordersResult.documents.map(order => {
       const stockCheck = calculateStockAvailability(
         order.quantity,
         inspectionsResult.documents,
+<<<<<<< HEAD
         ordersResult.documents,
         order
       );
@@ -600,6 +881,28 @@ app.get("/stock-management", requireAuth, async (req, res) => {
       orders: ordersWithStock,
       imports: importsResult.documents,
       inspectionsByStatus,
+=======
+        ordersResult.documents, // *** CRITICAL: Pass all orders ***
+        order                   // *** CRITICAL: Pass current order ***
+      );
+      
+      return {
+        ...order,
+        stockAvailability: stockCheck
+      };
+    });
+
+    // Attach linked files to each import
+    const importsWithFiles = importsResult.documents.map(imp => ({
+      ...imp,
+      linked_files: importFileMap[imp.$id] || []
+    }));
+
+    res.render("stock-management", {
+      orders: ordersWithStock,  // Orders with time-aware stock availability
+      imports: importsWithFiles,
+      inspectionsByStatus: inspectionsByStatus,
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
       statusConfig: STATUS_CONFIG,
       username: req.session.username,
       displayName: getDisplayName(req.session.username),
@@ -615,7 +918,10 @@ app.get("/stock-management", requireAuth, async (req, res) => {
 // ORDER MANAGEMENT API
 // ======================
 
+<<<<<<< HEAD
 // Get single order (for edit modal)
+=======
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
 app.get("/api/orders/:orderId", requireAuth, async (req, res) => {
   try {
     const order = await databases.getDocument(DATABASE_ID, COLLECTION_ORDERS, req.params.orderId);
@@ -625,7 +931,10 @@ app.get("/api/orders/:orderId", requireAuth, async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 // Create order
+=======
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
 app.post("/api/orders", requireAuth, async (req, res) => {
   try {
     const { quantity, due_date } = req.body;
@@ -633,9 +942,13 @@ app.post("/api/orders", requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Quantity and due date are required' });
     }
     const order = await databases.createDocument(DATABASE_ID, COLLECTION_ORDERS, ID.unique(), {
+<<<<<<< HEAD
       quantity: parseInt(quantity),
       due_date,
       status: 'pending'
+=======
+      quantity: parseInt(quantity), due_date, status: 'pending'
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     });
     res.json({ success: true, order });
   } catch (error) {
@@ -644,16 +957,18 @@ app.post("/api/orders", requireAuth, async (req, res) => {
   }
 });
 
-// Update order
 app.put("/api/orders/:orderId", requireAuth, async (req, res) => {
   try {
-    const { orderId } = req.params;
     const { quantity, due_date, status } = req.body;
     const updateData = {};
     if (quantity !== undefined) updateData.quantity = parseInt(quantity);
     if (due_date !== undefined) updateData.due_date = due_date;
     if (status !== undefined) updateData.status = status;
+<<<<<<< HEAD
     const order = await databases.updateDocument(DATABASE_ID, COLLECTION_ORDERS, orderId, updateData);
+=======
+    const order = await databases.updateDocument(DATABASE_ID, COLLECTION_ORDERS, req.params.orderId, updateData);
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     res.json({ success: true, order });
   } catch (error) {
     console.error("Error updating order:", error);
@@ -661,7 +976,6 @@ app.put("/api/orders/:orderId", requireAuth, async (req, res) => {
   }
 });
 
-// Delete order
 app.delete("/api/orders/:orderId", requireAuth, async (req, res) => {
   try {
     await databases.deleteDocument(DATABASE_ID, COLLECTION_ORDERS, req.params.orderId);
@@ -674,9 +988,14 @@ app.delete("/api/orders/:orderId", requireAuth, async (req, res) => {
 
 // ======================
 // SHIP ORDER API
+<<<<<<< HEAD
 // - Sets order status to 'shipped' (hidden from Orders list)
 // - Sets all allocated inspection items to status 'shipped' (hidden from all views)
 // - All data is preserved in Appwrite — nothing is deleted
+=======
+// Marks order as completed, all allocated items as shipped
+// Items disappear from all views
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
 // ======================
 
 app.put("/api/orders/:orderId/ship", requireAuth, async (req, res) => {
@@ -688,6 +1007,7 @@ app.put("/api/orders/:orderId/ship", requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'No item IDs provided' });
     }
 
+<<<<<<< HEAD
     // Mark the order itself as shipped — it will no longer appear in the Orders list
     await databases.updateDocument(DATABASE_ID, COLLECTION_ORDERS, orderId, {
       status: 'shipped'
@@ -695,25 +1015,42 @@ app.put("/api/orders/:orderId/ship", requireAuth, async (req, res) => {
 
     // Mark each allocated inspection item as shipped — they disappear from all views
     // Data remains intact in Appwrite
+=======
+    // Mark order as completed
+    await databases.updateDocument(DATABASE_ID, COLLECTION_ORDERS, orderId, { status: 'completed' });
+
+    // Mark all allocated items as shipped
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     let shippedCount = 0;
     const errors = [];
     for (const itemId of itemIds) {
       try {
+<<<<<<< HEAD
         await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, itemId, {
           status: 'shipped'
         });
         shippedCount++;
       } catch (err) {
         console.error(`Failed to mark item ${itemId} as shipped:`, err);
+=======
+        await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, itemId, { status: 'shipped' });
+        shippedCount++;
+      } catch (err) {
+        console.error(`Failed to ship item ${itemId}:`, err);
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
         errors.push(itemId);
       }
     }
 
+<<<<<<< HEAD
     res.json({
       success: true,
       shippedCount,
       errors: errors.length > 0 ? errors : undefined
     });
+=======
+    res.json({ success: true, shippedCount, errors: errors.length > 0 ? errors : undefined });
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
   } catch (error) {
     console.error("Error shipping order:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -724,6 +1061,41 @@ app.put("/api/orders/:orderId/ship", requireAuth, async (req, res) => {
 // IMPORT MANAGEMENT API
 // ======================
 
+<<<<<<< HEAD
+=======
+async function getLastFileNumber() {
+  try {
+    const result = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, [
+      Query.orderDesc('uploaded_at'), Query.limit(500)
+    ]);
+    let max = 0;
+    result.documents.forEach(doc => {
+      const match = doc.filename && doc.filename.match(/^(\d+)/);
+      if (match) { const num = parseInt(match[1]); if (num > max) max = num; }
+    });
+    return max;
+  } catch (e) {
+    console.error('Error getting last file number:', e);
+    return 0;
+  }
+}
+
+async function updateInspectionStatusByImport(importId, newStatus) {
+  try {
+    const result = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, [
+      Query.equal('import_id', importId), Query.limit(500)
+    ]);
+    for (const doc of result.documents) {
+      await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, doc.$id, { status: newStatus });
+    }
+    return result.documents.length;
+  } catch (e) {
+    console.error('Error bulk updating statuses:', e);
+    return 0;
+  }
+}
+
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
 app.get("/api/imports/:importId", requireAuth, async (req, res) => {
   try {
     const imp = await databases.getDocument(DATABASE_ID, COLLECTION_IMPORTS, req.params.importId);
@@ -738,6 +1110,7 @@ app.post("/api/imports", requireAuth, async (req, res) => {
     const { quantity, scheduled_date } = req.body;
     if (!quantity || !scheduled_date) {
       return res.status(400).json({ success: false, error: 'Quantity and scheduled date are required' });
+<<<<<<< HEAD
     }
     const importDoc = await databases.createDocument(DATABASE_ID, COLLECTION_IMPORTS, ID.unique(), {
       quantity: parseInt(quantity),
@@ -745,6 +1118,47 @@ app.post("/api/imports", requireAuth, async (req, res) => {
       status: 'scheduled'
     });
     res.json({ success: true, import: importDoc });
+=======
+    }
+    const qty = parseInt(quantity);
+    const importDoc = await databases.createDocument(DATABASE_ID, COLLECTION_IMPORTS, ID.unique(), {
+      quantity: qty, scheduled_date, status: 'scheduled'
+    });
+
+    const lastNumber = await getLastFileNumber();
+    const lotNumber = lastNumber + 1;
+    const createdFiles = [];
+    const errors = [];
+
+    for (let i = 1; i <= qty; i++) {
+      const fileNumber = lastNumber + i;
+      const filename = `${fileNumber}.txt`;
+      try {
+        await databases.createDocument(DATABASE_ID, COLLECTION_INSPECTIONS, ID.unique(), {
+          filename, uploaded_at: new Date().toISOString(), weight: null, lot: lotNumber,
+          is_archived: false, status: 'upcoming_import', import_id: importDoc.$id,
+          measurementA: '-', measurementB: '-', measurementC: '-', measurementD: '-',
+          measurementE: '-', measurementF: '-', measurementG1: '-', measurementG2: '-',
+          measurementG3: '-', measurementG4: '-', measurementH: '-', measurementI: '-',
+          measurementJ: '-', measurementK: '-', measurementL: '-',
+          isValidA: null, isValidB: null, isValidC: null, isValidD: null, isValidE: null,
+          isValidF: null, isValidG1: null, isValidG2: null, isValidG3: null, isValidG4: null,
+          isValidH: null, isValidI: null, isValidJ: null, isValidK: null, isValidL: null,
+          inspectionStatus: 'pending', failedMeasurements: ''
+        });
+        createdFiles.push(filename);
+      } catch (err) {
+        console.error(`Failed to create placeholder ${filename}:`, err.message);
+        errors.push({ file: filename, error: err.message });
+      }
+    }
+
+    res.json({
+      success: true, import: importDoc, createdFiles,
+      startNumber: lastNumber + 1, endNumber: lastNumber + qty,
+      errors: errors.length > 0 ? errors : undefined
+    });
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
   } catch (error) {
     console.error("Error creating import:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -760,8 +1174,20 @@ app.put("/api/imports/:importId", requireAuth, async (req, res) => {
     if (scheduled_date !== undefined) updateData.scheduled_date = scheduled_date;
     if (status !== undefined) updateData.status = status;
     if (actual_date !== undefined) updateData.actual_date = actual_date;
+<<<<<<< HEAD
     const importDoc = await databases.updateDocument(DATABASE_ID, COLLECTION_IMPORTS, importId, updateData);
     res.json({ success: true, import: importDoc });
+=======
+
+    const importDoc = await databases.updateDocument(DATABASE_ID, COLLECTION_IMPORTS, importId, updateData);
+
+    let updatedCount = 0;
+    if (status === 'arrived') {
+      updatedCount = await updateInspectionStatusByImport(importId, 'imported');
+    }
+
+    res.json({ success: true, import: importDoc, updatedInspections: updatedCount });
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
   } catch (error) {
     console.error("Error updating import:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -798,12 +1224,34 @@ app.put("/api/inspections/:inspectionId/status", requireAuth, async (req, res) =
   }
 });
 
+app.put("/api/inspections/advance-status", requireAuth, async (req, res) => {
+  try {
+    const { fromStatus, toStatus } = req.body;
+    if (!fromStatus || !toStatus || !STATUS_CONFIG[fromStatus] || !STATUS_CONFIG[toStatus]) {
+      return res.status(400).json({ success: false, error: 'Invalid status values' });
+    }
+    const result = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, [
+      Query.equal('status', fromStatus), Query.limit(500)
+    ]);
+    let updated = 0;
+    for (const doc of result.documents) {
+      await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, doc.$id, { status: toStatus });
+      updated++;
+    }
+    res.json({ success: true, updated });
+  } catch (error) {
+    console.error("Error advancing status:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ======================
 // FILE UPLOAD (TXT)
 // ======================
 
-app.post("/upload", requireAuth, upload.single("file"), async (req, res) => {
+app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
   try {
+<<<<<<< HEAD
     if (!req.file) {
       return res.status(400).json({ success: false, error: "No file uploaded" });
     }
@@ -838,17 +1286,78 @@ app.post("/upload", requireAuth, upload.single("file"), async (req, res) => {
     });
 
     res.json({ success: true, message: `File ${filename} uploaded successfully` });
+=======
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, error: "No file uploaded" });
+    }
+    const allResults = { successful: [], failed: [], updated: [] };
+    for (const file of req.files) {
+      try {
+        await processSingleUpload(file, req, allResults);
+      } catch (err) {
+        allResults.failed.push({ filename: file.originalname, error: err.message });
+      }
+    }
+    if (allResults.successful.length === 0 && allResults.updated.length === 0) {
+      return res.status(400).json({ success: false, error: allResults.failed.map(f => f.error).join(', ') });
+    }
+    return res.json({ success: true, results: allResults });
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
   } catch (error) {
     console.error("Upload error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
+async function processSingleUpload(file, req, results) {
+  const fileContent = file.buffer.toString("utf-8");
+  const parsedData = parseTxtFile(fileContent);
+  const filename = file.originalname;
+
+  const existingFiles = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, [
+    Query.equal('filename', filename), Query.limit(1)
+  ]);
+
+  const measurements = {};
+  const validations = {};
+  const dbKeys = Object.keys(measurementMapping).filter(k => k !== 'M' && k !== 'N');
+  dbKeys.forEach(key => {
+    const value = extractMeasurementValue(parsedData, key);
+    measurements[`measurement${key}`] = value !== null ? String(value) : '-';
+    validations[`isValid${key}`] = isValidMeasurement(value, key);
+  });
+
+  if (existingFiles.documents.length > 0) {
+    const existingDoc = existingFiles.documents[0];
+    const isPlaceholder = !existingDoc.measurementA || existingDoc.measurementA === '-';
+    if (isPlaceholder) {
+      await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, existingDoc.$id, {
+        uploaded_at: new Date().toISOString(),
+        is_archived: false,
+        status: 'inspection',
+        ...measurements,
+        ...validations
+      });
+      results.updated.push({ filename });
+    } else {
+      results.failed.push({ filename, error: `${filename} already has measurement data` });
+    }
+    return;
+  }
+
+  await databases.createDocument(DATABASE_ID, COLLECTION_INSPECTIONS, ID.unique(), {
+    filename, lot: parsedData.lot || null, weight: null,
+    uploaded_at: new Date().toISOString(), is_archived: false, status: 'inspection',
+    ...measurements, ...validations
+  });
+  results.successful.push({ filename });
+}
+
 // ======================
 // FILE DATA RETRIEVAL
 // ======================
 
-app.get("/file-data/:fileId", requireAuth, async (req, res) => {
+app.get("/files/:fileId", requireAuth, async (req, res) => {
   try {
     const inspection = await databases.getDocument(DATABASE_ID, COLLECTION_INSPECTIONS, req.params.fileId);
     const measurements = {
@@ -870,12 +1379,17 @@ app.get("/file-data/:fileId", requireAuth, async (req, res) => {
     };
     const gValue = processGValues(measurements);
     res.render("fileData", {
+<<<<<<< HEAD
       file: inspection,
       measurements,
       gValue,
       validationRanges,
       username: req.session.username,
       displayName: getDisplayName(req.session.username),
+=======
+      file: inspection, measurements, gValue, validationRanges,
+      username: req.session.username, displayName: getDisplayName(req.session.username),
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
       canEditWeights: req.session.canEditWeights
     });
   } catch (error) {
@@ -885,20 +1399,42 @@ app.get("/file-data/:fileId", requireAuth, async (req, res) => {
 });
 
 // ======================
-// UPDATE WEIGHT
+// UPDATE WEIGHT (single)
+// Auto-advances: inspection/imported -> finished_inspection when weight set
 // ======================
 
 app.post("/update-weight", requireWeightEditAuth, async (req, res) => {
   try {
     const { fileId, weight } = req.body;
     if (!fileId) return res.status(400).json({ success: false, error: 'File ID is required' });
+<<<<<<< HEAD
+=======
+
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     const weightValue = weight && weight.trim() !== '' ? parseFloat(weight) : null;
     if (weightValue !== null && (isNaN(weightValue) || weightValue < 0)) {
       return res.status(400).json({ success: false, error: 'Weight must be a positive number or empty' });
     }
     const formattedWeight = weightValue !== null ? weightValue.toFixed(1) : null;
+<<<<<<< HEAD
     await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId, { weight: formattedWeight });
     res.json({ success: true, weight: formattedWeight });
+=======
+    const currentDoc = await databases.getDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId);
+    const updateData = { weight: formattedWeight };
+
+    // Auto-advance status when weight is set
+    if (formattedWeight !== null &&
+        (currentDoc.status === 'inspection' || currentDoc.status === 'imported')) {
+      updateData.status = 'finished_inspection';
+    }
+
+    await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId, updateData);
+    res.json({
+      success: true, weight: formattedWeight,
+      statusUpdated: !!updateData.status, newStatus: updateData.status || currentDoc.status
+    });
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
   } catch (error) {
     console.error("Error updating weight:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -907,6 +1443,10 @@ app.post("/update-weight", requireWeightEditAuth, async (req, res) => {
 
 // ======================
 // UPDATE WEIGHTS (bulk)
+<<<<<<< HEAD
+=======
+// Auto-advances status for each item
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
 // ======================
 
 app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
@@ -915,17 +1455,37 @@ app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
     if (!Array.isArray(weights) || weights.length === 0) {
       return res.status(400).json({ success: false, error: 'No weights provided' });
     }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     let updated = 0;
     const errors = [];
     for (const { fileId, weight } of weights) {
       try {
         const formattedWeight = parseFloat(weight).toFixed(1);
+<<<<<<< HEAD
         await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId, { weight: formattedWeight });
         updated++;
       } catch (err) {
         errors.push(fileId);
       }
     }
+=======
+        const currentDoc = await databases.getDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId);
+        const updateData = { weight: formattedWeight };
+        if (currentDoc.status === 'inspection' || currentDoc.status === 'imported') {
+          updateData.status = 'finished_inspection';
+        }
+        await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId, updateData);
+        updated++;
+      } catch (err) {
+        console.error(`Failed to update weight for ${fileId}:`, err);
+        errors.push(fileId);
+      }
+    }
+
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     res.json({ success: true, count: updated, errors: errors.length > 0 ? errors : undefined });
   } catch (error) {
     console.error("Error updating weights:", error);
@@ -935,13 +1495,21 @@ app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
 
 // ======================
 // WEIGHT EXCEL IMPORT
+// Auto-advances status for each item
 // ======================
 
-app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async (req, res) => {
+app.post("/import-weights", requireWeightEditAuth, upload.single("weightFile"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, error: "No file uploaded" });
+<<<<<<< HEAD
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
     const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+=======
+
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     let updated = 0, created = 0;
     const errors = [];
 
@@ -953,14 +1521,32 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
       if (!filename || !weightStr) continue;
       const weight = parseFloat(weightStr);
       if (isNaN(weight) || weight < 0) { errors.push(filename); continue; }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
       const formattedWeight = weight.toFixed(1);
       const filenameWithExt = filename.endsWith('.txt') ? filename : `${filename}.txt`;
       try {
+<<<<<<< HEAD
         const result = await databases.listDocuments(
           DATABASE_ID, COLLECTION_INSPECTIONS, [Query.equal('filename', filenameWithExt), Query.limit(1)]
         );
         if (result.documents.length > 0) {
           await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, result.documents[0].$id, { weight: formattedWeight });
+=======
+        const result = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, [
+          Query.equal('filename', filenameWithExt), Query.limit(1)
+        ]);
+
+        if (result.documents.length > 0) {
+          const inspection = result.documents[0];
+          const updateData = { weight: formattedWeight };
+          if (inspection.status === 'inspection' || inspection.status === 'imported') {
+            updateData.status = 'finished_inspection';
+          }
+          await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, inspection.$id, updateData);
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
           updated++;
         } else {
           await databases.createDocument(DATABASE_ID, COLLECTION_INSPECTIONS, ID.unique(), {
@@ -984,7 +1570,17 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
         errors.push(filename);
       }
     }
+<<<<<<< HEAD
     res.json({ success: true, updated, created, errors: errors.length > 0 ? errors : undefined });
+=======
+
+    res.json({
+      success: true,
+      updated,
+      created,
+      errors: errors.length > 0 ? errors : undefined
+    });
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
   } catch (error) {
     console.error("Error importing weights:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -998,8 +1594,16 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
 app.get("/export-weights", requireAuth, async (req, res) => {
   try {
     const result = await databases.listDocuments(
+<<<<<<< HEAD
       DATABASE_ID, COLLECTION_INSPECTIONS, [Query.orderDesc('uploaded_at'), Query.limit(1000)]
     );
+=======
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      [Query.orderDesc('uploaded_at'), Query.limit(1000)]
+    );
+
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     const data = [['File Name', 'Weight (g)']];
     result.documents
       .filter(doc => doc.weight !== null && doc.weight !== undefined)
@@ -1008,12 +1612,27 @@ app.get("/export-weights", requireAuth, async (req, res) => {
         const numB = parseInt((b.filename.match(/^\d+/) || ['0'])[0]);
         return numA - numB;
       })
+<<<<<<< HEAD
       .forEach(doc => data.push([doc.filename.replace('.txt', ''), parseFloat(doc.weight).toFixed(1)]));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Weights');
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
     const today = new Date();
     const dateStr = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+=======
+      .forEach(doc => {
+        data.push([doc.filename.replace('.txt', ''), parseFloat(doc.weight).toFixed(1)]);
+      });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, 'Weights');
+
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=weight_data_${dateStr}.xlsx`);
     res.send(buffer);
@@ -1034,7 +1653,11 @@ app.post("/archive-files", requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'No file IDs provided' });
     }
     let archived = 0;
+<<<<<<< HEAD
     const errors = [];
+=======
+    let errors = [];
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     for (const fileId of fileIds) {
       try {
         await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId, { is_archived: true });
@@ -1054,7 +1677,11 @@ app.post("/unarchive-files", requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'No file IDs provided' });
     }
     let unarchived = 0;
+<<<<<<< HEAD
     const errors = [];
+=======
+    let errors = [];
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     for (const fileId of fileIds) {
       try {
         await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId, { is_archived: false });
@@ -1091,6 +1718,10 @@ app.get("/summary", requireAuth, async (req, res) => {
     const selectedFilesParam = req.query.selectedFiles || "";
     const fileIds = selectedFilesParam.split(",").map(id => id.trim()).filter(id => id.length > 0);
     if (fileIds.length === 0) return res.redirect("/");
+<<<<<<< HEAD
+=======
+
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
     const files = [];
     const fileData = {};
     for (const fileId of fileIds) {
@@ -1137,12 +1768,16 @@ app.get("/summary", requireAuth, async (req, res) => {
 // ======================
 
 app.get("/health", (req, res) => {
+<<<<<<< HEAD
   res.json({
     status: "OK",
     database: "Appwrite",
     schema: "Efficient with Stock Management + Ship Order",
     timestamp: new Date().toISOString()
   });
+=======
+  res.json({ status: "OK", database: "Appwrite", schema: "v2.3 with Ship Order API", timestamp: new Date().toISOString() });
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
 });
 
 app.use((req, res) => { res.status(404).send("Page not found"); });
@@ -1150,7 +1785,11 @@ app.use((err, req, res, next) => { console.error(err.stack); res.status(500).sen
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+<<<<<<< HEAD
   console.log(`✨ Ship Order API enabled — shipped orders/products hidden from views, data preserved in Appwrite`);
+=======
+  console.log(`✨ Stock Management v2.3 - Ship Order API + Weight Auto-Promotion`);
+>>>>>>> 3987263bd94bf1a704ecbc854bef01dfb9d2ed94
 });
 
 module.exports = app;
