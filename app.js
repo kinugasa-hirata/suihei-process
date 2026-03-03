@@ -1,4 +1,5 @@
-// app.js - EFFICIENT SCHEMA VERSION WITH STOCK MANAGEMENT
+\// app.js - FIXED VERSION FOR MULTIPLE FILE UPLOAD
+// Fixed: Changed upload.single("file") to upload.array("files") to match HTML form
 // Updated: Ship order functionality - marks order as shipped, hides from Orders list,
 //          marks allocated products as shipped (hidden from all views, data kept in Appwrite)
 
@@ -799,45 +800,74 @@ app.put("/api/inspections/:inspectionId/status", requireAuth, async (req, res) =
 });
 
 // ======================
-// FILE UPLOAD (TXT)
+// FILE UPLOAD (TXT) - FIXED FOR MULTIPLE FILES
+// Changed from upload.single("file") to upload.array("files")
+// Now accepts multiple files with field name "files" matching the HTML form
 // ======================
 
-app.post("/upload", requireAuth, upload.single("file"), async (req, res) => {
+app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, error: "No file uploaded" });
-    }
-    const fileContent = req.file.buffer.toString("utf-8");
-    const parsedData = parseTxtFile(fileContent);
-    const filename = req.file.originalname;
-
-    const existingFiles = await databases.listDocuments(
-      DATABASE_ID, COLLECTION_INSPECTIONS, [Query.equal('filename', filename), Query.limit(1)]
-    );
-    if (existingFiles.documents.length > 0) {
-      return res.status(400).json({ success: false, error: `File ${filename} already exists` });
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, error: "No files uploaded" });
     }
 
-    const measurements = {};
-    const validations = {};
-    Object.keys(measurementMapping).forEach(key => {
-      const value = extractMeasurementValue(parsedData, key);
-      measurements[`measurement${key}`] = value;
-      validations[`isValid${key}`] = isValidMeasurement(value, key);
-    });
+    const lotNumber = req.body.lot || null;
+    const successfulUploads = [];
+    const failedUploads = [];
 
-    await databases.createDocument(DATABASE_ID, COLLECTION_INSPECTIONS, ID.unique(), {
-      filename,
-      lot: parsedData.lot || null,
-      weight: null,
-      uploaded_at: new Date().toISOString(),
-      is_archived: false,
-      status: 'inspection',
-      ...measurements,
-      ...validations
-    });
+    for (const file of req.files) {
+      try {
+        const fileContent = file.buffer.toString("utf-8");
+        const parsedData = parseTxtFile(fileContent);
+        const filename = file.originalname;
 
-    res.json({ success: true, message: `File ${filename} uploaded successfully` });
+        const existingFiles = await databases.listDocuments(
+          DATABASE_ID, COLLECTION_INSPECTIONS, [Query.equal('filename', filename), Query.limit(1)]
+        );
+        if (existingFiles.documents.length > 0) {
+          failedUploads.push({ filename, error: `File ${filename} already exists` });
+          continue;
+        }
+
+        const measurements = {};
+        const validations = {};
+        Object.keys(measurementMapping).forEach(key => {
+          const value = extractMeasurementValue(parsedData, key);
+          measurements[`measurement${key}`] = value;
+          validations[`isValid${key}`] = isValidMeasurement(value, key);
+        });
+
+        await databases.createDocument(DATABASE_ID, COLLECTION_INSPECTIONS, ID.unique(), {
+          filename,
+          lot: lotNumber || parsedData.lot || null,
+          weight: null,
+          uploaded_at: new Date().toISOString(),
+          is_archived: false,
+          status: 'inspection',
+          ...measurements,
+          ...validations
+        });
+
+        successfulUploads.push(filename);
+      } catch (fileError) {
+        console.error(`Error processing file ${file.originalname}:`, fileError);
+        failedUploads.push({ filename: file.originalname, error: fileError.message });
+      }
+    }
+
+    const response = {
+      success: failedUploads.length === 0,
+      uploaded: successfulUploads.length,
+      failed: failedUploads.length,
+      successfulFiles: successfulUploads,
+      failedFiles: failedUploads.length > 0 ? failedUploads : undefined
+    };
+
+    if (successfulUploads.length > 0) {
+      response.message = `Successfully uploaded ${successfulUploads.length} file(s)`;
+    }
+
+    res.json(response);
   } catch (error) {
     console.error("Upload error:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -937,7 +967,7 @@ app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
 // WEIGHT EXCEL IMPORT
 // ======================
 
-app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async (req, res) => {
+app.post("/import-weights", requireWeightEditAuth, upload.single("weightFile"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, error: "No file uploaded" });
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
@@ -1141,6 +1171,7 @@ app.get("/health", (req, res) => {
     status: "OK",
     database: "Appwrite",
     schema: "Efficient with Stock Management + Ship Order",
+    upload_fix: "Changed from upload.single('file') to upload.array('files') to match HTML form field name",
     timestamp: new Date().toISOString()
   });
 });
@@ -1151,6 +1182,7 @@ app.use((err, req, res, next) => { console.error(err.stack); res.status(500).sen
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`✨ Ship Order API enabled — shipped orders/products hidden from views, data preserved in Appwrite`);
+  console.log(`✅ Upload fixed — Now accepts multiple files with field name 'files' (matching HTML form)`);
 });
 
 module.exports = app;
