@@ -858,7 +858,13 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
         const validations = {};
         Object.keys(measurementMapping).forEach(key => {
           const value = extractMeasurementValue(parsedData, key);
-          measurements[`measurement${key}`] = value;
+          // Convert to string: if null/undefined, use "null", otherwise convert number to string with 3 decimals
+          if (value === null || value === undefined) {
+            measurements[`measurement${key}`] = null; // Store as null, don't update
+          } else {
+            const str = parseFloat(value).toFixed(3);
+            measurements[`measurement${key}`] = str.length > 20 ? str.substring(0, 20) : str;
+          }
           validations[`isValid${key}`] = isValidMeasurement(value, key);
         });
 
