@@ -847,8 +847,38 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
                 lot: lotNumber || parsedData.lot || existingFiles.documents[0].lot,
                 uploaded_at: new Date().toISOString(),
                 status: 'inspection',
-                ...measurements,
-                ...validations
+                // Only include measurements A-L (exclude M and N)
+                measurementA: measurements.measurementA,
+                measurementB: measurements.measurementB,
+                measurementC: measurements.measurementC,
+                measurementD: measurements.measurementD,
+                measurementE: measurements.measurementE,
+                measurementF: measurements.measurementF,
+                measurementG1: measurements.measurementG1,
+                measurementG2: measurements.measurementG2,
+                measurementG3: measurements.measurementG3,
+                measurementG4: measurements.measurementG4,
+                measurementH: measurements.measurementH,
+                measurementI: measurements.measurementI,
+                measurementJ: measurements.measurementJ,
+                measurementK: measurements.measurementK,
+                measurementL: measurements.measurementL,
+                // Only include validations A-L (exclude M and N)
+                isValidA: validations.isValidA,
+                isValidB: validations.isValidB,
+                isValidC: validations.isValidC,
+                isValidD: validations.isValidD,
+                isValidE: validations.isValidE,
+                isValidF: validations.isValidF,
+                isValidG1: validations.isValidG1,
+                isValidG2: validations.isValidG2,
+                isValidG3: validations.isValidG3,
+                isValidG4: validations.isValidG4,
+                isValidH: validations.isValidH,
+                isValidI: validations.isValidI,
+                isValidJ: validations.isValidJ,
+                isValidK: validations.isValidK,
+                isValidL: validations.isValidL
               }
             );
             
@@ -871,8 +901,38 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
                 uploaded_at: new Date().toISOString(),
                 is_archived: false,
                 status: 'inspection',
-                ...measurements,
-                ...validations
+                // Only include measurements A-L (exclude M and N)
+                measurementA: measurements.measurementA,
+                measurementB: measurements.measurementB,
+                measurementC: measurements.measurementC,
+                measurementD: measurements.measurementD,
+                measurementE: measurements.measurementE,
+                measurementF: measurements.measurementF,
+                measurementG1: measurements.measurementG1,
+                measurementG2: measurements.measurementG2,
+                measurementG3: measurements.measurementG3,
+                measurementG4: measurements.measurementG4,
+                measurementH: measurements.measurementH,
+                measurementI: measurements.measurementI,
+                measurementJ: measurements.measurementJ,
+                measurementK: measurements.measurementK,
+                measurementL: measurements.measurementL,
+                // Only include validations A-L (exclude M and N)
+                isValidA: validations.isValidA,
+                isValidB: validations.isValidB,
+                isValidC: validations.isValidC,
+                isValidD: validations.isValidD,
+                isValidE: validations.isValidE,
+                isValidF: validations.isValidF,
+                isValidG1: validations.isValidG1,
+                isValidG2: validations.isValidG2,
+                isValidG3: validations.isValidG3,
+                isValidG4: validations.isValidG4,
+                isValidH: validations.isValidH,
+                isValidI: validations.isValidI,
+                isValidJ: validations.isValidJ,
+                isValidK: validations.isValidK,
+                isValidL: validations.isValidL
               }
             );
             
