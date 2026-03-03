@@ -332,45 +332,74 @@ app.get("/logout", async (req, res) => {
 // ======================
 
 function parseTxtFile(fileContent) {
-  const lines = fileContent.split("\n").map(line => line.trim());
+  const lines = fileContent.split("\n").map(line => line.trim()).filter(line => line.length > 0);
   const data = { measurements: {} };
 
   lines.forEach((line) => {
+    // Handle Lot No. lines
     if (line.startsWith("Lot No.")) {
       const lotMatch = line.match(/Lot No\.\s*:\s*(.+)/);
       if (lotMatch) data.lot = lotMatch[1].trim();
-    } else {
-      const circleMatch = line.match(/^(\d+)\s+CIRCLE\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
-      if (circleMatch) {
-        const index = parseInt(circleMatch[1]);
+      return;
+    }
+
+    // Parse semicolon-delimited format: index;type;...;field1;field2;field3...
+    const parts = line.split(";").map(p => p.trim());
+    
+    if (parts.length < 2) return; // Skip invalid lines
+
+    const index = parseInt(parts[0]);
+    const type = parts[1];
+
+    if (isNaN(index)) return; // Skip if index is not a number
+
+    // Extract numeric values from the rest of the parts
+    // Format varies by type, so we extract relevant fields based on position
+    
+    if (type === "CIRCLE") {
+      // CIRCLE format: index;CIRCLE;field1;x;y;z;angle1;angle2;angle3;;diameter;roundness
+      // We need diameter (typically around index 9 or 10)
+      const diameter = parseFloat(parts[parts.length - 2]); // Second to last
+      const roundness = parseFloat(parts[parts.length - 1]); // Last
+      
+      if (!isNaN(diameter)) {
         data.measurements[index] = {
           type: "CIRCLE",
-          x: parseFloat(circleMatch[2]),
-          y: parseFloat(circleMatch[3]),
-          z: parseFloat(circleMatch[4]),
-          diameter: parseFloat(circleMatch[5]),
-          roundness: parseFloat(circleMatch[6])
+          x: 0, // Not used in mapping, set to 0
+          y: 0,
+          z: 0,
+          diameter: diameter,
+          roundness: roundness || 0
         };
       }
-      const ptCompMatch = line.match(/^(\d+)\s+PT-COMP\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
-      if (ptCompMatch) {
-        const index = parseInt(ptCompMatch[1]);
+    } else if (type === "PT-COMP") {
+      // PT-COMP format: index;PT-COMP;field1;x;y;z
+      const x = parseFloat(parts[3]);
+      const y = parseFloat(parts[4]);
+      const z = parseFloat(parts[5]);
+      
+      if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
         data.measurements[index] = {
           type: "PT-COMP",
-          x: parseFloat(ptCompMatch[2]),
-          y: parseFloat(ptCompMatch[3]),
-          z: parseFloat(ptCompMatch[4])
+          x: x,
+          y: y,
+          z: z
         };
       }
-      const distanceMatch = line.match(/^(\d+)\s+DISTANCE\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
-      if (distanceMatch) {
-        const index = parseInt(distanceMatch[1]);
+    } else if (type === "DISTANCE") {
+      // DISTANCE format: index;DISTANCE;;x;y;z;;;;;distance
+      const x = parseFloat(parts[3]);
+      const y = parseFloat(parts[4]);
+      const z = parseFloat(parts[5]);
+      const distance = parseFloat(parts[parts.length - 1]); // Last field
+      
+      if (!isNaN(distance)) {
         data.measurements[index] = {
           type: "DISTANCE",
-          x: parseFloat(distanceMatch[2]),
-          y: parseFloat(distanceMatch[3]),
-          z: parseFloat(distanceMatch[4]),
-          distance: parseFloat(distanceMatch[5])
+          x: x || 0,
+          y: y || 0,
+          z: z || 0,
+          distance: distance
         };
       }
     }
