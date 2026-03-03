@@ -800,9 +800,7 @@ app.put("/api/inspections/:inspectionId/status", requireAuth, async (req, res) =
 });
 
 // ======================
-// FILE UPLOAD (TXT) - FIXED FOR MULTIPLE FILES
-// Changed from upload.single("file") to upload.array("files")
-// Now accepts multiple files with field name "files" matching the HTML form
+// FILE UPLOAD (TXT) - CORRECTED VERSION
 // ======================
 
 app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
@@ -814,6 +812,7 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
     const lotNumber = req.body.lot || null;
     const successfulUploads = [];
     const failedUploads = [];
+    const updatedFiles = [];
 
     for (const file of req.files) {
       try {
@@ -821,14 +820,7 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
         const parsedData = parseTxtFile(fileContent);
         const filename = file.originalname;
 
-        const existingFiles = await databases.listDocuments(
-          DATABASE_ID, COLLECTION_INSPECTIONS, [Query.equal('filename', filename), Query.limit(1)]
-        );
-        if (existingFiles.documents.length > 0) {
-          failedUploads.push({ filename, error: `File ${filename} already exists` });
-          continue;
-        }
-
+        // EXTRACT MEASUREMENTS FIRST (before checking if exists)
         const measurements = {};
         const validations = {};
         Object.keys(measurementMapping).forEach(key => {
@@ -837,34 +829,89 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
           validations[`isValid${key}`] = isValidMeasurement(value, key);
         });
 
-        await databases.createDocument(DATABASE_ID, COLLECTION_INSPECTIONS, ID.unique(), {
-          filename,
-          lot: lotNumber || parsedData.lot || null,
-          weight: null,
-          uploaded_at: new Date().toISOString(),
-          is_archived: false,
-          status: 'inspection',
-          ...measurements,
-          ...validations
-        });
+        // CHECK IF FILE EXISTS
+        const existingFiles = await databases.listDocuments(
+          DATABASE_ID, COLLECTION_INSPECTIONS, [Query.equal('filename', filename), Query.limit(1)]
+        );
 
-        successfulUploads.push(filename);
+        if (existingFiles.documents.length > 0) {
+          // FILE EXISTS - UPDATE IT
+          const existingFileId = existingFiles.documents[0].$id;
+          
+          try {
+            await databases.updateDocument(
+              DATABASE_ID,
+              COLLECTION_INSPECTIONS,
+              existingFileId,
+              {
+                lot: lotNumber || parsedData.lot || existingFiles.documents[0].lot,
+                uploaded_at: new Date().toISOString(),
+                status: 'inspection',
+                ...measurements,
+                ...validations
+              }
+            );
+            
+            updatedFiles.push(filename);
+          } catch (updateError) {
+            console.error(`Error updating file ${filename}:`, updateError);
+            failedUploads.push({ filename, error: `Failed to update: ${updateError.message}` });
+          }
+        } else {
+          // FILE DOESN'T EXIST - CREATE NEW
+          try {
+            await databases.createDocument(
+              DATABASE_ID,
+              COLLECTION_INSPECTIONS,
+              ID.unique(),
+              {
+                filename,
+                lot: lotNumber || parsedData.lot || null,
+                weight: null,
+                uploaded_at: new Date().toISOString(),
+                is_archived: false,
+                status: 'inspection',
+                ...measurements,
+                ...validations
+              }
+            );
+            
+            successfulUploads.push(filename);
+          } catch (createError) {
+            console.error(`Error creating file ${filename}:`, createError);
+            failedUploads.push({ filename, error: `Failed to create: ${createError.message}` });
+          }
+        }
       } catch (fileError) {
         console.error(`Error processing file ${file.originalname}:`, fileError);
         failedUploads.push({ filename: file.originalname, error: fileError.message });
       }
     }
 
+    // BUILD RESPONSE
     const response = {
       success: failedUploads.length === 0,
-      uploaded: successfulUploads.length,
+      created: successfulUploads.length,
+      updated: updatedFiles.length,
       failed: failedUploads.length,
       successfulFiles: successfulUploads,
+      updatedFiles: updatedFiles,
       failedFiles: failedUploads.length > 0 ? failedUploads : undefined
     };
 
+    const summaryParts = [];
     if (successfulUploads.length > 0) {
-      response.message = `Successfully uploaded ${successfulUploads.length} file(s)`;
+      summaryParts.push(`Created ${successfulUploads.length} new file(s)`);
+    }
+    if (updatedFiles.length > 0) {
+      summaryParts.push(`Updated ${updatedFiles.length} existing file(s)`);
+    }
+    if (failedUploads.length > 0) {
+      summaryParts.push(`Failed to process ${failedUploads.length} file(s)`);
+    }
+    
+    if (summaryParts.length > 0) {
+      response.message = summaryParts.join(", ");
     }
 
     res.json(response);
@@ -873,7 +920,6 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
-
 // ======================
 // FILE DATA RETRIEVAL
 // ======================
