@@ -1,4 +1,4 @@
-\// app.js - FIXED VERSION FOR MULTIPLE FILE UPLOAD
+// app.js - FIXED VERSION FOR MULTIPLE FILE UPLOAD
 // Fixed: Changed upload.single("file") to upload.array("files") to match HTML form
 // Updated: Ship order functionality - marks order as shipped, hides from Orders list,
 //          marks allocated products as shipped (hidden from all views, data kept in Appwrite)
