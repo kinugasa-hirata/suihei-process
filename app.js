@@ -809,7 +809,8 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
       return res.status(400).json({ success: false, error: "No files uploaded" });
     }
 
-    const lotNumber = req.body.lot || null;
+    const lotNumberRaw = req.body.lot || null;
+    const lotNumber = lotNumberRaw ? parseInt(lotNumberRaw) : null;
     const successfulUploads = [];
     const failedUploads = [];
     const updatedFiles = [];
@@ -844,7 +845,7 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
               COLLECTION_INSPECTIONS,
               existingFileId,
               {
-                lot: lotNumber || parsedData.lot || existingFiles.documents[0].lot,
+                lot: lotNumber || (parsedData.lot ? parseInt(parsedData.lot) : (existingFiles.documents[0].lot || null)),
                 uploaded_at: new Date().toISOString(),
                 status: 'inspection',
                 // Only include measurements A-L (exclude M and N)
@@ -896,7 +897,7 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
               ID.unique(),
               {
                 filename,
-                lot: lotNumber || parsedData.lot || null,
+                lot: lotNumber || (parsedData.lot ? parseInt(parsedData.lot) : null),
                 weight: null,
                 uploaded_at: new Date().toISOString(),
                 is_archived: false,
