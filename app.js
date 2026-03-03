@@ -343,67 +343,106 @@ function parseTxtFile(fileContent) {
       return;
     }
 
-    // Parse semicolon-delimited format: index;type;...;field1;field2;field3...
-    const parts = line.split(";").map(p => p.trim());
-    
-    if (parts.length < 2) return; // Skip invalid lines
+    // Try space-delimited format first (old format)
+    const spaceMatch = line.match(/^(\d+)\s+(\w+)\s+(.*)/);
+    if (spaceMatch) {
+      const index = parseInt(spaceMatch[1]);
+      const type = spaceMatch[2];
+      const rest = spaceMatch[3];
 
-    const index = parseInt(parts[0]);
-    const type = parts[1];
-
-    if (isNaN(index)) return; // Skip if index is not a number
-
-    // Helper function to convert number to string and limit to 20 chars
-    const toMeasurementString = (value) => {
-      if (value === null || value === undefined) return null;
-      const str = parseFloat(value).toFixed(3); // 3 decimal places
-      return str.length > 20 ? str.substring(0, 20) : str;
-    };
-
-    if (type === "CIRCLE") {
-      // CIRCLE format: index;CIRCLE;field1;x;y;z;angle1;angle2;angle3;;diameter;roundness
-      // We need diameter (typically around index 9 or 10)
-      const diameter = parseFloat(parts[parts.length - 2]); // Second to last
-      
-      if (!isNaN(diameter)) {
-        data.measurements[index] = {
-          type: "CIRCLE",
-          x: 0, // Not used in mapping, set to 0
-          y: 0,
-          z: 0,
-          diameter: toMeasurementString(diameter),
-          roundness: toMeasurementString(parts[parts.length - 1]) || "0"
-        };
+      if (type === "CIRCLE") {
+        const parts = rest.split(/\s+/).filter(p => p.length > 0);
+        if (parts.length >= 5) {
+          data.measurements[index] = {
+            type: "CIRCLE",
+            x: parseFloat(parts[0]),
+            y: parseFloat(parts[1]),
+            z: parseFloat(parts[2]),
+            diameter: parseFloat(parts[3]),
+            roundness: parseFloat(parts[4]) || 0
+          };
+        }
+      } else if (type === "PT-COMP") {
+        const parts = rest.split(/\s+/).filter(p => p.length > 0);
+        if (parts.length >= 3) {
+          data.measurements[index] = {
+            type: "PT-COMP",
+            x: parseFloat(parts[0]),
+            y: parseFloat(parts[1]),
+            z: parseFloat(parts[2])
+          };
+        }
+      } else if (type === "DISTANCE") {
+        const parts = rest.split(/\s+/).filter(p => p.length > 0);
+        if (parts.length >= 4) {
+          data.measurements[index] = {
+            type: "DISTANCE",
+            x: parseFloat(parts[0]),
+            y: parseFloat(parts[1]),
+            z: parseFloat(parts[2]),
+            distance: parseFloat(parts[3])
+          };
+        }
       }
-    } else if (type === "PT-COMP") {
-      // PT-COMP format: index;PT-COMP;field1;x;y;z
-      const x = parseFloat(parts[3]);
-      const y = parseFloat(parts[4]);
-      const z = parseFloat(parts[5]);
+      return;
+    }
+
+    // Try semicolon-delimited format (Mitsutoyo format)
+    if (line.includes(";")) {
+      const parts = line.split(";").map(p => p.trim());
       
-      if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
-        data.measurements[index] = {
-          type: "PT-COMP",
-          x: toMeasurementString(x),
-          y: toMeasurementString(y),
-          z: toMeasurementString(z)
-        };
-      }
-    } else if (type === "DISTANCE") {
-      // DISTANCE format: index;DISTANCE;;x;y;z;;;;;distance
-      const x = parseFloat(parts[3]);
-      const y = parseFloat(parts[4]);
-      const z = parseFloat(parts[5]);
-      const distance = parseFloat(parts[parts.length - 1]); // Last field
-      
-      if (!isNaN(distance)) {
-        data.measurements[index] = {
-          type: "DISTANCE",
-          x: toMeasurementString(x || 0),
-          y: toMeasurementString(y || 0),
-          z: toMeasurementString(z || 0),
-          distance: toMeasurementString(distance)
-        };
+      if (parts.length < 2) return;
+
+      const index = parseInt(parts[0]);
+      const type = parts[1];
+
+      if (isNaN(index)) return;
+
+      if (type === "CIRCLE") {
+        // CIRCLE: index;CIRCLE;...;diameter;roundness
+        const diameter = parseFloat(parts[parts.length - 2]);
+        const roundness = parseFloat(parts[parts.length - 1]);
+        
+        if (!isNaN(diameter)) {
+          data.measurements[index] = {
+            type: "CIRCLE",
+            x: 0,
+            y: 0,
+            z: 0,
+            diameter: diameter,
+            roundness: roundness || 0
+          };
+        }
+      } else if (type === "PT-COMP") {
+        // PT-COMP: index;PT-COMP;field1;x;y;z
+        const x = parseFloat(parts[3]);
+        const y = parseFloat(parts[4]);
+        const z = parseFloat(parts[5]);
+        
+        if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
+          data.measurements[index] = {
+            type: "PT-COMP",
+            x: x,
+            y: y,
+            z: z
+          };
+        }
+      } else if (type === "DISTANCE") {
+        // DISTANCE: index;DISTANCE;;x;y;z;;;;;distance
+        const x = parseFloat(parts[3]);
+        const y = parseFloat(parts[4]);
+        const z = parseFloat(parts[5]);
+        const distance = parseFloat(parts[parts.length - 1]);
+        
+        if (!isNaN(distance)) {
+          data.measurements[index] = {
+            type: "DISTANCE",
+            x: x || 0,
+            y: y || 0,
+            z: z || 0,
+            distance: distance
+          };
+        }
       }
     }
   });
