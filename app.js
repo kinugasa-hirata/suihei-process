@@ -353,14 +353,17 @@ function parseTxtFile(fileContent) {
 
     if (isNaN(index)) return; // Skip if index is not a number
 
-    // Extract numeric values from the rest of the parts
-    // Format varies by type, so we extract relevant fields based on position
-    
+    // Helper function to convert number to string and limit to 20 chars
+    const toMeasurementString = (value) => {
+      if (value === null || value === undefined) return null;
+      const str = parseFloat(value).toFixed(3); // 3 decimal places
+      return str.length > 20 ? str.substring(0, 20) : str;
+    };
+
     if (type === "CIRCLE") {
       // CIRCLE format: index;CIRCLE;field1;x;y;z;angle1;angle2;angle3;;diameter;roundness
       // We need diameter (typically around index 9 or 10)
       const diameter = parseFloat(parts[parts.length - 2]); // Second to last
-      const roundness = parseFloat(parts[parts.length - 1]); // Last
       
       if (!isNaN(diameter)) {
         data.measurements[index] = {
@@ -368,8 +371,8 @@ function parseTxtFile(fileContent) {
           x: 0, // Not used in mapping, set to 0
           y: 0,
           z: 0,
-          diameter: diameter,
-          roundness: roundness || 0
+          diameter: toMeasurementString(diameter),
+          roundness: toMeasurementString(parts[parts.length - 1]) || "0"
         };
       }
     } else if (type === "PT-COMP") {
@@ -381,9 +384,9 @@ function parseTxtFile(fileContent) {
       if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
         data.measurements[index] = {
           type: "PT-COMP",
-          x: x,
-          y: y,
-          z: z
+          x: toMeasurementString(x),
+          y: toMeasurementString(y),
+          z: toMeasurementString(z)
         };
       }
     } else if (type === "DISTANCE") {
@@ -396,10 +399,10 @@ function parseTxtFile(fileContent) {
       if (!isNaN(distance)) {
         data.measurements[index] = {
           type: "DISTANCE",
-          x: x || 0,
-          y: y || 0,
-          z: z || 0,
-          distance: distance
+          x: toMeasurementString(x || 0),
+          y: toMeasurementString(y || 0),
+          z: toMeasurementString(z || 0),
+          distance: toMeasurementString(distance)
         };
       }
     }
