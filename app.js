@@ -13,6 +13,10 @@ require("dotenv").config();
 
 const { Client, Databases, Query, ID } = require("node-appwrite");
 
+// Import inventory and allocation modules
+const InventoryManager = require("./inventory-manager");
+const StockAllocation = require("./stock-allocation");
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -547,64 +551,8 @@ app.get("/", requireAuth, async (req, res) => {
 // STOCK AVAILABILITY CALCULATION
 // ======================
 
-function calculateStockAvailability(orderQuantity, inspections) {
-  const availableStock = inspections
-    .filter(item => item.status && item.status !== 'shipped')
-    .map(item => ({
-      ...item,
-      fileNumber: parseInt(item.filename.replace('.txt', ''))
-    }))
-    .filter(item => !isNaN(item.fileNumber))
-    .sort((a, b) => a.fileNumber - b.fileNumber);
-
-  const needed = parseInt(orderQuantity);
-  
-  if (availableStock.length < needed) {
-    return {
-      status: 'insufficient',
-      color: '#fd7e14',
-      icon: '⚠️',
-      label: '在庫不足',
-      available: availableStock.length,
-      needed: needed,
-      allocatedItems: []
-    };
-  }
-
-  const allocated = availableStock.slice(0, needed);
-  
-  const hasUpcomingImport = allocated.some(item => item.status === 'upcoming_import');
-  const hasImportedOrInspection = allocated.some(item => 
-    item.status === 'imported' || item.status === 'inspection'
-  );
-  const allFinished = allocated.every(item => item.status === 'finished_inspection');
-
-  if (allFinished) {
-    return {
-      status: 'ready',
-      color: '#198754',
-      icon: '✓',
-      label: '出荷可能',
-      allocatedItems: allocated
-    };
-  } else if (hasUpcomingImport) {
-    return {
-      status: 'uncertain',
-      color: '#ffc107',
-      icon: '⚠',
-      label: '入荷予定含む',
-      allocatedItems: allocated
-    };
-  } else if (hasImportedOrInspection) {
-    return {
-      status: 'processing',
-      color: '#6c757d',
-      icon: '◐',
-      label: '検査中含む',
-      allocatedItems: allocated
-    };
-  }
-}
+// Stock allocation now handled by stock-allocation.js module
+// See: stock-allocation.js for calculateStockAvailability logic
 
 // ======================
 // STOCK MANAGEMENT VIEW
@@ -672,18 +620,40 @@ app.get("/stock-management", requireAuth, async (req, res) => {
       inspectionsByStatus[key].sort((a, b) => fileNum(a) - fileNum(b));
     });
 
-    // *** NEW: Calculate stock availability for each order ***
+    // *** NEW: Use modular inventory and allocation system ***
+    // Step 1: Categorize current inventory by status
+    const activeInspections = inspectionsResult.documents.filter(doc => doc.status !== 'shipped');
+    const currentInventory = InventoryManager.categorizeInventory(activeInspections);
+    
+    // Step 2: Get future import schedule
+    const futureImports = importsResult.documents.filter(imp => imp.status !== 'imported');
+    
+    // Step 3: Allocate products to orders using smart prioritization
+    const allocations = StockAllocation.allocateToAllOrders(
+      ordersResult.documents,
+      currentInventory,
+      futureImports
+    );
+    
+    // Step 4: Enhance order objects with allocation info
     const ordersWithStock = ordersResult.documents.map(order => {
-      const stockCheck = calculateStockAvailability(
-        order.quantity,
-        inspectionsResult.documents.filter(doc => doc.status !== 'shipped')
-      );
-      
+      const allocation = allocations[order.$id];
       return {
         ...order,
-        stockAvailability: stockCheck
+        stockAvailability: {
+          status: allocation.status,
+          label: allocation.statusLabel,
+          color: allocation.statusColor,
+          allocatedItems: allocation.allocatedItems,
+          breakdown: allocation.breakdown,
+          warning: allocation.warning,
+          fulfillmentCheck: allocation.fulfillmentCheck
+        }
       };
     });
+    
+    // Step 5: Get allocation summary for dashboard
+    const allocationSummary = StockAllocation.getAllocationSummary(allocations, ordersResult.documents);
 
     // Attach linked_files to each import
     const importsWithFiles = importsResult.documents.map(imp => ({
@@ -692,9 +662,11 @@ app.get("/stock-management", requireAuth, async (req, res) => {
     }));
 
     res.render("stock-management", {
-      orders: ordersWithStock,  // *** CHANGED: Use ordersWithStock instead of ordersResult.documents ***
+      orders: ordersWithStock,
       imports: importsWithFiles,
       inspectionsByStatus: inspectionsByStatus,
+      allocationSummary: allocationSummary,
+      inventoryStatus: InventoryManager.getInventoryStatus(currentInventory),
       statusConfig: STATUS_CONFIG,
       username: req.session.username,
       displayName: getDisplayName(req.session.username),
