@@ -612,18 +612,18 @@ function calculateStockAvailability(orderQuantity, inspections) {
 
 app.get("/stock-management", requireAuth, async (req, res) => {
   try {
-    // Fetch orders
+    // Fetch orders (exclude shipped)
     const ordersResult = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_ORDERS,
-      [Query.orderAsc('due_date'), Query.limit(100)]
+      [Query.notEqual('status', 'shipped'), Query.orderAsc('due_date'), Query.limit(100)]
     );
 
-    // Fetch imports
+    // Fetch imports (exclude imported)
     const importsResult = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_IMPORTS,
-      [Query.orderAsc('scheduled_date'), Query.limit(100)]
+      [Query.notEqual('status', 'imported'), Query.orderAsc('scheduled_date'), Query.limit(100)]
     );
 
     // Fetch all inspections (not shipped)
@@ -676,7 +676,7 @@ app.get("/stock-management", requireAuth, async (req, res) => {
     const ordersWithStock = ordersResult.documents.map(order => {
       const stockCheck = calculateStockAvailability(
         order.quantity,
-        inspectionsResult.documents
+        inspectionsResult.documents.filter(doc => doc.status !== 'shipped')
       );
       
       return {
@@ -1108,25 +1108,30 @@ async function processSingleUpload(file, req, results) {
 
     if (existingFiles.documents.length > 0) {
       const existingDoc = existingFiles.documents[0];
-      
-      // UPDATE existing file with new measurements and lot number
-      const lotValue = parsedData.lot ? parseInt(parsedData.lot) : existingDoc.lot;
-      
-      await databases.updateDocument(
-        DATABASE_ID,
-        COLLECTION_INSPECTIONS,
-        existingDoc.$id,
-        {
-          lot: lotValue,
-          uploaded_at: new Date().toISOString(),
-          is_archived: false,
-          status: 'inspection',
-          ...measurements,
-          ...validations
-        }
-      );
-      results.updated.push({ filename });
-      return;
+      const isPlaceholder = !existingDoc.measurementA || existingDoc.measurementA === '-';
+
+      if (isPlaceholder) {
+        // Placeholder exists from import schedule — fill in the real measurement data
+        await databases.updateDocument(
+          DATABASE_ID,
+          COLLECTION_INSPECTIONS,
+          existingDoc.$id,
+          {
+            uploaded_at: new Date().toISOString(),
+            is_archived: false,
+            status: 'inspection',
+            // Keep existing lot and import_id from placeholder, only overwrite measurements
+            ...measurements,
+            ...validations
+          }
+        );
+        results.updated.push({ filename });
+        return;
+      } else {
+        // Real data already exists — skip with error
+        results.failed.push({ filename, error: `${filename} already has measurement data` });
+        return;
+      }
     }
 
     // No existing file — create fresh
@@ -1226,7 +1231,10 @@ app.post("/update-weight", requireWeightEditAuth, async (req, res) => {
       DATABASE_ID,
       COLLECTION_INSPECTIONS,
       fileId,
-      { weight: formattedWeight }
+      { 
+        weight: formattedWeight,
+        status: 'finished_inspection'
+      }
     );
 
     res.json({ 
