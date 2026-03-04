@@ -13,10 +13,6 @@ require("dotenv").config();
 
 const { Client, Databases, Query, ID } = require("node-appwrite");
 
-// Import inventory and allocation modules
-const InventoryManager = require("./inventory-manager");
-const StockAllocation = require("./stock-allocation");
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -376,6 +372,156 @@ app.post("/logout", async (req, res) => {
 });
 
 // ======================
+// INVENTORY & ALLOCATION FUNCTIONS
+// ======================
+
+/**
+ * Categorize inspections by status
+ */
+function categorizeInventory(inspections) {
+  const inventory = {
+    finished_inspection: [],
+    inspection: [],
+    imported: [],
+    upcoming_import: []
+  };
+
+  inspections.forEach(item => {
+    const status = item.status || 'finished_inspection';
+    if (inventory[status] !== undefined) {
+      inventory[status].push(item);
+    } else {
+      inventory['finished_inspection'].push(item);
+    }
+  });
+
+  // Sort each category by file number (ascending)
+  Object.keys(inventory).forEach(key => {
+    inventory[key].sort((a, b) => {
+      const numA = parseInt(a.filename.replace('.txt', '')) || 0;
+      const numB = parseInt(b.filename.replace('.txt', '')) || 0;
+      return numA - numB;
+    });
+  });
+
+  return inventory;
+}
+
+/**
+ * Get total available products
+ */
+function getTotalAvailableInventory(inventory) {
+  let total = 0;
+  Object.keys(inventory).forEach(status => {
+    total += inventory[status].length;
+  });
+  return total;
+}
+
+/**
+ * Get inventory by priority order (ready first)
+ */
+function getInventoryByPriority(inventory) {
+  const priority = [];
+  priority.push(...inventory.finished_inspection.map(item => ({...item, priority: 1})));
+  priority.push(...inventory.inspection.map(item => ({...item, priority: 2})));
+  priority.push(...inventory.imported.map(item => ({...item, priority: 3})));
+  priority.push(...inventory.upcoming_import.map(item => ({...item, priority: 4})));
+  return priority;
+}
+
+/**
+ * Allocate products to a single order
+ */
+function allocateProductsToOrder(order, allOrders, currentInventory) {
+  const quantity = parseInt(order.quantity);
+  const inventoryByPriority = getInventoryByPriority(currentInventory);
+  
+  // Mark products allocated to earlier orders
+  const allocatedByEarlierOrders = new Set();
+  const earlierOrders = allOrders
+    .filter(o => o.$id !== order.$id && new Date(o.due_date) < new Date(order.due_date))
+    .sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+
+  for (const earlierOrder of earlierOrders) {
+    const earlierQty = parseInt(earlierOrder.quantity);
+    let count = 0;
+    for (const product of inventoryByPriority) {
+      if (!allocatedByEarlierOrders.has(product.$id) && count < earlierQty) {
+        allocatedByEarlierOrders.add(product.$id);
+        count++;
+      }
+    }
+  }
+
+  // Allocate to this order
+  const allocatedItems = [];
+  for (const product of inventoryByPriority) {
+    if (!allocatedByEarlierOrders.has(product.$id) && allocatedItems.length < quantity) {
+      allocatedItems.push(product);
+    }
+  }
+
+  // Determine status
+  const readyCount = allocatedItems.filter(item => item.status === 'finished_inspection').length;
+  const inProgressCount = allocatedItems.filter(item => 
+    item.status === 'inspection' || item.status === 'imported'
+  ).length;
+
+  let allocationStatus = 'ready';
+  let statusLabel = '出荷可能';
+  let statusColor = '#198754';
+
+  if (inProgressCount > 0) {
+    allocationStatus = 'processing';
+    statusLabel = '検査中含む';
+    statusColor = '#6c757d';
+  }
+
+  return {
+    allocatedItems,
+    status: allocationStatus,
+    statusLabel,
+    statusColor,
+    breakdown: { ready: readyCount, inProgress: inProgressCount }
+  };
+}
+
+/**
+ * Allocate to all orders
+ */
+function allocateToAllOrders(orders, currentInventory) {
+  const allocations = {};
+  const sortedOrders = [...orders].sort((a, b) => 
+    new Date(a.due_date) - new Date(b.due_date)
+  );
+
+  for (const order of sortedOrders) {
+    allocations[order.$id] = allocateProductsToOrder(order, orders, currentInventory);
+  }
+  return allocations;
+}
+
+/**
+ * Get inventory status overview
+ */
+function getInventoryStatus(inventory) {
+  const byStatus = {
+    finished_inspection: inventory.finished_inspection.length,
+    inspection: inventory.inspection.length,
+    imported: inventory.imported.length,
+    upcoming_import: inventory.upcoming_import.length
+  };
+
+  const total = getTotalAvailableInventory(inventory);
+  return {
+    total,
+    byStatus,
+    percentageReady: total > 0 ? (byStatus.finished_inspection / total * 100).toFixed(1) : 0
+  };
+}
+
+// ======================
 // TXT FILE PARSING
 // ======================
 
@@ -551,8 +697,8 @@ app.get("/", requireAuth, async (req, res) => {
 // STOCK AVAILABILITY CALCULATION
 // ======================
 
-// Stock allocation now handled by stock-allocation.js module
-// See: stock-allocation.js for calculateStockAvailability logic
+// Stock allocation now handled by inline functions above
+// See: categorizeInventory, allocateProductsToOrder, allocateToAllOrders
 
 // ======================
 // STOCK MANAGEMENT VIEW
@@ -620,22 +766,18 @@ app.get("/stock-management", requireAuth, async (req, res) => {
       inspectionsByStatus[key].sort((a, b) => fileNum(a) - fileNum(b));
     });
 
-    // *** NEW: Use modular inventory and allocation system ***
+    // *** Use inline inventory and allocation system ***
     // Step 1: Categorize current inventory by status
     const activeInspections = inspectionsResult.documents.filter(doc => doc.status !== 'shipped');
-    const currentInventory = InventoryManager.categorizeInventory(activeInspections);
+    const currentInventory = categorizeInventory(activeInspections);
     
-    // Step 2: Get future import schedule
-    const futureImports = importsResult.documents.filter(imp => imp.status !== 'imported');
-    
-    // Step 3: Allocate products to orders using smart prioritization
-    const allocations = StockAllocation.allocateToAllOrders(
+    // Step 2: Allocate products to orders by due date priority
+    const allocations = allocateToAllOrders(
       ordersResult.documents,
-      currentInventory,
-      futureImports
+      currentInventory
     );
     
-    // Step 4: Enhance order objects with allocation info
+    // Step 3: Enhance order objects with allocation info
     const ordersWithStock = ordersResult.documents.map(order => {
       const allocation = allocations[order.$id];
       return {
@@ -645,15 +787,10 @@ app.get("/stock-management", requireAuth, async (req, res) => {
           label: allocation.statusLabel,
           color: allocation.statusColor,
           allocatedItems: allocation.allocatedItems,
-          breakdown: allocation.breakdown,
-          warning: allocation.warning,
-          fulfillmentCheck: allocation.fulfillmentCheck
+          breakdown: allocation.breakdown
         }
       };
     });
-    
-    // Step 5: Get allocation summary for dashboard
-    const allocationSummary = StockAllocation.getAllocationSummary(allocations, ordersResult.documents);
 
     // Attach linked_files to each import
     const importsWithFiles = importsResult.documents.map(imp => ({
@@ -662,11 +799,9 @@ app.get("/stock-management", requireAuth, async (req, res) => {
     }));
 
     res.render("stock-management", {
-      orders: ordersWithStock,
+      orders: ordersWithStock,  // *** CHANGED: Use ordersWithStock instead of ordersResult.documents ***
       imports: importsWithFiles,
       inspectionsByStatus: inspectionsByStatus,
-      allocationSummary: allocationSummary,
-      inventoryStatus: InventoryManager.getInventoryStatus(currentInventory),
       statusConfig: STATUS_CONFIG,
       username: req.session.username,
       displayName: getDisplayName(req.session.username),
@@ -1210,7 +1345,7 @@ app.post("/update-weight", requireWeightEditAuth, async (req, res) => {
     );
 
     res.json({ 
-      success: true, 
+      success: true,
       weight: formattedWeight 
     });
   } catch (error) {
