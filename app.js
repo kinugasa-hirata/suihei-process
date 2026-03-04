@@ -364,6 +364,13 @@ app.post("/login", async (req, res) => {
   }
 });
 
+app.get("/logout", async (req, res) => {
+  const sessionId = req.cookies.session_id;
+  await deleteSession(sessionId);
+  res.clearCookie('session_id');
+  res.redirect('/login');
+});
+
 app.post("/logout", async (req, res) => {
   const sessionId = req.cookies.session_id;
   await deleteSession(sessionId);
