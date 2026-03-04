@@ -1453,11 +1453,12 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
       const row = data[i];
       if (!row || row.length < 2) continue;
 
-      const filename = String(row[0]).trim();
+      let filename = String(row[0]).trim();
       const weightStr = String(row[1]).trim();
 
       if (!filename || !weightStr) continue;
 
+      // Parse weight
       const weight = parseFloat(weightStr);
       if (isNaN(weight) || weight < 0) {
         errors.push(filename);
@@ -1465,9 +1466,12 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
       }
 
       const formattedWeight = parseFloat(weight.toFixed(1));
+      
+      // Handle filename: add .txt if not present
       const filenameWithExt = filename.endsWith('.txt') ? filename : `${filename}.txt`;
 
       try {
+        // Find document by filename
         const result = await databases.listDocuments(
           DATABASE_ID,
           COLLECTION_INSPECTIONS,
@@ -1475,6 +1479,7 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
         );
 
         if (result.documents.length > 0) {
+          // Update existing document
           const inspection = result.documents[0];
           await databases.updateDocument(
             DATABASE_ID,
@@ -1487,6 +1492,7 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
           );
           updated++;
         } else {
+          // Create new document only if doesn't exist
           await databases.createDocument(
             DATABASE_ID,
             COLLECTION_INSPECTIONS,
@@ -1534,7 +1540,7 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
 });
 
 // ======================
-// WEIGHT EXCEL EXPORT
+// WEIGHT EXCEL EXPORT (SIMPLIFIED)
 // ======================
 
 app.get("/export-weights", requireWeightEditAuth, async (req, res) => {
@@ -1546,19 +1552,20 @@ app.get("/export-weights", requireWeightEditAuth, async (req, res) => {
       [Query.limit(1000)]
     );
 
-    // Filter documents that have weights
+    // Filter documents that have weights and create simple format
     const dataWithWeights = result.documents
       .filter(doc => doc.weight !== null && doc.weight !== undefined)
-      .map(doc => ({
-        filename: doc.filename,
-        weight: doc.weight,
-        lot: doc.lot || '',
-        status: doc.status || 'unknown',
-        uploaded_at: doc.uploaded_at || ''
-      }))
+      .map(doc => {
+        // Extract just the number from filename (e.g., "483.txt" → "483")
+        const fileNumber = doc.filename.replace('.txt', '').replace(/[^0-9]/g, '');
+        return {
+          'ファイル番号': fileNumber,  // Just the number, no .txt
+          '重量 (g)': doc.weight        // Weight value
+        };
+      })
       .sort((a, b) => {
-        const numA = parseInt(a.filename.replace('.txt', '')) || 0;
-        const numB = parseInt(b.filename.replace('.txt', '')) || 0;
+        const numA = parseInt(a['ファイル番号']) || 0;
+        const numB = parseInt(b['ファイル番号']) || 0;
         return numA - numB;
       });
 
@@ -1576,11 +1583,8 @@ app.get("/export-weights", requireWeightEditAuth, async (req, res) => {
 
     // Set column widths
     worksheet['!cols'] = [
-      { wch: 15 }, // filename
-      { wch: 10 }, // weight
-      { wch: 10 }, // lot
-      { wch: 15 }, // status
-      { wch: 20 }  // uploaded_at
+      { wch: 15 }, // ファイル番号
+      { wch: 12 }  // 重量 (g)
     ];
 
     // Generate Excel file
@@ -1588,7 +1592,7 @@ app.get("/export-weights", requireWeightEditAuth, async (req, res) => {
 
     // Send file with proper headers
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="weights_export_${new Date().toISOString().split('T')[0]}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="weights_${new Date().toISOString().split('T')[0]}.xlsx"`);
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.send(buffer);
   } catch (error) {
