@@ -1545,22 +1545,21 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
 
 app.get("/export-weights", requireWeightEditAuth, async (req, res) => {
   try {
-    // Fetch all inspections with weights
+    // Fetch ALL inspections (not just those with weights)
     const result = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_INSPECTIONS,
-      [Query.limit(1000)]
+      [Query.limit(10000)]  // Increased limit to get all files
     );
 
-    // Filter documents that have weights and create simple format
+    // Create export data for ALL files
     const dataWithWeights = result.documents
-      .filter(doc => doc.weight !== null && doc.weight !== undefined)
       .map(doc => {
         // Extract just the number from filename (e.g., "483.txt" → "483")
         const fileNumber = doc.filename.replace('.txt', '').replace(/[^0-9]/g, '');
         return {
           'ファイル番号': fileNumber,  // Just the number, no .txt
-          '重量 (g)': doc.weight        // Weight value
+          '重量 (g)': doc.weight || ''  // Weight (empty if not filled)
         };
       })
       .sort((a, b) => {
@@ -1572,7 +1571,7 @@ app.get("/export-weights", requireWeightEditAuth, async (req, res) => {
     if (dataWithWeights.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'No weight data to export'
+        error: 'No files in database to export'
       });
     }
 
