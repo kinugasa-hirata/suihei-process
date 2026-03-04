@@ -1364,6 +1364,52 @@ app.post("/update-weight", requireWeightEditAuth, async (req, res) => {
   }
 });
 
+// Alias for frontend compatibility (some templates use /update-weights plural)
+app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
+  try {
+    const { fileId, weight } = req.body;
+
+    if (!fileId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'File ID is required' 
+      });
+    }
+
+    const weightValue = weight && weight.trim() !== '' ? parseFloat(weight) : null;
+
+    if (weightValue !== null && (isNaN(weightValue) || weightValue < 0)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Weight must be a positive number or empty'
+      });
+    }
+
+    const formattedWeight = weightValue !== null ? weightValue.toFixed(1) : null;
+
+    await databases.updateDocument(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      fileId,
+      { 
+        weight: formattedWeight,
+        status: 'finished_inspection'
+      }
+    );
+
+    res.json({ 
+      success: true,
+      weight: formattedWeight 
+    });
+  } catch (error) {
+    console.error("Error updating weight:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
 // ======================
 // WEIGHT EXCEL IMPORT
 // ======================
