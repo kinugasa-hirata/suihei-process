@@ -347,7 +347,7 @@ app.post("/login", async (req, res) => {
         ID.unique(),
         {
           username: username,
-          login_time: new Date().toISOString(),
+          logged_in_at: new Date().toISOString(),
           can_edit_weights: canEditWeights(username)
         }
       );
