@@ -1523,12 +1523,14 @@ app.get("/export-weights", requireWeightEditAuth, async (req, res) => {
     // Generate Excel file
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
-    // Send file
+    // Send file with proper headers
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="weights_export_${new Date().toISOString().split('T')[0]}.xlsx"`);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.send(buffer);
   } catch (error) {
     console.error("Error exporting weights:", error);
+    res.setHeader('Content-Type', 'application/json');
     res.status(500).json({ 
       success: false, 
       error: error.message 
@@ -1611,12 +1613,14 @@ app.get("/export-measurements", requireAuth, async (req, res) => {
     // Generate Excel file
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
-    // Send file
+    // Send file with proper headers
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="measurements_export_${new Date().toISOString().split('T')[0]}.xlsx"`);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.send(buffer);
   } catch (error) {
     console.error("Error exporting measurements:", error);
+    res.setHeader('Content-Type', 'application/json');
     res.status(500).json({ 
       success: false, 
       error: error.message 
