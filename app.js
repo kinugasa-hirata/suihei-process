@@ -1417,7 +1417,10 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
             DATABASE_ID,
             COLLECTION_INSPECTIONS,
             inspection.$id,
-            { weight: formattedWeight }
+            { 
+              weight: formattedWeight,
+              status: 'finished_inspection'
+            }
           );
           updated++;
         } else {
@@ -1460,6 +1463,160 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
     });
   } catch (error) {
     console.error("Error importing weights:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// ======================
+// WEIGHT EXCEL EXPORT
+// ======================
+
+app.get("/export-weights", requireWeightEditAuth, async (req, res) => {
+  try {
+    // Fetch all inspections with weights
+    const result = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      [Query.limit(1000)]
+    );
+
+    // Filter documents that have weights
+    const dataWithWeights = result.documents
+      .filter(doc => doc.weight !== null && doc.weight !== undefined)
+      .map(doc => ({
+        filename: doc.filename,
+        weight: doc.weight,
+        lot: doc.lot || '',
+        status: doc.status || 'unknown',
+        uploaded_at: doc.uploaded_at || ''
+      }))
+      .sort((a, b) => {
+        const numA = parseInt(a.filename.replace('.txt', '')) || 0;
+        const numB = parseInt(b.filename.replace('.txt', '')) || 0;
+        return numA - numB;
+      });
+
+    if (dataWithWeights.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No weight data to export'
+      });
+    }
+
+    // Create workbook
+    const worksheet = XLSX.utils.json_to_sheet(dataWithWeights);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Weights');
+
+    // Set column widths
+    worksheet['!cols'] = [
+      { wch: 15 }, // filename
+      { wch: 10 }, // weight
+      { wch: 10 }, // lot
+      { wch: 15 }, // status
+      { wch: 20 }  // uploaded_at
+    ];
+
+    // Generate Excel file
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    // Send file
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="weights_export_${new Date().toISOString().split('T')[0]}.xlsx"`);
+    res.send(buffer);
+  } catch (error) {
+    console.error("Error exporting weights:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// ======================
+// MEASUREMENT EXCEL EXPORT
+// ======================
+
+app.get("/export-measurements", requireAuth, async (req, res) => {
+  try {
+    // Fetch all inspections with measurements
+    const result = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      [Query.limit(1000)]
+    );
+
+    // Build data array with measurements
+    const dataWithMeasurements = result.documents
+      .map(doc => ({
+        filename: doc.filename,
+        lot: doc.lot || '',
+        weight: doc.weight || '',
+        status: doc.status || 'unknown',
+        measurementA: doc.measurementA || '',
+        measurementB: doc.measurementB || '',
+        measurementC: doc.measurementC || '',
+        measurementD: doc.measurementD || '',
+        measurementE: doc.measurementE || '',
+        measurementF: doc.measurementF || '',
+        measurementG1: doc.measurementG1 || '',
+        measurementG2: doc.measurementG2 || '',
+        measurementG3: doc.measurementG3 || '',
+        measurementG4: doc.measurementG4 || '',
+        measurementH: doc.measurementH || '',
+        measurementI: doc.measurementI || '',
+        measurementJ: doc.measurementJ || '',
+        measurementK: doc.measurementK || '',
+        measurementL: doc.measurementL || '',
+        isValidA: doc.isValidA || '',
+        isValidB: doc.isValidB || '',
+        isValidC: doc.isValidC || '',
+        isValidD: doc.isValidD || '',
+        isValidE: doc.isValidE || '',
+        isValidF: doc.isValidF || '',
+        isValidG1: doc.isValidG1 || '',
+        isValidG2: doc.isValidG2 || '',
+        isValidG3: doc.isValidG3 || '',
+        isValidG4: doc.isValidG4 || '',
+        isValidH: doc.isValidH || '',
+        isValidI: doc.isValidI || '',
+        isValidJ: doc.isValidJ || '',
+        isValidK: doc.isValidK || '',
+        isValidL: doc.isValidL || ''
+      }))
+      .sort((a, b) => {
+        const numA = parseInt(a.filename.replace('.txt', '')) || 0;
+        const numB = parseInt(b.filename.replace('.txt', '')) || 0;
+        return numA - numB;
+      });
+
+    if (dataWithMeasurements.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No measurement data to export'
+      });
+    }
+
+    // Create workbook
+    const worksheet = XLSX.utils.json_to_sheet(dataWithMeasurements);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Measurements');
+
+    // Set column widths
+    worksheet['!cols'] = Array(35).fill({ wch: 12 });
+
+    // Generate Excel file
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    // Send file
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="measurements_export_${new Date().toISOString().split('T')[0]}.xlsx"`);
+    res.send(buffer);
+  } catch (error) {
+    console.error("Error exporting measurements:", error);
     res.status(500).json({ 
       success: false, 
       error: error.message 
