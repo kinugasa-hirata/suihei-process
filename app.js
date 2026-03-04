@@ -1339,7 +1339,7 @@ app.post("/update-weight", requireWeightEditAuth, async (req, res) => {
       });
     }
 
-    const formattedWeight = weightValue !== null ? weightValue.toFixed(1) : null;
+    const formattedWeight = weightValue !== null ? parseFloat(weightValue.toFixed(1)) : null;
 
     await databases.updateDocument(
       DATABASE_ID,
@@ -1367,42 +1367,59 @@ app.post("/update-weight", requireWeightEditAuth, async (req, res) => {
 // Alias for frontend compatibility (some templates use /update-weights plural)
 app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
   try {
-    const { fileId, weight } = req.body;
+    const { weights } = req.body;
 
-    if (!fileId) {
+    if (!weights || !Array.isArray(weights) || weights.length === 0) {
       return res.status(400).json({ 
         success: false, 
-        error: 'File ID is required' 
+        error: 'Weights array is required' 
       });
     }
 
-    const weightValue = weight && weight.trim() !== '' ? parseFloat(weight) : null;
+    const results = [];
+    const errors = [];
 
-    if (weightValue !== null && (isNaN(weightValue) || weightValue < 0)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Weight must be a positive number or empty'
-      });
-    }
+    for (const item of weights) {
+      const { fileId, weight } = item;
 
-    const formattedWeight = weightValue !== null ? weightValue.toFixed(1) : null;
-
-    await databases.updateDocument(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      fileId,
-      { 
-        weight: formattedWeight,
-        status: 'finished_inspection'
+      if (!fileId) {
+        errors.push({ error: 'File ID is required' });
+        continue;
       }
-    );
+
+      const weightValue = weight && weight.toString().trim() !== '' ? parseFloat(weight) : null;
+
+      if (weightValue !== null && (isNaN(weightValue) || weightValue < 0)) {
+        errors.push({ fileId, error: 'Weight must be a positive number or empty' });
+        continue;
+      }
+
+      const formattedWeight = weightValue !== null ? parseFloat(weightValue.toFixed(1)) : null;
+
+      try {
+        await databases.updateDocument(
+          DATABASE_ID,
+          COLLECTION_INSPECTIONS,
+          fileId,
+          { 
+            weight: formattedWeight,
+            status: 'finished_inspection'
+          }
+        );
+        results.push({ fileId, weight: formattedWeight, success: true });
+      } catch (err) {
+        errors.push({ fileId, error: err.message });
+      }
+    }
 
     res.json({ 
-      success: true,
-      weight: formattedWeight 
+      success: errors.length === 0, 
+      updated: results.length,
+      results: results.length > 0 ? results : undefined,
+      errors: errors.length > 0 ? errors : undefined
     });
   } catch (error) {
-    console.error("Error updating weight:", error);
+    console.error("Error updating weights:", error);
     res.status(500).json({ 
       success: false, 
       error: error.message 
@@ -1447,7 +1464,7 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
         continue;
       }
 
-      const formattedWeight = weight.toFixed(1);
+      const formattedWeight = parseFloat(weight.toFixed(1));
       const filenameWithExt = filename.endsWith('.txt') ? filename : `${filename}.txt`;
 
       try {
