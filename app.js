@@ -1529,16 +1529,28 @@ async function processImport(req, res) {
       }
     }
 
-    console.log(`Import complete: ${updated} updated, ${verified} verified, ${verifyFailed} verify failed, ${notFound} not found`);
+    console.log(`\n========== IMPORT SUMMARY ==========`);
+    console.log(`File: ${file.originalname}`);
+    console.log(`Total rows read: ${rows.length - 1}`);
+    console.log(`Successfully updated: ${updated}`);
+    console.log(`Successfully verified: ${verified}`);
+    console.log(`Verification failed: ${verifyFailed}`);
+    console.log(`Not found in database: ${notFound}`);
+    console.log(`====================================\n`);
     
-    return res.status(200).json({ 
+    const responseData = { 
       ok: true, 
+      success: true,
       updated: updated,
       verified: verified,
       verifyFailed: verifyFailed,
       notFound: notFound,
       message: `Success: ${verified} confirmed in database`
-    });
+    };
+    
+    res.status(200);
+    res.setHeader('Content-Type', 'application/json');
+    return res.json(responseData);
     
   } catch (e) {
     console.error("Import error:", e.message, e.stack);
