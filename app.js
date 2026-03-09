@@ -1432,16 +1432,12 @@ app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
 // ======================
 
 app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async (req, res) => {
-  // Set response headers FIRST
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   
   try {
     if (!req.file) {
-      return res.status(400).json({ 
-        success: false, 
-        error: "No file uploaded" 
-      });
+      res.status(400).json({ success: false, error: "No file uploaded" });
+      return;
     }
 
     let workbook, sheetName, worksheet, data;
@@ -1453,52 +1449,38 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
       data = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: '' });
     } catch (parseErr) {
       console.error("Excel parse error:", parseErr);
-      return res.status(400).json({
-        success: false,
-        error: "Failed to parse Excel file"
-      });
+      res.status(400).json({ success: false, error: "Invalid Excel file" });
+      return;
     }
 
     if (!data || data.length < 2) {
-      return res.status(400).json({
-        success: false,
-        error: "Excel file is empty"
-      });
+      res.status(400).json({ success: false, error: "Excel empty" });
+      return;
     }
 
     let updated = 0;
     let created = 0;
     let errors = [];
-    let processedCount = 0;
 
     for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      
-      if (!row || row.length === 0) {
-        continue;
-      }
-
-      let filename = String(row[0] || '').trim();
-      let weightStr = String(row[1] || '').trim();
-
-      filename = filename.replace(/\.txt$/i, '').trim();
-
-      if (!filename || !weightStr) {
-        continue;
-      }
-
-      let weight = parseFloat(String(weightStr).trim());
-      
-      if (isNaN(weight) || weight < 0) {
-        errors.push(filename + ": invalid weight");
-        continue;
-      }
-
-      processedCount++;
-      const formattedWeight = parseFloat(weight.toFixed(1));
-      const filenameWithExt = filename + '.txt';
-
       try {
+        const row = data[i];
+        if (!row || row.length === 0) continue;
+
+        let filename = String(row[0] || '').trim().replace(/\.txt$/i, '');
+        let weightStr = String(row[1] || '').trim();
+
+        if (!filename || !weightStr) continue;
+
+        const weight = parseFloat(String(weightStr));
+        if (isNaN(weight) || weight < 0) {
+          errors.push(filename);
+          continue;
+        }
+
+        const formattedWeight = parseFloat(weight.toFixed(1));
+        const filenameWithExt = filename + '.txt';
+
         const result = await databases.listDocuments(
           DATABASE_ID,
           COLLECTION_INSPECTIONS,
@@ -1506,15 +1488,11 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
         );
 
         if (result.documents.length > 0) {
-          const inspection = result.documents[0];
           await databases.updateDocument(
             DATABASE_ID,
             COLLECTION_INSPECTIONS,
-            inspection.$id,
-            { 
-              weight: formattedWeight,
-              status: 'finished_inspection'
-            }
+            result.documents[0].$id,
+            { weight: formattedWeight, status: 'finished_inspection' }
           );
           updated++;
         } else {
@@ -1543,26 +1521,16 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
           );
           created++;
         }
-      } catch (err) {
-        console.error('Process error:', err.message);
-        errors.push(filename + ": " + err.message);
+      } catch (rowErr) {
+        console.error('Row error:', rowErr.message);
       }
     }
-    
-    return res.status(200).json({ 
-      success: true,
-      processed: processedCount,
-      updated: updated,
-      created: created,
-      errors: errors
-    });
+
+    res.status(200).json({ success: true, updated, created, errors });
     
   } catch (error) {
-    console.error("Import error:", error);
-    return res.status(500).json({ 
-      success: false,
-      error: error.message
-    });
+    console.error("Import endpoint error:", error.message, error.stack);
+    res.status(500).json({ success: false, error: "Server error" });
   }
 });
 
