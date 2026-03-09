@@ -1432,6 +1432,10 @@ app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
 // ======================
 
 app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async (req, res) => {
+  // Set response headers FIRST
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  
   try {
     if (!req.file) {
       return res.status(400).json({ 
@@ -1446,20 +1450,19 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
       workbook = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: false });
       sheetName = workbook.SheetNames[0];
       worksheet = workbook.Sheets[sheetName];
-      // Use raw option to get unformatted values
       data = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: '' });
     } catch (parseErr) {
       console.error("Excel parse error:", parseErr);
       return res.status(400).json({
         success: false,
-        error: "Failed to parse Excel file. Make sure it's a valid .xlsx file"
+        error: "Failed to parse Excel file"
       });
     }
 
     if (!data || data.length < 2) {
       return res.status(400).json({
         success: false,
-        error: "Excel file is empty or has no data rows"
+        error: "Excel file is empty"
       });
     }
 
@@ -1468,54 +1471,34 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
     let errors = [];
     let processedCount = 0;
 
-    // Start from row 1 (skip header at row 0)
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       
-      // Skip completely empty rows
       if (!row || row.length === 0) {
         continue;
       }
 
-      // Get filename from column 0 (or 1 if this is 5-column export)
-      let filename = '';
-      let weightStr = '';
-      
-      // Detect format based on number of columns
-      if (row.length >= 5) {
-        // 5-column format (old export): filename, weight, lot, status, uploaded_at
-        filename = String(row[0] || '').trim();
-        weightStr = String(row[1] || '').trim();
-      } else {
-        // 2-column format (new export): filename, weight
-        filename = String(row[0] || '').trim();
-        weightStr = String(row[1] || '').trim();
-      }
+      let filename = String(row[0] || '').trim();
+      let weightStr = String(row[1] || '').trim();
 
-      // Normalize filename (remove .txt if present)
       filename = filename.replace(/\.txt$/i, '').trim();
 
-      // Skip if no filename or weight
       if (!filename || !weightStr) {
         continue;
       }
 
-      // Parse weight - handle both string and number types
       let weight = parseFloat(String(weightStr).trim());
       
       if (isNaN(weight) || weight < 0) {
-        errors.push({ filename, reason: 'Invalid weight value: ' + weightStr });
+        errors.push(filename + ": invalid weight");
         continue;
       }
 
       processedCount++;
       const formattedWeight = parseFloat(weight.toFixed(1));
-      
-      // Handle filename: add .txt
-      const filenameWithExt = `${filename}.txt`;
+      const filenameWithExt = filename + '.txt';
 
       try {
-        // Find document by filename
         const result = await databases.listDocuments(
           DATABASE_ID,
           COLLECTION_INSPECTIONS,
@@ -1523,7 +1506,6 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
         );
 
         if (result.documents.length > 0) {
-          // Update existing document
           const inspection = result.documents[0];
           await databases.updateDocument(
             DATABASE_ID,
@@ -1536,7 +1518,6 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
           );
           updated++;
         } else {
-          // Create new document only if doesn't exist
           await databases.createDocument(
             DATABASE_ID,
             COLLECTION_INSPECTIONS,
@@ -1563,26 +1544,24 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
           created++;
         }
       } catch (err) {
-        console.error(`Failed to process ${filename}:`, err);
-        errors.push({ filename, reason: err.message });
+        console.error('Process error:', err.message);
+        errors.push(filename + ": " + err.message);
       }
     }
     
-    res.setHeader('Content-Type', 'application/json');
-    res.status(200).json({ 
-      success: true, 
+    return res.status(200).json({ 
+      success: true,
       processed: processedCount,
       updated: updated,
       created: created,
-      errors: errors.length > 0 ? errors : undefined,
-      message: `Successfully imported: ${updated} updated, ${created} created`
+      errors: errors
     });
+    
   } catch (error) {
-    console.error("Error importing weights:", error);
-    res.setHeader('Content-Type', 'application/json');
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Unknown error during import'
+    console.error("Import error:", error);
+    return res.status(500).json({ 
+      success: false,
+      error: error.message
     });
   }
 });
