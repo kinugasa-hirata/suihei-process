@@ -1431,108 +1431,96 @@ app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
 // WEIGHT EXCEL IMPORT
 // ======================
 
-app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async (req, res) => {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+app.post("/import-weights", requireWeightEditAuth, (req, res, next) => {
+  upload.any()(req, res, (err) => {
+    if (err) {
+      console.error("Upload error:", err.message);
+      return res.status(400).json({ ok: false, error: "Upload failed" });
+    }
+    processImport(req, res);
+  });
+});
+
+async function processImport(req, res) {
+  res.setHeader('Content-Type', 'application/json');
   
   try {
-    if (!req.file) {
-      res.status(400).json({ success: false, error: "No file uploaded" });
-      return;
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ ok: false });
     }
 
-    let workbook, sheetName, worksheet, data;
+    const file = req.files[0];
+    console.log("Processing file:", file.originalname);
     
-    try {
-      workbook = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: false });
-      sheetName = workbook.SheetNames[0];
-      worksheet = workbook.Sheets[sheetName];
-      data = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: '' });
-    } catch (parseErr) {
-      console.error("Excel parse error:", parseErr);
-      res.status(400).json({ success: false, error: "Invalid Excel file" });
-      return;
-    }
-
-    if (!data || data.length < 2) {
-      res.status(400).json({ success: false, error: "Excel empty" });
-      return;
-    }
+    const buf = XLSX.read(file.buffer, { type: 'buffer' });
+    const ws = buf.Sheets[buf.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    
+    console.log("Read", rows.length, "rows from Excel");
 
     let updated = 0;
-    let created = 0;
-    let errors = [];
+    let notFound = 0;
 
-    for (let i = 1; i < data.length; i++) {
+    for (let i = 1; i < rows.length; i++) {
       try {
-        const row = data[i];
-        if (!row || row.length === 0) continue;
+        const row = rows[i];
+        if (!row || !row[0] || !row[1]) continue;
 
-        let filename = String(row[0] || '').trim().replace(/\.txt$/i, '');
-        let weightStr = String(row[1] || '').trim();
+        // Get file number from column A (remove .txt if present)
+        const fileNum = String(row[0]).trim().replace(/\.txt$/i, '');
+        
+        // Get weight from column B
+        const weight = parseFloat(String(row[1]).trim());
 
-        if (!filename || !weightStr) continue;
+        if (!fileNum || isNaN(weight) || weight < 0) continue;
 
-        const weight = parseFloat(String(weightStr));
-        if (isNaN(weight) || weight < 0) {
-          errors.push(filename);
-          continue;
-        }
+        // Build filename with .txt extension
+        const filename = fileNum + '.txt';
+        const roundedWeight = Math.round(weight * 10) / 10;
 
-        const formattedWeight = parseFloat(weight.toFixed(1));
-        const filenameWithExt = filename + '.txt';
+        console.log(`Row ${i}: ${fileNum} → ${roundedWeight}g`);
 
+        // Find document in Appwrite
         const result = await databases.listDocuments(
-          DATABASE_ID,
-          COLLECTION_INSPECTIONS,
-          [Query.equal('filename', filenameWithExt), Query.limit(1)]
+          DATABASE_ID, 
+          COLLECTION_INSPECTIONS, 
+          [Query.equal('filename', filename)]
         );
-
-        if (result.documents.length > 0) {
+        
+        if (result.documents && result.documents.length > 0) {
+          // Update the document
           await databases.updateDocument(
-            DATABASE_ID,
-            COLLECTION_INSPECTIONS,
-            result.documents[0].$id,
-            { weight: formattedWeight, status: 'finished_inspection' }
-          );
-          updated++;
-        } else {
-          await databases.createDocument(
-            DATABASE_ID,
-            COLLECTION_INSPECTIONS,
-            ID.unique(),
-            {
-              filename: filenameWithExt,
-              lot: null,
-              weight: formattedWeight,
-              uploaded_at: new Date().toISOString(),
-              is_archived: false,
-              status: 'finished_inspection',
-              measurementA: null, measurementB: null, measurementC: null,
-              measurementD: null, measurementE: null, measurementF: null,
-              measurementG1: null, measurementG2: null, measurementG3: null,
-              measurementG4: null, measurementH: null, measurementI: null,
-              measurementJ: null, measurementK: null, measurementL: null,
-              isValidA: null, isValidB: null, isValidC: null,
-              isValidD: null, isValidE: null, isValidF: null,
-              isValidG1: null, isValidG2: null, isValidG3: null,
-              isValidG4: null, isValidH: null, isValidI: null,
-              isValidJ: null, isValidK: null, isValidL: null
+            DATABASE_ID, 
+            COLLECTION_INSPECTIONS, 
+            result.documents[0].$id, 
+            { 
+              weight: roundedWeight, 
+              status: 'finished_inspection' 
             }
           );
-          created++;
+          updated++;
+          console.log(`✓ Updated: ${filename}`);
+        } else {
+          notFound++;
+          console.log(`✗ Not found: ${filename}`);
         }
       } catch (rowErr) {
-        console.error('Row error:', rowErr.message);
+        console.error("Row error:", rowErr.message);
       }
     }
 
-    res.status(200).json({ success: true, updated, created, errors });
+    console.log(`Import complete: ${updated} updated, ${notFound} not found`);
+    return res.status(200).json({ 
+      ok: true, 
+      updated: updated,
+      notFound: notFound
+    });
     
-  } catch (error) {
-    console.error("Import endpoint error:", error.message, error.stack);
-    res.status(500).json({ success: false, error: "Server error" });
+  } catch (e) {
+    console.error("Import error:", e.message, e.stack);
+    return res.status(200).json({ ok: false, error: e.message });
   }
-});
+}
 
 // ======================
 // WEIGHT EXCEL EXPORT (SIMPLIFIED)
