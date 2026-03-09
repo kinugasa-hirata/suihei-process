@@ -1440,31 +1440,58 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
       });
     }
 
-    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    let workbook, sheetName, worksheet, data;
+    
+    try {
+      workbook = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: true });
+      sheetName = workbook.SheetNames[0];
+      worksheet = workbook.Sheets[sheetName];
+      data = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+    } catch (parseErr) {
+      console.error("Excel parse error:", parseErr);
+      return res.status(400).json({
+        success: false,
+        error: "Failed to parse Excel file. Make sure it's a valid .xlsx file"
+      });
+    }
+
+    if (!data || data.length < 2) {
+      return res.status(400).json({
+        success: false,
+        error: "Excel file is empty or has no data"
+      });
+    }
 
     let updated = 0;
     let created = 0;
     let errors = [];
+    let processedCount = 0;
 
+    // Start from row 1 (skip header at row 0)
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      if (!row || row.length < 2) continue;
+      
+      // Skip empty rows
+      if (!row || (row.length < 2 && (!row[0] || !row[1]))) {
+        continue;
+      }
 
-      let filename = String(row[0]).trim();
-      const weightStr = String(row[1]).trim();
+      let filename = String(row[0] || '').trim();
+      const weightStr = String(row[1] || '').trim();
 
-      if (!filename || !weightStr) continue;
+      // Skip if no filename or weight
+      if (!filename || !weightStr) {
+        continue;
+      }
 
       // Parse weight
       const weight = parseFloat(weightStr);
       if (isNaN(weight) || weight < 0) {
-        errors.push(filename);
+        errors.push({ filename, reason: 'Invalid weight value' });
         continue;
       }
 
+      processedCount++;
       const formattedWeight = parseFloat(weight.toFixed(1));
       
       // Handle filename: add .txt if not present
@@ -1520,21 +1547,25 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
         }
       } catch (err) {
         console.error(`Failed to process ${filename}:`, err);
-        errors.push(filename);
+        errors.push({ filename, reason: err.message });
       }
     }
     
+    res.setHeader('Content-Type', 'application/json');
     res.json({ 
       success: true, 
+      processed: processedCount,
       updated: updated,
       created: created,
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : undefined,
+      message: `Imported: ${updated} updated, ${created} created`
     });
   } catch (error) {
     console.error("Error importing weights:", error);
+    res.setHeader('Content-Type', 'application/json');
     res.status(500).json({ 
       success: false, 
-      error: error.message 
+      error: error.message || 'Unknown error during import'
     });
   }
 });
