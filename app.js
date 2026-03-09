@@ -1460,6 +1460,8 @@ async function processImport(req, res) {
 
     let updated = 0;
     let notFound = 0;
+    let verified = 0;
+    let verifyFailed = 0;
 
     for (let i = 1; i < rows.length; i++) {
       try {
@@ -1488,18 +1490,36 @@ async function processImport(req, res) {
         );
         
         if (result.documents && result.documents.length > 0) {
+          const docId = result.documents[0].$id;
+          
           // Update the document
-          await databases.updateDocument(
+          const updateResult = await databases.updateDocument(
             DATABASE_ID, 
             COLLECTION_INSPECTIONS, 
-            result.documents[0].$id, 
+            docId, 
             { 
               weight: roundedWeight, 
               status: 'finished_inspection' 
             }
           );
+          
           updated++;
-          console.log(`✓ Updated: ${filename}`);
+          console.log(`✓ Updated: ${filename} with weight ${roundedWeight}g`);
+          
+          // VERIFY: Read it back to confirm it was saved
+          const verifyResult = await databases.getDocument(
+            DATABASE_ID, 
+            COLLECTION_INSPECTIONS, 
+            docId
+          );
+          
+          if (verifyResult.weight === roundedWeight && verifyResult.status === 'finished_inspection') {
+            verified++;
+            console.log(`✓ VERIFIED: ${filename} - weight is ${verifyResult.weight}g in database`);
+          } else {
+            verifyFailed++;
+            console.log(`✗ VERIFY FAILED: ${filename} - expected ${roundedWeight}g, got ${verifyResult.weight}g`);
+          }
         } else {
           notFound++;
           console.log(`✗ Not found: ${filename}`);
@@ -1509,11 +1529,15 @@ async function processImport(req, res) {
       }
     }
 
-    console.log(`Import complete: ${updated} updated, ${notFound} not found`);
+    console.log(`Import complete: ${updated} updated, ${verified} verified, ${verifyFailed} verify failed, ${notFound} not found`);
+    
     return res.status(200).json({ 
       ok: true, 
       updated: updated,
-      notFound: notFound
+      verified: verified,
+      verifyFailed: verifyFailed,
+      notFound: notFound,
+      message: `Success: ${verified} confirmed in database`
     });
     
   } catch (e) {
