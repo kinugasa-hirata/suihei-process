@@ -1431,10 +1431,19 @@ app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
 // WEIGHT EXCEL IMPORT
 // ======================
 
+// Store import progress globally
+let importProgress = { current: 0, total: 0, status: 'idle' };
+
+app.get("/import-progress", requireWeightEditAuth, (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  return res.json(importProgress);
+});
+
 app.post("/import-weights", requireWeightEditAuth, (req, res, next) => {
   upload.any()(req, res, (err) => {
     if (err) {
       console.error("Upload error:", err.message);
+      importProgress = { current: 0, total: 0, status: 'error' };
       return res.status(400).json({ ok: false, error: "Upload failed" });
     }
     processImport(req, res);
@@ -1457,6 +1466,9 @@ async function processImport(req, res) {
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
     
     console.log("Read", rows.length, "rows from Excel");
+
+    const totalRows = rows.length - 1; // Exclude header
+    importProgress = { current: 0, total: totalRows, status: 'processing' };
 
     let updated = 0;
     let notFound = 0;
@@ -1527,6 +1539,9 @@ async function processImport(req, res) {
       } catch (rowErr) {
         console.error("Row error:", rowErr.message);
       }
+      
+      // Update progress after each row
+      importProgress.current = i;
     }
 
     console.log(`\n========== IMPORT SUMMARY ==========`);
@@ -1548,12 +1563,15 @@ async function processImport(req, res) {
       message: `Success: ${verified} confirmed in database`
     };
     
+    importProgress = { current: totalRows, total: totalRows, status: 'complete' };
+    
     res.status(200);
     res.setHeader('Content-Type', 'application/json');
     return res.json(responseData);
     
   } catch (e) {
     console.error("Import error:", e.message, e.stack);
+    importProgress = { current: 0, total: 0, status: 'error' };
     return res.status(200).json({ ok: false, error: e.message });
   }
 }
