@@ -1443,10 +1443,11 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
     let workbook, sheetName, worksheet, data;
     
     try {
-      workbook = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: true });
+      workbook = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: false });
       sheetName = workbook.SheetNames[0];
       worksheet = workbook.Sheets[sheetName];
-      data = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+      // Use raw option to get unformatted values
+      data = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: '' });
     } catch (parseErr) {
       console.error("Excel parse error:", parseErr);
       return res.status(400).json({
@@ -1458,7 +1459,7 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
     if (!data || data.length < 2) {
       return res.status(400).json({
         success: false,
-        error: "Excel file is empty or has no data"
+        error: "Excel file is empty or has no data rows"
       });
     }
 
@@ -1471,31 +1472,47 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       
-      // Skip empty rows
-      if (!row || (row.length < 2 && (!row[0] || !row[1]))) {
+      // Skip completely empty rows
+      if (!row || row.length === 0) {
         continue;
       }
 
-      let filename = String(row[0] || '').trim();
-      const weightStr = String(row[1] || '').trim();
+      // Get filename from column 0 (or 1 if this is 5-column export)
+      let filename = '';
+      let weightStr = '';
+      
+      // Detect format based on number of columns
+      if (row.length >= 5) {
+        // 5-column format (old export): filename, weight, lot, status, uploaded_at
+        filename = String(row[0] || '').trim();
+        weightStr = String(row[1] || '').trim();
+      } else {
+        // 2-column format (new export): filename, weight
+        filename = String(row[0] || '').trim();
+        weightStr = String(row[1] || '').trim();
+      }
+
+      // Normalize filename (remove .txt if present)
+      filename = filename.replace(/\.txt$/i, '').trim();
 
       // Skip if no filename or weight
       if (!filename || !weightStr) {
         continue;
       }
 
-      // Parse weight
-      const weight = parseFloat(weightStr);
+      // Parse weight - handle both string and number types
+      let weight = parseFloat(String(weightStr).trim());
+      
       if (isNaN(weight) || weight < 0) {
-        errors.push({ filename, reason: 'Invalid weight value' });
+        errors.push({ filename, reason: 'Invalid weight value: ' + weightStr });
         continue;
       }
 
       processedCount++;
       const formattedWeight = parseFloat(weight.toFixed(1));
       
-      // Handle filename: add .txt if not present
-      const filenameWithExt = filename.endsWith('.txt') ? filename : `${filename}.txt`;
+      // Handle filename: add .txt
+      const filenameWithExt = `${filename}.txt`;
 
       try {
         // Find document by filename
@@ -1552,13 +1569,13 @@ app.post("/import-weights", requireWeightEditAuth, upload.single("file"), async 
     }
     
     res.setHeader('Content-Type', 'application/json');
-    res.json({ 
+    res.status(200).json({ 
       success: true, 
       processed: processedCount,
       updated: updated,
       created: created,
       errors: errors.length > 0 ? errors : undefined,
-      message: `Imported: ${updated} updated, ${created} created`
+      message: `Successfully imported: ${updated} updated, ${created} created`
     });
   } catch (error) {
     console.error("Error importing weights:", error);
