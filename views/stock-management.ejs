@@ -22,6 +22,9 @@
         padding: 2rem;
         margin-bottom: 2rem;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
       }
       .header-title {
         font-size: 2rem;
@@ -32,6 +35,19 @@
       .header-subtitle {
         color: #7f8c8d;
         font-size: 1.1rem;
+      }
+      .settings-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+      .settings-btn:hover {
+        transform: scale(1.05);
+        color: white;
       }
       .nav-tabs-custom {
         border-bottom: 3px solid #e9ecef;
@@ -238,395 +254,206 @@
       .back-to-main {
         position: fixed;
         bottom: 30px;
-        left: 30px;
-        background: #6c757d;
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 50px;
-        text-decoration: none;
-        box-shadow: 0 4px 12px rgba(108,117,125,0.4);
-        transition: all 0.3s;
-        z-index: 1000;
+        right: 30px;
+        background: white;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        cursor: pointer;
+        z-index: 500;
+        transition: all 0.3s;
+        text-decoration: none;
       }
       .back-to-main:hover {
-        background: #5a6268;
-        transform: scale(1.05);
-        color: white;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+        transform: scale(1.1);
       }
-      /* Stock availability indicator in Orders table */
-      .stock-indicator {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        padding: 0.3rem 0.8rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 600;
-      }
-      .stock-indicator.ready      { background: #d1e7dd; color: #0f5132; }
-      .stock-indicator.processing { background: #e2e3e5; color: #41464b; }
-      .stock-indicator.uncertain  { background: #fff3cd; color: #856404; }
-      .stock-indicator.insufficient { background: #f8d7da; color: #842029; }
-      /* Allocated product number chips */
-      .alloc-numbers {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.3rem;
-        max-width: 300px;
-      }
-      .alloc-chip {
-        background: #e7f3ff;
-        color: #0d6efd;
-        border: 1px solid #b6d4fe;
-        border-radius: 12px;
-        padding: 0.1rem 0.5rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-        white-space: nowrap;
-      }
-      .alloc-chip.not-ready {
-        background: #fff3cd;
-        color: #856404;
-        border-color: #ffda6a;
-      }
-      .alloc-range {
-        font-size: 0.8rem;
-        color: #495057;
-        font-weight: 600;
-      }
+      .material-icons { font-family: 'Material Icons'; font-weight: normal; font-style: normal; font-size: 24px; display: inline-block; line-height: 1; }
     </style>
   </head>
   <body>
-    <!-- User Info Header -->
-    <div class="user-info-header">
-      <span class="material-icons">account_circle</span>
-      <div>
-        <div style="font-weight: 600; color: #2c3e50;"><%= displayName %></div>
-        <div style="font-size: 0.875rem; color: #6c757d;">在庫管理</div>
-      </div>
-      <form action="/logout" method="POST" style="margin: 0;">
-        <button type="submit" class="btn btn-sm btn-outline-secondary">
-          <span class="material-icons" style="font-size: 18px;">logout</span>
-        </button>
-      </form>
-    </div>
-
-    <!-- Back to Main -->
-    <a href="/" class="back-to-main">
-      <span class="material-icons">arrow_back</span>
-      メイン画面へ
-    </a>
-
     <div class="container">
-      <!-- Header -->
+      <!-- Header with Settings Button -->
       <div class="header-section">
-        <h1 class="header-title">在庫管理システム</h1>
-        <p class="header-subtitle">Stock Management System - Orders, Imports &amp; Inventory</p>
+        <div>
+          <div class="header-title">在庫管理システム</div>
+          <div class="header-subtitle">Stock Management System - Orders, Imports & Inventory</div>
+        </div>
+        <button class="settings-btn" onclick="openSettingsModal()">
+          <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem; font-size: 20px;">settings</span>
+          設定
+        </button>
       </div>
 
       <!-- Navigation Tabs -->
-      <ul class="nav nav-tabs nav-tabs-custom" id="managementTabs" role="tablist">
+      <ul class="nav nav-tabs-custom" role="tablist">
         <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders" type="button">
-            <span class="material-icons" style="vertical-align: middle; margin-right: 8px;">shopping_cart</span>
+          <button class="nav-link active" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders" type="button" role="tab" aria-controls="orders" aria-selected="true">
+            <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">shopping_cart</span>
             注文管理 (Orders)
           </button>
         </li>
         <li class="nav-item" role="presentation">
-          <button class="nav-link" id="imports-tab" data-bs-toggle="tab" data-bs-target="#imports" type="button">
-            <span class="material-icons" style="vertical-align: middle; margin-right: 8px;">local_shipping</span>
+          <button class="nav-link" id="imports-tab" data-bs-toggle="tab" data-bs-target="#imports" type="button" role="tab" aria-controls="imports" aria-selected="false">
+            <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">local_shipping</span>
             入荷管理 (Imports)
           </button>
         </li>
         <li class="nav-item" role="presentation">
-          <button class="nav-link" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory" type="button">
-            <span class="material-icons" style="vertical-align: middle; margin-right: 8px;">inventory_2</span>
+          <button class="nav-link" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory" type="button" role="tab" aria-controls="inventory" aria-selected="false">
+            <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">inventory_2</span>
             在庫状況 (Inventory)
           </button>
         </li>
       </ul>
 
       <!-- Tab Content -->
-      <div class="tab-content" id="managementTabContent">
-
-        <!-- ==================== ORDERS TAB ==================== -->
-        <div class="tab-pane fade show active" id="orders" role="tabpanel">
+      <div class="tab-content">
+        <!-- Orders Tab -->
+        <div class="tab-pane fade show active" id="orders" role="tabpanel" aria-labelledby="orders-tab">
           <div class="section-card">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h2 class="section-title mb-0">注文一覧 (Order List)</h2>
-              <button class="btn btn-primary" onclick="openOrderModal()">
-                <span class="material-icons" style="vertical-align: middle; margin-right: 4px;">add</span>
-                新規注文
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+              <h2 class="section-title" style="margin-bottom: 0;">注文一覧 (Order List)</h2>
+              <button class="btn btn-primary" onclick="openOrderModal()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                <span class="material-icons" style="vertical-align: middle;">add</span> 新規注文
               </button>
             </div>
-
-            <% if (orders.length === 0) { %>
-              <div class="empty-state">
-                <span class="material-icons">shopping_cart</span>
-                <p>注文がありません</p>
-                <button class="btn btn-primary" onclick="openOrderModal()">最初の注文を作成</button>
-              </div>
-            <% } else { %>
-              <div class="table-responsive">
-                <table class="table custom-table">
-                  <thead>
-                    <tr>
-                      <th>注文日</th>
-                      <th>数量</th>
-                      <th>納期</th>
-                      <th>ステータス</th>
-                      <th>在庫状況</th>
-                      <th>割当製品</th>
-                      <th>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <% orders.forEach(order => {
-                      const stock = order.stockAvailability;
-                      const allocIds = stock.allocatedItems.map(i => i.$id).join(',');
-                      // Build compact number display: sort numerically, show as range if consecutive
-                      const allocNums = stock.allocatedItems
-                        .map(i => ({ num: parseInt(i.filename.replace('.txt','')), status: i.status }))
-                        .filter(i => !isNaN(i.num))
-                        .sort((a,b) => a.num - b.num);
-                      // Group into consecutive ranges
-                      const ranges = [];
-                      let rangeStart = null, rangeLast = null, rangeReady = true;
-                      allocNums.forEach((item, idx) => {
-                        const isReady = item.status === 'finished_inspection';
-                        if (rangeStart === null) {
-                          rangeStart = item.num; rangeLast = item.num; rangeReady = isReady;
-                        } else if (item.num === rangeLast + 1 && isReady === rangeReady) {
-                          rangeLast = item.num;
-                        } else {
-                          ranges.push({ start: rangeStart, end: rangeLast, ready: rangeReady });
-                          rangeStart = item.num; rangeLast = item.num; rangeReady = isReady;
-                        }
-                        if (idx === allocNums.length - 1) {
-                          ranges.push({ start: rangeStart, end: rangeLast, ready: rangeReady });
-                        }
-                      });
-                    %>
-                      <tr>
-                        <td><%= new Date(order.$createdAt).toLocaleDateString('ja-JP') %></td>
-                        <td><%= order.quantity %> 個</td>
-                        <td><%= new Date(order.due_date).toLocaleDateString('ja-JP') %></td>
-                        <td>
-                          <span class="status-badge status-<%= order.status %>">
-                            <%= order.status === 'pending'     ? '保留中' :
-                                order.status === 'processing'  ? '処理中' :
-                                order.status === 'completed'   ? '完了'   :
-                                order.status === 'shipped'     ? '出荷済' : 'キャンセル' %>
-                          </span>
-                        </td>
-                        <td>
-                          <span class="stock-indicator <%= stock.status %>">
-                            <%= stock.icon %> <%= stock.label %>
-                            <% if (stock.status === 'insufficient') { %>
-                              (<%= stock.available %>/<%= stock.needed %>)
-                            <% } %>
-                          </span>
-                        </td>
-                        <td>
-                          <% if (allocNums.length === 0) { %>
-                            <span style="color:#adb5bd; font-size:0.8rem;">-</span>
-                          <% } else { %>
-                            <div class="alloc-numbers">
-                              <% ranges.forEach(r => { %>
-                                <span class="alloc-chip <%= r.ready ? '' : 'not-ready' %>">
-                                  <%= r.start === r.end ? r.start : r.start + '～' + r.end %>
-                                </span>
-                              <% }); %>
-                            </div>
-                          <% } %>
-                        </td>
-                        <td>
-                          <!-- Ship button — uses data attributes to safely pass IDs (avoids HTML encoding bug) -->
-                          <button
-                            class="btn btn-sm btn-ship btn-action"
-                            title="出荷"
-                            data-order-id="<%= order.$id %>"
-                            data-quantity="<%= order.quantity %>"
-                            data-item-ids="<%= allocIds %>"
-                            onclick="shipOrderFromBtn(this)"
-                            <%= stock.status === 'insufficient' ? 'disabled' : '' %>
-                          >
-                            <span class="material-icons" style="font-size: 16px;">local_shipping</span>
-                          </button>
-                          <button class="btn btn-sm btn-outline-primary btn-action" title="編集" onclick="editOrder('<%= order.$id %>')">
-                            <span class="material-icons" style="font-size: 16px;">edit</span>
-                          </button>
-                          <button class="btn btn-sm btn-outline-danger btn-action" title="削除" onclick="deleteOrder('<%= order.$id %>')">
-                            <span class="material-icons" style="font-size: 16px;">delete</span>
-                          </button>
-                        </td>
-                      </tr>
-                    <% }); %>
-                  </tbody>
-                </table>
-              </div>
-            <% } %>
+            <div id="ordersEmpty" class="empty-state" style="display: none;">
+              <span class="material-icons">inbox</span>
+              <p>注文がまだ登録されていません</p>
+            </div>
+            <div class="table-responsive">
+              <table class="table custom-table" id="ordersTable" style="display: none;">
+                <thead>
+                  <tr>
+                    <th>注文日</th>
+                    <th>数量</th>
+                    <th>納期</th>
+                    <th>ステータス</th>
+                    <th>在庫状況</th>
+                    <th>割当製品</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="ordersList">
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        <!-- ==================== IMPORTS TAB ==================== -->
-        <div class="tab-pane fade" id="imports" role="tabpanel">
+        <!-- Imports Tab -->
+        <div class="tab-pane fade" id="imports" role="tabpanel" aria-labelledby="imports-tab">
           <div class="section-card">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h2 class="section-title mb-0">入荷予定 (Import Schedule)</h2>
-              <button class="btn btn-success" onclick="openImportModal()">
-                <span class="material-icons" style="vertical-align: middle; margin-right: 4px;">add</span>
-                新規入荷予定
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+              <h2 class="section-title" style="margin-bottom: 0;">入荷管理</h2>
+              <button class="btn btn-primary" onclick="openImportModal()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                <span class="material-icons" style="vertical-align: middle;">add</span> 新規入荷
               </button>
             </div>
-
-            <% if (imports.length === 0) { %>
-              <div class="empty-state">
-                <span class="material-icons">local_shipping</span>
-                <p>入荷予定がありません</p>
-                <button class="btn btn-success" onclick="openImportModal()">入荷予定を作成</button>
-              </div>
-            <% } else { %>
-              <div class="table-responsive">
-                <table class="table custom-table">
-                  <thead>
-                    <tr>
-                      <th>作成日</th>
-                      <th>予定数量</th>
-                      <th>予定日</th>
-                      <th>実際の入荷日</th>
-                      <th>ステータス</th>
-                      <th>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <% imports.forEach(imp => { %>
-                      <tr>
-                        <td><%= new Date(imp.$createdAt).toLocaleDateString('ja-JP') %></td>
-                        <td><%= imp.quantity %> 個</td>
-                        <td><%= new Date(imp.scheduled_date).toLocaleDateString('ja-JP') %></td>
-                        <td><%= imp.actual_date ? new Date(imp.actual_date).toLocaleDateString('ja-JP') : '-' %></td>
-                        <td>
-                          <span class="status-badge status-<%= imp.status %>">
-                            <%= imp.status === 'scheduled' ? '予定' : '入荷済' %>
-                          </span>
-                        </td>
-                        <td>
-                          <button class="btn btn-sm btn-outline-primary btn-action" onclick="editImport('<%= imp.$id %>')">
-                            <span class="material-icons" style="font-size: 16px;">edit</span>
-                          </button>
-                          <button class="btn btn-sm btn-outline-danger btn-action" onclick="deleteImport('<%= imp.$id %>')">
-                            <span class="material-icons" style="font-size: 16px;">delete</span>
-                          </button>
-                        </td>
-                      </tr>
-                    <% }); %>
-                  </tbody>
-                </table>
-              </div>
-            <% } %>
+            <div id="importsEmpty" class="empty-state" style="display: none;">
+              <span class="material-icons">inbox</span>
+              <p>入荷予定がまだ登録されていません</p>
+            </div>
+            <div class="table-responsive">
+              <table class="table custom-table" id="importsTable" style="display: none;">
+                <thead>
+                  <tr>
+                    <th>日付</th>
+                    <th>数量</th>
+                    <th>予定日</th>
+                    <th>実際の入荷日</th>
+                    <th>ステータス</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="importsList">
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        <!-- ==================== INVENTORY TAB ==================== -->
-        <div class="tab-pane fade" id="inventory" role="tabpanel">
-
-          <!-- Upcoming Import -->
-          <div class="status-section">
-            <div class="status-section-header" style="background: rgba(0,0,0,0.05);">
-              <h3 class="status-section-title" style="color: #6c757d;">入荷予定 (Upcoming Import)</h3>
-              <span class="status-section-count" style="background: rgba(0,0,0,0.1);"><%= inspectionsByStatus.upcoming_import.length %></span>
+        <!-- Inventory Tab -->
+        <div class="tab-pane fade" id="inventory" role="tabpanel" aria-labelledby="inventory-tab">
+          <div class="section-card">
+            <h2 class="section-title">在庫状況 (Inventory)</h2>
+            <div id="inventoryContent">
+              <div style="text-align: center; padding: 2rem; color: #6c757d;">
+                <p>在庫情報を読み込み中...</p>
+              </div>
             </div>
-            <% if (inspectionsByStatus.upcoming_import.length === 0) { %>
-              <div class="empty-state" style="padding: 1.5rem;">
-                <p style="margin: 0; font-size: 0.9rem;">入荷予定の製品はありません</p>
-              </div>
-            <% } else { %>
-              <div class="stock-grid">
-                <% inspectionsByStatus.upcoming_import.forEach(item => { %>
-                  <div class="stock-item" style="background: transparent; border-color: #dee2e6;" onclick="viewItem('<%= item.$id %>')">
-                    <div class="stock-item-number"><%= item.filename.replace('.txt', '') %></div>
-                    <div class="stock-item-weight"><%= item.weight ? item.weight + ' g' : '-' %></div>
-                  </div>
-                <% }); %>
-              </div>
-            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-backdrop-custom" id="settingsModalBackdrop" onclick="closeSettingsModal()"></div>
+    <div class="modal-custom" id="settingsModal">
+      <div class="modal-header-custom">
+        <h3 style="margin: 0;">
+          <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">settings</span>
+          ロット番号設定
+        </h3>
+      </div>
+      <div class="modal-body-custom">
+        <form id="settingsForm">
+          <div class="mb-3">
+            <label for="lotStartNumber" class="form-label-custom">ロット番号開始値</label>
+            <input 
+              type="number" 
+              class="form-control" 
+              id="lotStartNumber" 
+              name="lotStartNumber" 
+              min="1" 
+              required
+              placeholder="例: 434"
+            >
+            <small class="text-muted">
+              この値から始まるロット番号が自動で割り当てられます。<br>
+              例: 434 に設定すると、次の製品には 434, 435, 436... が割り当てられます。
+            </small>
           </div>
 
-          <!-- Imported -->
-          <div class="status-section">
-            <div class="status-section-header" style="background: linear-gradient(135deg, #868e96 0%, #6c757d 100%);">
-              <h3 class="status-section-title">入荷済 (Imported)</h3>
-              <span class="status-section-count"><%= inspectionsByStatus.imported.length %></span>
-            </div>
-            <% if (inspectionsByStatus.imported.length === 0) { %>
-              <div class="empty-state" style="padding: 1.5rem;">
-                <p style="margin: 0; font-size: 0.9rem;">入荷済の製品はありません</p>
-              </div>
-            <% } else { %>
-              <div class="stock-grid">
-                <% inspectionsByStatus.imported.forEach(item => { %>
-                  <div class="stock-item" style="background: rgba(233, 236, 239, 0.5);" onclick="viewItem('<%= item.$id %>')">
-                    <div class="stock-item-number"><%= item.filename.replace('.txt', '') %></div>
-                    <div class="stock-item-weight"><%= item.weight ? item.weight + ' g' : '-' %></div>
-                  </div>
-                <% }); %>
-              </div>
-            <% } %>
+          <div class="mb-3">
+            <label for="lotCurrentNumber" class="form-label-custom">現在のロット番号</label>
+            <input 
+              type="number" 
+              class="form-control" 
+              id="lotCurrentNumber" 
+              name="lotCurrentNumber" 
+              min="1" 
+              readonly
+              style="background-color: #f0f0f0;"
+            >
+            <small class="text-muted">
+              次に割り当てられる予定のロット番号です。
+            </small>
           </div>
 
-          <!-- In Inspection -->
-          <div class="status-section">
-            <div class="status-section-header" style="background: linear-gradient(135deg, #6ea8fe 0%, #0d6efd 100%);">
-              <h3 class="status-section-title">検査中 (In Inspection)</h3>
-              <span class="status-section-count"><%= inspectionsByStatus.inspection.length %></span>
-            </div>
-            <% if (inspectionsByStatus.inspection.length === 0) { %>
-              <div class="empty-state" style="padding: 1.5rem;">
-                <p style="margin: 0; font-size: 0.9rem;">検査中の製品はありません</p>
-              </div>
-            <% } else { %>
-              <div class="stock-grid">
-                <% inspectionsByStatus.inspection.forEach(item => { %>
-                  <div class="stock-item" style="background: rgba(222, 226, 230, 0.67);" onclick="viewItem('<%= item.$id %>')">
-                    <div class="stock-item-number"><%= item.filename.replace('.txt', '') %></div>
-                    <div class="stock-item-weight"><%= item.weight ? item.weight + ' g' : '-' %></div>
-                  </div>
-                <% }); %>
-              </div>
-            <% } %>
+          <div class="alert alert-info" role="alert">
+            <strong>使い方:</strong> 
+            <ul style="margin: 0.5rem 0 0 0; padding-left: 1.5rem;">
+              <li>開始値を設定すると、システムが自動でロット番号を割り当てます</li>
+              <li>既に出荷済みの製品のロット番号は避けるよう設定してください</li>
+              <li>例: 最後に出荷した製品が 461 の場合、434 ではなく 462 から始めるよう設定してください</li>
+            </ul>
           </div>
 
-          <!-- Finished Inspection -->
-          <div class="status-section">
-            <div class="status-section-header" style="background: linear-gradient(135deg, #75b798 0%, #198754 100%);">
-              <h3 class="status-section-title">検査完了 (Finished Inspection)</h3>
-              <span class="status-section-count"><%= inspectionsByStatus.finished_inspection.length %></span>
-            </div>
-            <% if (inspectionsByStatus.finished_inspection.length === 0) { %>
-              <div class="empty-state" style="padding: 1.5rem;">
-                <p style="margin: 0; font-size: 0.9rem;">検査完了の製品はありません</p>
-              </div>
-            <% } else { %>
-              <div class="stock-grid">
-                <% inspectionsByStatus.finished_inspection.forEach(item => { %>
-                  <div class="stock-item" style="background: #ced4da;" onclick="viewItem('<%= item.$id %>')">
-                    <div class="stock-item-number"><%= item.filename.replace('.txt', '') %></div>
-                    <div class="stock-item-weight"><%= item.weight ? item.weight + ' g' : '-' %></div>
-                  </div>
-                <% }); %>
-              </div>
-            <% } %>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success flex-grow-1">保存</button>
+            <button type="button" class="btn btn-secondary" onclick="closeSettingsModal()">キャンセル</button>
           </div>
+        </form>
+      </div>
+    </div>
 
-        </div><!-- end Inventory tab -->
-      </div><!-- end tab-content -->
-    </div><!-- end container -->
-
-    <!-- ==================== ORDER MODAL ==================== -->
+    <!-- Order Modal -->
     <div class="modal-backdrop-custom" id="orderModalBackdrop" onclick="closeOrderModal()"></div>
     <div class="modal-custom" id="orderModal">
       <div class="modal-header-custom">
@@ -649,19 +476,18 @@
               <option value="pending">保留中</option>
               <option value="processing">処理中</option>
               <option value="completed">完了</option>
-              <option value="shipped">出荷済</option>
               <option value="cancelled">キャンセル</option>
             </select>
           </div>
           <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary flex-grow-1">保存</button>
+            <button type="submit" class="btn btn-success flex-grow-1">保存</button>
             <button type="button" class="btn btn-secondary" onclick="closeOrderModal()">キャンセル</button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- ==================== IMPORT MODAL ==================== -->
+    <!-- Import Modal -->
     <div class="modal-backdrop-custom" id="importModalBackdrop" onclick="closeImportModal()"></div>
     <div class="modal-custom" id="importModal">
       <div class="modal-header-custom">
@@ -699,52 +525,66 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-
       // ======================
-      // SHIP ORDER
-      // Reads IDs safely from data attributes (no JSON encoding issues).
-      // Sets order → 'shipped', sets all allocated products → 'shipped'.
-      // Both disappear from views; data is kept intact in Appwrite.
+      // SETTINGS MANAGEMENT
       // ======================
+      
+      const STORAGE_KEY = 'lotNumberSettings';
 
-      function shipOrderFromBtn(btn) {
-        const orderId  = btn.dataset.orderId;
-        const quantity = btn.dataset.quantity;
-        const itemIds  = btn.dataset.itemIds ? btn.dataset.itemIds.split(',').filter(Boolean) : [];
-        shipOrder(orderId, quantity, itemIds);
+      function loadSettings() {
+        const settings = localStorage.getItem(STORAGE_KEY);
+        if (settings) {
+          return JSON.parse(settings);
+        }
+        return { startNumber: 434, currentNumber: 434 };
       }
 
-      async function shipOrder(orderId, quantity, itemIds) {
-        if (!itemIds || itemIds.length === 0) {
-          alert('出荷可能な製品が割り当てられていません');
-          return;
-        }
+      function saveSettings(settings) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      }
 
+      function getNextLotNumber() {
+        const settings = loadSettings();
+        const nextNumber = settings.currentNumber;
+        settings.currentNumber += 1;
+        saveSettings(settings);
+        return nextNumber;
+      }
+
+      function openSettingsModal() {
+        const settings = loadSettings();
+        document.getElementById('lotStartNumber').value = settings.startNumber;
+        document.getElementById('lotCurrentNumber').value = settings.currentNumber;
+        document.getElementById('settingsModalBackdrop').classList.add('show');
+        document.getElementById('settingsModal').classList.add('show');
+      }
+
+      function closeSettingsModal() {
+        document.getElementById('settingsModalBackdrop').classList.remove('show');
+        document.getElementById('settingsModal').classList.remove('show');
+      }
+
+      document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const startNumber = parseInt(document.getElementById('lotStartNumber').value);
+        
         const confirmed = confirm(
-          `この注文を出荷済にしますか？\n` +
-          `対象製品: ${itemIds.length} 個\n\n` +
-          `注文と製品は画面から非表示になりますが、\nAppwriteのデータは保持されます。`
+          `ロット番号開始値を ${startNumber} に設定します。\n` +
+          `次のロット番号は ${startNumber} から始まります。\n\n` +
+          `よろしいですか？`
         );
+        
         if (!confirmed) return;
 
-        try {
-          const response = await fetch(`/api/orders/${orderId}/ship`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ itemIds })
-          });
-          const result = await response.json();
-
-          if (result.success) {
-            alert(`出荷完了: ${result.shippedCount} 個の製品を出荷済に設定しました`);
-            location.reload();
-          } else {
-            alert('出荷処理に失敗しました: ' + result.error);
-          }
-        } catch (error) {
-          alert('エラーが発生しました: ' + error.message);
-        }
-      }
+        const settings = {
+          startNumber: startNumber,
+          currentNumber: startNumber
+        };
+        
+        saveSettings(settings);
+        alert(`ロット番号設定を保存しました。\n開始値: ${startNumber}`);
+        closeSettingsModal();
+      });
 
       // ======================
       // ORDER MODAL
@@ -900,6 +740,54 @@
         window.open(`/file-data/${itemId}`, '_blank');
       }
 
+      // ======================
+      // SHIP ORDER
+      // ======================
+
+      function shipOrderFromBtn(btn) {
+        const orderId  = btn.dataset.orderId;
+        const quantity = btn.dataset.quantity;
+        const itemIds  = btn.dataset.itemIds ? btn.dataset.itemIds.split(',').filter(Boolean) : [];
+        shipOrder(orderId, quantity, itemIds);
+      }
+
+      async function shipOrder(orderId, quantity, itemIds) {
+        if (!itemIds || itemIds.length === 0) {
+          alert('出荷可能な製品が割り当てられていません');
+          return;
+        }
+
+        const confirmed = confirm(
+          `この注文を出荷済にしますか？\n` +
+          `対象製品: ${itemIds.length} 個\n\n` +
+          `注文と製品は画面から非表示になりますが、\nAppwriteのデータは保持されます。`
+        );
+        if (!confirmed) return;
+
+        try {
+          const response = await fetch(`/api/orders/${orderId}/ship`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ itemIds })
+          });
+          const result = await response.json();
+
+          if (result.success) {
+            alert(`出荷完了: ${result.shippedCount} 個の製品を出荷済に設定しました`);
+            location.reload();
+          } else {
+            alert('出荷処理に失敗しました: ' + result.error);
+          }
+        } catch (error) {
+          alert('エラーが発生しました: ' + error.message);
+        }
+      }
+
+      // Initialize on page load
+      document.addEventListener('DOMContentLoaded', function() {
+        const settings = loadSettings();
+        console.log('Current Lot Number Settings:', settings);
+      });
     </script>
   </body>
 </html>

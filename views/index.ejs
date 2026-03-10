@@ -1,1744 +1,1955 @@
-<!DOCTYPE html>
-<html lang="en">
+// app.js - EFFICIENT SCHEMA VERSION WITH STOCK MANAGEMENT
+// Updated: Added stock management system for orders and imports
+// Modified: Excel import/export, Status tracking, Order management
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script defer src="/_vercel/insights/script.js"></script>
-  <title>水平ノズル検査</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" />
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <style>
-    .container {
-      max-width: 1200px;
-      margin-top: 2rem;
+const express = require("express");
+const multer = require("multer");
+const path = require("path");
+const bodyParser = require("body-parser");
+const cookieParser = require("cookie-parser");
+const crypto = require("crypto");
+const XLSX = require("xlsx");
+require("dotenv").config();
+
+const { Client, Databases, Query, ID } = require("node-appwrite");
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// ======================
+// USER CONFIGURATION
+// ======================
+
+// Users who can edit weights (naemura, iwatsuki)
+const AUTHORIZED_USERS = ['naemura', 'iwatsuki'];
+
+// Authentication: Any username with any 4-digit password can log in
+// Only AUTHORIZED_USERS (above) can edit weights
+// All other users can view and upload files but cannot edit weights
+
+function isValidPassword(password) {
+  return /^\d{4}$/.test(password);
+}
+
+function canEditWeights(username) {
+  return AUTHORIZED_USERS.includes(username.toLowerCase());
+}
+
+function getDisplayName(username) {
+  const nameMap = {
+    'naemura': '苗村',
+    'iwatsuki': '岩月'
+  };
+  return nameMap[username.toLowerCase()] || username;
+}
+
+// ======================
+// STATUS CONFIGURATION
+// ======================
+
+const STATUS_CONFIG = {
+  'upcoming_import': {
+    label: '入荷予定',
+    color: 'transparent',
+    opacity: 0,
+    order: 1
+  },
+  'imported': {
+    label: '入荷済',
+    color: '#e9ecef',
+    opacity: 0.5,
+    order: 2
+  },
+  'inspection': {
+    label: '検査中',
+    color: '#dee2e6',
+    opacity: 0.67,
+    order: 3
+  },
+  'finished_inspection': {
+    label: '検査完了',
+    color: '#ced4da',
+    opacity: 1,
+    order: 4
+  },
+  'shipped': {
+    label: '出荷済',
+    color: '#6c757d',
+    opacity: 1,
+    order: 5,
+    hidden: true // Don't show in main view
+  }
+};
+
+// ======================
+// MEASUREMENT CONFIGURATION
+// ======================
+
+const validationRanges = {
+  'A': { min: 8.0, max: 8.4 },
+  'B': { min: 37.2, max: 37.8 },
+  'C': { min: 15.7, max: 16.1 },
+  'D': { min: 23.9, max: 24.3 },
+  'E': { min: 11.2, max: 11.4 },
+  'F': { min: 3.1, max: 3.3 },
+  'G1': { min: 7.8, max: 8.2 },
+  'G2': { min: 7.8, max: 8.2 },
+  'G3': { min: 7.8, max: 8.2 },
+  'G4': { min: 7.8, max: 8.2 },
+  'H': { min: 4.9, max: 5.1 },
+  'I': { min: 29.8, max: 30.2 },
+  'J': { min: 154.9, max: 155.9 },
+  'K': { min: 82.8, max: 83.4 },
+  'L': { min: 121.8, max: 122.8 },
+  'M': null,
+  'N': null
+};
+
+const measurementMapping = {
+  'A': { index: 1, type: 'PT-COMP', field: 'x', absolute: true },
+  'B': { index: 9, type: 'CIRCLE', field: 'diameter', absolute: false },
+  'C': { index: 1, type: 'DISTANCE', field: 'y', absolute: true },
+  'D': { index: 4, type: 'PT-COMP', field: 'x', absolute: true },
+  'E': { index: 8, type: 'CIRCLE', field: 'diameter', absolute: false },
+  'F': { 
+    type: 'AVERAGE', 
+    indices: [
+      { index: 2, type: 'CIRCLE', field: 'diameter' },
+      { index: 4, type: 'CIRCLE', field: 'diameter' },
+      { index: 5, type: 'CIRCLE', field: 'diameter' },
+      { index: 6, type: 'CIRCLE', field: 'diameter' }
+    ],
+    absolute: false
+  },
+  'G1': { index: 10, type: 'CIRCLE', field: 'diameter', absolute: false },
+  'G2': { index: 11, type: 'CIRCLE', field: 'diameter', absolute: false },
+  'G3': { index: 12, type: 'CIRCLE', field: 'diameter', absolute: false },
+  'G4': { index: 13, type: 'CIRCLE', field: 'diameter', absolute: false },
+  'H': { index: 2, type: 'DISTANCE', field: 'y', absolute: true },
+  'I': { index: 15, type: 'CIRCLE', field: 'diameter', absolute: false },
+  'J': { index: 7, type: 'CIRCLE', field: 'diameter', absolute: false },
+  'K': { index: 2, type: 'PT-COMP', field: 'x', absolute: true },
+  'L': { index: 14, type: 'CIRCLE', field: 'diameter', absolute: false },
+  'M': { type: 'MANUAL', field: 'PassFail' },
+  'N': { type: 'VISUAL', field: 'PassFail' }
+};
+
+// ======================
+// APPWRITE CONFIGURATION
+// ======================
+
+const client = new Client()
+  .setEndpoint(process.env.APPWRITE_ENDPOINT || "https://cloud.appwrite.io/v1")
+  .setProject(process.env.APPWRITE_PROJECT_ID)
+  .setKey(process.env.APPWRITE_API_KEY);
+
+const databases = new Databases(client);
+
+// Existing collections
+const DATABASE_ID = process.env.APPWRITE_DATABASE_ID;
+const COLLECTION_INSPECTIONS = process.env.APPWRITE_COLLECTION_INSPECTIONS_ID;
+const COLLECTION_LOGIN_LOGS = process.env.APPWRITE_COLLECTION_LOGIN_LOGS_ID;
+const COLLECTION_SESSIONS = process.env.APPWRITE_COLLECTION_SESSIONS_ID;
+
+// New collections for stock management
+const COLLECTION_ORDERS = process.env.APPWRITE_COLLECTION_ORDERS_ID;
+const COLLECTION_IMPORTS = process.env.APPWRITE_COLLECTION_IMPORTS_ID;
+
+// ======================
+// MIDDLEWARE
+// ======================
+
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+app.use(express.static("public"));
+app.use(cookieParser(process.env.SESSION_SECRET || 'your-secret-key-change-in-production'));
+
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (ext === ".txt" || ext === ".xlsx" || ext === ".xls") {
+      cb(null, true);
+    } else {
+      cb(new Error("Only .txt, .xlsx, and .xls files are allowed"));
+    }
+  },
+});
+
+// ======================
+// SESSION HELPERS
+// ======================
+
+function generateSessionId() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+async function getSession(sessionId) {
+  if (!sessionId) return null;
+  
+  try {
+    const sessions = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_SESSIONS,
+      [Query.equal('session_id', sessionId), Query.limit(1)]
+    );
+    
+    if (sessions.documents.length === 0) return null;
+    
+    const session = sessions.documents[0];
+    
+    if (new Date(session.expires_at) < new Date()) {
+      await databases.deleteDocument(DATABASE_ID, COLLECTION_SESSIONS, session.$id);
+      return null;
+    }
+    
+    return session;
+  } catch (error) {
+    console.error('Error getting session:', error);
+    return null;
+  }
+}
+
+async function createSession(username) {
+  const sessionId = generateSessionId();
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  
+  console.log(`[SESSION] Creating session for user: ${username}`);
+  console.log(`[SESSION] Session ID: ${sessionId.substring(0, 10)}...`);
+  console.log(`[SESSION] Can edit weights: ${canEditWeights(username)}`);
+  
+  try {
+    const doc = await databases.createDocument(
+      DATABASE_ID,
+      COLLECTION_SESSIONS,
+      ID.unique(),
+      {
+        session_id: sessionId,
+        username: username,
+        can_edit_weights: canEditWeights(username),
+        created_at: new Date().toISOString(),
+        expires_at: expiresAt.toISOString()
+      }
+    );
+    console.log(`[SESSION] Document created: ${doc.$id}`);
+    return sessionId;
+  } catch (error) {
+    console.error(`[SESSION] Error creating session document:`, {
+      message: error.message,
+      code: error.code,
+      type: error.type
+    });
+    throw error;
+  }
+}
+
+async function deleteSession(sessionId) {
+  if (!sessionId) return;
+  
+  try {
+    const sessions = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_SESSIONS,
+      [Query.equal('session_id', sessionId), Query.limit(1)]
+    );
+    
+    if (sessions.documents.length > 0) {
+      await databases.deleteDocument(
+        DATABASE_ID,
+        COLLECTION_SESSIONS,
+        sessions.documents[0].$id
+      );
+    }
+  } catch (error) {
+    console.error('Error deleting session:', error);
+  }
+}
+
+// ======================
+// AUTHENTICATION MIDDLEWARE
+// ======================
+
+async function requireAuth(req, res, next) {
+  const sessionId = req.cookies.session_id;
+  const session = await getSession(sessionId);
+  
+  if (!session) {
+    return res.redirect('/login');
+  }
+  
+  req.session = {
+    username: session.username,
+    canEditWeights: session.can_edit_weights
+  };
+  
+  next();
+}
+
+async function requireWeightEditAuth(req, res, next) {
+  const sessionId = req.cookies.session_id;
+  const session = await getSession(sessionId);
+  
+  if (!session || !session.can_edit_weights) {
+    return res.status(403).json({ 
+      success: false, 
+      error: 'Not authorized to edit weights. Only naemura and iwatsuki can edit weights.' 
+    });
+  }
+  
+  req.session = {
+    username: session.username,
+    canEditWeights: session.can_edit_weights
+  };
+  
+  next();
+}
+
+// ======================
+// LOGIN & LOGOUT
+// ======================
+
+app.get("/login", (req, res) => {
+  res.render("login", { error: null });
+});
+
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+  
+  if (!username || !password) {
+    return res.render("login", { 
+      error: "Username and password are required" 
+    });
+  }
+  
+  if (!isValidPassword(password)) {
+    return res.render("login", { 
+      error: "Password must be exactly 4 digits" 
+    });
+  }
+  
+  try {
+    const sessionId = await createSession(username);
+    
+    res.cookie('session_id', sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 24 * 60 * 60 * 1000,
+      sameSite: 'lax'
+    });
+    
+    try {
+      await databases.createDocument(
+        DATABASE_ID,
+        COLLECTION_LOGIN_LOGS,
+        ID.unique(),
+        {
+          username: username,
+          logged_in_at: new Date().toISOString(),
+          can_edit_weights: canEditWeights(username)
+        }
+      );
+    } catch (logError) {
+      console.error('Error logging login:', logError);
+    }
+    
+    res.redirect("/");
+  } catch (error) {
+    console.error('Login error:', error);
+    res.render("login", { 
+      error: "Login failed. Please try again." 
+    });
+  }
+});
+
+app.get("/logout", async (req, res) => {
+  const sessionId = req.cookies.session_id;
+  await deleteSession(sessionId);
+  res.clearCookie('session_id');
+  res.redirect('/login');
+});
+
+app.post("/logout", async (req, res) => {
+  const sessionId = req.cookies.session_id;
+  await deleteSession(sessionId);
+  res.clearCookie('session_id');
+  res.redirect('/login');
+});
+
+// ======================
+// INVENTORY & ALLOCATION FUNCTIONS
+// ======================
+
+/**
+ * Categorize inspections by status
+ */
+function categorizeInventory(inspections) {
+  const inventory = {
+    finished_inspection: [],
+    inspection: [],
+    imported: [],
+    upcoming_import: []
+  };
+
+  inspections.forEach(item => {
+    const status = item.status || 'finished_inspection';
+    if (inventory[status] !== undefined) {
+      inventory[status].push(item);
+    } else {
+      inventory['finished_inspection'].push(item);
+    }
+  });
+
+  // Sort each category by file number (ascending)
+  Object.keys(inventory).forEach(key => {
+    inventory[key].sort((a, b) => {
+      const numA = parseInt(a.filename.replace('.txt', '')) || 0;
+      const numB = parseInt(b.filename.replace('.txt', '')) || 0;
+      return numA - numB;
+    });
+  });
+
+  return inventory;
+}
+
+/**
+ * Get total available products
+ */
+function getTotalAvailableInventory(inventory) {
+  let total = 0;
+  Object.keys(inventory).forEach(status => {
+    total += inventory[status].length;
+  });
+  return total;
+}
+
+/**
+ * Get inventory by priority order (ready first)
+ */
+function getInventoryByPriority(inventory) {
+  const priority = [];
+  priority.push(...inventory.finished_inspection.map(item => ({...item, priority: 1})));
+  priority.push(...inventory.inspection.map(item => ({...item, priority: 2})));
+  priority.push(...inventory.imported.map(item => ({...item, priority: 3})));
+  priority.push(...inventory.upcoming_import.map(item => ({...item, priority: 4})));
+  return priority;
+}
+
+/**
+ * Allocate products to a single order
+ */
+function allocateProductsToOrder(order, allOrders, currentInventory) {
+  const quantity = parseInt(order.quantity);
+  const inventoryByPriority = getInventoryByPriority(currentInventory);
+  
+  // Mark products allocated to earlier orders
+  const allocatedByEarlierOrders = new Set();
+  const earlierOrders = allOrders
+    .filter(o => o.$id !== order.$id && new Date(o.due_date) < new Date(order.due_date))
+    .sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+
+  for (const earlierOrder of earlierOrders) {
+    const earlierQty = parseInt(earlierOrder.quantity);
+    let count = 0;
+    for (const product of inventoryByPriority) {
+      if (!allocatedByEarlierOrders.has(product.$id) && count < earlierQty) {
+        allocatedByEarlierOrders.add(product.$id);
+        count++;
+      }
+    }
+  }
+
+  // Allocate to this order
+  const allocatedItems = [];
+  for (const product of inventoryByPriority) {
+    if (!allocatedByEarlierOrders.has(product.$id) && allocatedItems.length < quantity) {
+      allocatedItems.push(product);
+    }
+  }
+
+  // Determine status
+  const readyCount = allocatedItems.filter(item => item.status === 'finished_inspection').length;
+  const inProgressCount = allocatedItems.filter(item => 
+    item.status === 'inspection' || item.status === 'imported'
+  ).length;
+
+  let allocationStatus = 'ready';
+  let statusLabel = '出荷可能';
+  let statusColor = '#198754';
+
+  if (inProgressCount > 0) {
+    allocationStatus = 'processing';
+    statusLabel = '検査中含む';
+    statusColor = '#6c757d';
+  }
+
+  return {
+    allocatedItems,
+    status: allocationStatus,
+    statusLabel,
+    statusColor,
+    breakdown: { ready: readyCount, inProgress: inProgressCount }
+  };
+}
+
+/**
+ * Allocate to all orders
+ */
+function allocateToAllOrders(orders, currentInventory) {
+  const allocations = {};
+  const sortedOrders = [...orders].sort((a, b) => 
+    new Date(a.due_date) - new Date(b.due_date)
+  );
+
+  for (const order of sortedOrders) {
+    allocations[order.$id] = allocateProductsToOrder(order, orders, currentInventory);
+  }
+  return allocations;
+}
+
+/**
+ * Get inventory status overview
+ */
+function getInventoryStatus(inventory) {
+  const byStatus = {
+    finished_inspection: inventory.finished_inspection.length,
+    inspection: inventory.inspection.length,
+    imported: inventory.imported.length,
+    upcoming_import: inventory.upcoming_import.length
+  };
+
+  const total = getTotalAvailableInventory(inventory);
+  return {
+    total,
+    byStatus,
+    percentageReady: total > 0 ? (byStatus.finished_inspection / total * 100).toFixed(1) : 0
+  };
+}
+
+// ======================
+// TXT FILE PARSING
+// ======================
+
+function parseTxtFile(fileContent) {
+  const lines = fileContent.split("\n").map(line => line.trim()).filter(l => l.length > 0);
+  // Key structure: measurements[index][type] = {...}
+  // This handles duplicate indices with different types (e.g. idx=1 CIRCLE, idx=1 PT-COMP)
+  const data = { measurements: {} };
+
+  const safeFloat = s => { const v = parseFloat(s); return isNaN(v) ? null : v; };
+
+  lines.forEach((line) => {
+    if (line.startsWith("Lot No.")) {
+      const lotMatch = line.match(/Lot No\.\s*:\s*(.+)/);
+      if (lotMatch) data.lot = lotMatch[1].trim();
+      return;
     }
 
-    .file-selection-form,
-    .upload-form,
-    .action-buttons {
-      padding: 1.5rem;
-      background-color: #f8f9fa;
-      border-radius: 5px;
-      border: 1px solid #dee2e6;
-      height: 100%;
+    const parts = line.split(";").map(p => p.trim());
+    if (parts.length < 2) return;
+
+    const index = parseInt(parts[0]);
+    const type = parts[1];
+    if (isNaN(index)) return;
+
+    if (!data.measurements[index]) data.measurements[index] = {};
+
+    if (type === "CIRCLE" && parts.length >= 12) {
+      // Format: index;CIRCLE;count;x;y;z;rx;ry;rz;;diameter;roundness
+      data.measurements[index]["CIRCLE"] = {
+        type: "CIRCLE",
+        x: safeFloat(parts[3]),
+        y: safeFloat(parts[4]),
+        z: safeFloat(parts[5]),
+        diameter: safeFloat(parts[10]),
+        roundness: safeFloat(parts[11])
+      };
+    } else if (type === "PT-COMP" && parts.length >= 6) {
+      // Format: index;PT-COMP;count;x;y;z
+      data.measurements[index]["PT-COMP"] = {
+        type: "PT-COMP",
+        x: Math.abs(safeFloat(parts[3])),
+        y: safeFloat(parts[4]),
+        z: safeFloat(parts[5])
+      };
+    } else if (type === "DISTANCE") {
+      // Format: index;DISTANCE;;x;y;z;;;;;distance_value
+      // parts[3] = x coordinate = the actual depth/distance measurement (use abs value)
+      data.measurements[index]["DISTANCE"] = {
+        type: "DISTANCE",
+        y: safeFloat(parts[3]) !== null ? Math.abs(safeFloat(parts[3])) : null
+      };
     }
-
-    .file-selection-form {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-
-    .upload-form {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .action-buttons .btn {
-      margin-bottom: 0.5rem;
-      width: 100%;
-    }
-
-    .file-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 1rem;
-      margin-top: 1rem;
-    }
-
-    .file-card {
-      background-color: #f8f9fa;
-      border-radius: 8px;
-      padding: 1.5rem 1rem;
-      text-align: center;
-      transition: all 0.3s ease;
-      cursor: pointer;
-      border: 2px solid #dee2e6;
-      position: relative;
-      user-select: none;
-    }
-
-    .file-card:hover {
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-      border-color: #adb5bd;
-    }
-
-    .file-card.selected {
-      background-color: #e3f2fd;
-      border-color: #0d6efd;
-      box-shadow: 0 0 0 2px #0d6efd;
-    }
-
-    .file-card.archive-selected {
-      background-color: #fff3cd;
-      border-color: #ffc107;
-      box-shadow: 0 0 0 2px #ffc107;
-    }
-
-    .file-number {
-      font-size: 2.5rem;
-      font-weight: bold;
-      color: #0d6efd;
-      margin-bottom: 0.5rem;
-    }
-
-    .weight-section {
-      margin-top: 0.5rem;
-      padding: 8px;
-      background: #fff;
-      border-radius: 4px;
-    }
-
-    .weight-input {
-      width: 80px;
-      font-size: 0.9rem;
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
-      border: 1px solid #ced4da;
-      text-align: center;
-    }
-
-    .weight-display {
-      color: #666;
-      font-size: 0.95rem;
-      padding: 4px 8px;
-    }
-
-    .file-card .file-content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .delete-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: rgba(220, 53, 69, 0.9);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: bold;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      pointer-events: none;
-      border-radius: 6px;
-    }
-
-    .file-card.deleting .delete-overlay {
-      opacity: 1;
-    }
-
-    .weight-input::-webkit-outer-spin-button,
-    .weight-input::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-
-    .weight-input[type="number"] {
-      -moz-appearance: textfield;
-      appearance: textfield;
-    }
-
-    .top-row {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 2rem;
-    }
-
-    .column-left {
-      flex: 0 0 42%;
-    }
-
-    .column-middle {
-      flex: 0 0 33%;
-    }
-
-    .column-right {
-      flex: 0 0 25%;
-    }
-
-    .user-info-header {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: white;
-      padding: 12px 24px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
-      z-index: 1000;
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
-
-    .help-button {
-      position: fixed;
-      bottom: 30px;
-      right: 30px;
-      width: 60px;
-      height: 60px;
-      background: #0d6efd;
-      color: white;
-      border-radius: 50%;
-      border: none;
-      box-shadow: 0 4px 12px rgba(13, 110, 253, 0.4);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 32px;
-      font-weight: bold;
-      transition: all 0.3s ease;
-      z-index: 1000;
-    }
-
-    .help-button:hover {
-      background: #0b5ed7;
-      transform: scale(1.1);
-      box-shadow: 0 6px 16px rgba(13, 110, 253, 0.5);
-    }
-
-    .help-modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 9999;
-      align-items: center;
-      justify-content: center;
-      overflow-y: auto;
-      padding: 20px;
-    }
-
-    .help-modal-content {
-      background: white;
-      border-radius: 12px;
-      max-width: 800px;
-      width: 100%;
-      max-height: 90vh;
-      overflow-y: auto;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-    }
-
-    .help-modal-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 24px 30px;
-      border-radius: 12px 12px 0 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-
-    .help-modal-header h2 {
-      margin: 0;
-      font-size: 24px;
-      font-weight: bold;
-    }
-
-    .help-modal-close {
-      background: rgba(255, 255, 255, 0.2);
-      border: none;
-      color: white;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      font-size: 24px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.3s ease;
-    }
-
-    .help-modal-close:hover {
-      background: rgba(255, 255, 255, 0.3);
-    }
-
-    .help-modal-body {
-      padding: 30px;
-    }
-
-    .help-section {
-      margin-bottom: 32px;
-      padding-bottom: 24px;
-      border-bottom: 1px solid #e9ecef;
-    }
-
-    .help-section:last-child {
-      border-bottom: none;
-      margin-bottom: 0;
-    }
-
-    .help-section-title {
-      color: #667eea;
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .help-section-icon {
-      font-size: 24px;
-    }
-
-    .help-step {
-      margin-bottom: 16px;
-      padding-left: 36px;
-      position: relative;
-    }
-
-    .help-step-number {
-      position: absolute;
-      left: 0;
-      top: 2px;
-      background: #667eea;
-      color: white;
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      font-weight: bold;
-    }
-
-    .help-step-content ul {
-      margin: 8px 0;
-      padding-left: 20px;
-    }
-
-    .help-step-content strong {
-      display: block;
-      margin-bottom: 4px;
-    }
-
-    .help-step-content {
-      color: #495057;
-      line-height: 1.6;
-    }
-
-    .help-note {
-      background: #fff3cd;
-      border-left: 4px solid #ffc107;
-      padding: 12px 16px;
-      margin: 16px 0;
-      border-radius: 4px;
-      color: #856404;
-    }
-
-    .help-warning {
-      background: #f8d7da;
-      border-left: 4px solid #dc3545;
-      padding: 12px 16px;
-      margin: 16px 0;
-      border-radius: 4px;
-      color: #721c24;
-    }
-
-    .help-tip {
-      background: #d1ecf1;
-      border-left: 4px solid #17a2b8;
-      padding: 12px 16px;
-      margin: 16px 0;
-      border-radius: 4px;
-      color: #0c5460;
-    }
-
-    .help-kbd {
-      background: #f8f9fa;
-      border: 1px solid #dee2e6;
-      border-radius: 4px;
-      padding: 2px 8px;
-      font-family: monospace;
-      font-size: 13px;
-      color: #495057;
-    }
-  </style>
-</head>
-
-<body>
-  <div class="user-info-header">
-    <div style="display: flex; align-items: center; gap: 8px;">
-      <span style="font-size: 18px;">👤</span>
-      <strong style="color: #333;">
-        <%= displayName %>
-      </strong>
-    </div>
-
-    <% if (canEditWeights) { %>
-      <span
-        style="background: #d4edda; color: #155724; padding: 4px 12px; border-radius: 4px; font-size: 13px; font-weight: 500;">
-        ✓ 重量編集可
-      </span>
-      <% } else { %>
-        <span
-          style="background: #e2e3e5; color: #383d41; padding: 4px 12px; border-radius: 4px; font-size: 13px; font-weight: 500;">
-          📖 閲覧のみ
-        </span>
-        <% } %>
-
-          <a href="/logout" class="btn btn-sm btn-outline-danger" style="margin-left: 10px;">
-            ログアウト
-          </a>
-  </div>
-
-  <div class="container">
-    <h1 class="mb-4">水平ノズル検査</h1>
-
-    <!-- Help Button -->
-    <button class="help-button" onclick="openHelpModal()" title="ヘルプ・使い方">
-      ?
-    </button>
-
-    <!-- Help Modal -->
-    <div id="helpModal" class="help-modal">
-      <div class="help-modal-content">
-        <div class="help-modal-header">
-          <h2>📖 水平ノズル検査システム - 使い方ガイド</h2>
-          <button class="help-modal-close" onclick="closeHelpModal()">×</button>
-        </div>
-        <div class="help-modal-body">
-
-          <!-- Section 1: Getting Started -->
-          <div class="help-section">
-            <div class="help-section-title">
-              <span class="help-section-icon">🚀</span>
-              はじめに
-            </div>
-            <div class="help-step-content">
-              このシステムは水平ノズルの測定データと重量データを管理し、検査成績書を作成するためのツールです。
-              測定データと重量データは別々のプロセスで登録でき、どちらを先に登録しても問題ありません。
-            </div>
-          </div>
-
-          <!-- Section 2: Upload Measurement Data -->
-          <div class="help-section">
-            <div class="help-section-title">
-              <span class="help-section-icon">📤</span>
-              測定データのアップロード
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">1</div>
-              <div class="help-step-content">
-                <strong>「アップロード」ボタン</strong>をクリックして、測定データファイル（.txt形式）を選択します。
-                複数ファイルを同時に選択できます。
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">2</div>
-              <div class="help-step-content">
-                <strong>ロット番号入力ダイアログ</strong>が表示されるので、生産ロット番号を入力します（例：LOT-2025-001）。
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">3</div>
-              <div class="help-step-content">
-                「確認」ボタンをクリックすると、ファイルがアップロードされ、自動的に測定値が計算されます。
-              </div>
-            </div>
-
-            <div class="help-note">
-              <strong>📝 注意：</strong> アップロードされたファイルは自動的にデータベースに保存され、
-              ファイル番号順に画面に表示されます。
-            </div>
-          </div>
-
-          <!-- Section 3: Weight Data Management -->
-          <div class="help-section">
-            <div class="help-section-title">
-              <span class="help-section-icon">⚖️</span>
-              重量データの管理
-            </div>
-
-            <div class="help-step-content" style="margin-bottom: 20px;">
-              重量データは測定データとは<strong>独立して管理</strong>されます。どちらを先に登録しても構いません。
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">1</div>
-              <div class="help-step-content">
-                <strong>Excelファイルの準備：</strong>
-                <ul>
-                  <li>第1列：ファイル名（例：462 または 462.txt）</li>
-                  <li>第2列：重量（グラム単位、小数点1桁）</li>
-                  <li>1行目はヘッダー行（File Name, Weight）</li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">2</div>
-              <div class="help-step-content">
-                <strong>「Data Import」ボタン</strong>をクリックして、Excelファイル（.xlsx または .xls）を選択します。
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">3</div>
-              <div class="help-step-content">
-                インポート結果が表示されます：
-                <ul>
-                  <li><strong>更新件数：</strong> 既存ファイルの重量を更新</li>
-                  <li><strong>新規作成件数：</strong> 測定データがまだない場合、重量のみ先行登録</li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">4</div>
-              <div class="help-step-content">
-                <strong>個別編集（naemura・iwatsukiのみ）：</strong>
-                各ファイルカードの重量入力欄に直接入力して <span class="help-kbd">Enter</span> を押すか、
-                「💾 重量データ保存」ボタンで一括保存できます。
-              </div>
-            </div>
-
-            <div class="help-tip">
-              <strong>💡 ヒント：</strong> 重量データを先にインポートした場合、測定データがアップロードされるまで
-              ファイルカードは画面に表示されません。両方のデータが揃うと自動的に表示されます。
-            </div>
-          </div>
-
-          <!-- Section 4: File Cards -->
-          <div class="help-section">
-            <div class="help-section-title">
-              <span class="help-section-icon">🗂️</span>
-              ファイルカードの操作
-            </div>
-
-            <div class="help-step-content" style="margin-bottom: 16px;">
-              画面に表示される各ファイルカードには、以下の操作ができます：
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">1</div>
-              <div class="help-step-content">
-                <strong>シングルクリック：</strong> 検査成績書作成用に選択（青色の枠）
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">2</div>
-              <div class="help-step-content">
-                <strong>ダブルタップ（素早く2回クリック）：</strong> アーカイブ用に選択（黄色の枠）
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">3</div>
-              <div class="help-step-content">
-                <strong>2秒長押し：</strong> データベースから完全削除（赤色のオーバーレイ表示）
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">4</div>
-              <div class="help-step-content">
-                <strong>ファイル番号クリック：</strong> 詳細画面を開いて測定値の詳細を確認
-              </div>
-            </div>
-
-            <div class="help-warning">
-              <strong>⚠️ 警告：</strong> 長押し削除は<strong>完全削除</strong>です。データベースから完全に削除され、
-              復元できません。アーカイブ機能（非表示のみ）との違いに注意してください。
-            </div>
-          </div>
-
-          <!-- Section 5: Range Selection -->
-          <div class="help-section">
-            <div class="help-section-title">
-              <span class="help-section-icon">🎯</span>
-              範囲選択機能
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">1</div>
-              <div class="help-step-content">
-                「始めのファイル」欄に開始ファイル番号を入力（例：240）
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">2</div>
-              <div class="help-step-content">
-                「ファイル数」欄に選択したいファイルの数を入力（例：10）
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">3</div>
-              <div class="help-step-content">
-                「選択」ボタンをクリックすると、指定範囲のファイルが一括で青色選択されます
-              </div>
-            </div>
-
-            <div class="help-note">
-              <strong>📝 例：</strong> 開始ファイル「240」、ファイル数「10」の場合、
-              240番から249番までの10ファイルが選択されます。
-            </div>
-          </div>
-
-          <!-- Section 6: Archive Function -->
-          <div class="help-section">
-            <div class="help-section-title">
-              <span class="help-section-icon">📦</span>
-              アーカイブ機能（完了済みファイルの非表示）
-            </div>
-
-            <div class="help-step-content" style="margin-bottom: 16px;">
-              検査成績書を作成してクライアントに送付済みのファイルは、アーカイブして画面から非表示にできます。
-              <strong>データはデータベースに保持されます。</strong>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">1</div>
-              <div class="help-step-content">
-                完了したファイルカードを<strong>ダブルタップ</strong>（素早く2回クリック）して選択します。
-                選択されたカードは<strong>黄色の枠</strong>で表示されます。
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">2</div>
-              <div class="help-step-content">
-                複数のファイルをダブルタップで選択できます。選択数が右側のボタンに表示されます。
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">3</div>
-              <div class="help-step-content">
-                「📦 完了済み (X件)」ボタンをクリックします。
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">4</div>
-              <div class="help-step-content">
-                確認ダイアログが表示されるので、「OK」をクリックするとファイルが画面から非表示になります。
-              </div>
-            </div>
-
-            <div class="help-tip">
-              <strong>💡 ヒント：</strong> アーカイブされたファイルはデータベースに保存されており、
-              将来的にアーカイブビュー機能で閲覧・復元できるようになります。
-            </div>
-          </div>
-
-          <!-- Section 7: Inspection Sheet Creation -->
-          <div class="help-section">
-            <div class="help-section-title">
-              <span class="help-section-icon">📋</span>
-              検査成績書の作成
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">1</div>
-              <div class="help-step-content">
-                検査成績書に含めたいファイルを<strong>シングルクリック</strong>で選択します（青色の枠）。
-                または範囲選択機能を使用します。
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">2</div>
-              <div class="help-step-content">
-                右側の「検査成績書作成へ」ボタンが「選択されたファイル：X」に変わります。
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">3</div>
-              <div class="help-step-content">
-                ボタンをクリックすると、サマリーページに移動します。
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">4</div>
-              <div class="help-step-content">
-                <strong>サマリーページで入力する項目：</strong>
-                <ul>
-                  <li><strong>M項目（手動検査）：</strong> 合格/不合格を選択</li>
-                  <li><strong>N項目（目視検査）：</strong> 合格/不合格を選択</li>
-                  <li><strong>備考欄：</strong> 必要に応じてコメントを入力</li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">5</div>
-              <div class="help-step-content">
-                ページ下部の「検査成績書作成」ボタンをクリックします。
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">6</div>
-              <div class="help-step-content">
-                検査成績書がPDF形式で生成されます。ブラウザの印刷機能を使用して：
-                <ul>
-                  <li>送り先：「PDFに保存」を選択</li>
-                  <li>印刷ボタンをクリックしてPDFをダウンロード</li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="help-note">
-              <strong>📝 注意：</strong> 検査成績書には、選択したすべてのファイルの測定データと
-              検査結果が含まれます。印刷前に内容を確認してください。
-            </div>
-          </div>
-
-          <!-- Section 8: File Details -->
-          <div class="help-section">
-            <div class="help-section-title">
-              <span class="help-section-icon">🔍</span>
-              ファイル詳細の確認
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">1</div>
-              <div class="help-step-content">
-                ファイルカード上の<strong>ファイル番号</strong>（大きな青い数字）をクリックします。
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">2</div>
-              <div class="help-step-content">
-                詳細ページが開き、以下の情報が表示されます：
-                <ul>
-                  <li>すべての測定項目（A～L、G1～G4）の詳細値</li>
-                  <li>各項目の合格/不合格判定</li>
-                  <li>重量データ</li>
-                  <li>ロット番号</li>
-                  <li>アップロード日時</li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">3</div>
-              <div class="help-step-content">
-                詳細ページでも重量の編集が可能です（権限保持者のみ）。
-              </div>
-            </div>
-          </div>
-
-          <!-- Section 9: Data Export -->
-          <div class="help-section">
-            <div class="help-section-title">
-              <span class="help-section-icon">💾</span>
-              データのエクスポート
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">1</div>
-              <div class="help-step-content">
-                右側の「Data Export」ボタンをクリックします。
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">2</div>
-              <div class="help-step-content">
-                現在登録されているすべてのファイルの重量データがExcel形式でダウンロードされます。
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">3</div>
-              <div class="help-step-content">
-                ファイル名は「weight_data_YYYYMMDD.xlsx」形式で、現在の日付が含まれます。
-              </div>
-            </div>
-
-            <div class="help-tip">
-              <strong>💡 活用例：</strong> エクスポートしたExcelファイルを編集して、
-              再度インポートすることで重量データを一括更新できます。
-            </div>
-          </div>
-
-          <!-- Section 10: User Permissions -->
-          <div class="help-section">
-            <div class="help-section-title">
-              <span class="help-section-icon">👥</span>
-              ユーザー権限
-            </div>
-
-            <div class="help-step-content">
-              このシステムには2種類のユーザー権限があります：
-            </div>
-
-            <div style="margin-top: 16px;">
-              <strong style="color: #155724;">✓ 重量編集可能ユーザー（naemura、iwatsuki）：</strong>
-              <ul>
-                <li>測定データのアップロード</li>
-                <li>重量データの編集・インポート</li>
-                <li>ファイルの選択・アーカイブ・削除</li>
-                <li>検査成績書の作成</li>
-              </ul>
-            </div>
-
-            <div style="margin-top: 16px;">
-              <strong style="color: #383d41;">📖 閲覧のみユーザー（その他）：</strong>
-              <ul>
-                <li>測定データのアップロード</li>
-                <li>ファイルの選択・アーカイブ・削除</li>
-                <li>検査成績書の作成</li>
-                <li>重量データの閲覧（編集不可）</li>
-              </ul>
-            </div>
-          </div>
-
-          <!-- Section 11: Tips & Shortcuts -->
-          <div class="help-section">
-            <div class="help-section-title">
-              <span class="help-section-icon">⚡</span>
-              便利な機能とショートカット
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">1</div>
-              <div class="help-step-content">
-                <strong>重量入力のキーボード操作：</strong>
-                重量を入力して <span class="help-kbd">Enter</span> キーを押すと、次のファイルの重量入力欄に自動的に移動します。
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">2</div>
-              <div class="help-step-content">
-                <strong>色による状態識別：</strong>
-                <ul>
-                  <li>青色枠 = 検査成績書用に選択</li>
-                  <li>黄色枠 = アーカイブ用に選択</li>
-                  <li>赤色オーバーレイ = 削除待機中</li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">3</div>
-              <div class="help-step-content">
-                <strong>検索とフィルタ：</strong>
-                ファイルは自動的にファイル番号順にソートされて表示されます。
-              </div>
-            </div>
-          </div>
-
-          <!-- Section: Stock Management -->
-          <div class="help-section">
-            <div class="help-section-title">
-              <span class="help-section-icon">📦</span>
-              在庫管理システム
-            </div>
-
-            <div class="help-step-content" style="margin-bottom: 20px;">
-              在庫管理システムを使用して、注文、入荷、製品ステータスを一元管理できます。
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">1</div>
-              <div class="help-step-content">
-                <strong>アクセス方法：</strong>
-                右側のアクションボタンエリアにある<strong>「在庫管理」ボタン</strong>（青色）をクリックします。
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">2</div>
-              <div class="help-step-content">
-                <strong>3つのタブ：</strong>
-                <ul>
-                  <li><strong>注文管理：</strong> 顧客からの注文を記録・追跡</li>
-                  <li><strong>入荷管理：</strong> 製品の入荷予定を管理</li>
-                  <li><strong>在庫状況：</strong> すべての製品をステータス別に表示</li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">3</div>
-              <div class="help-step-content">
-                <strong>注文の作成：</strong>
-                <ul>
-                  <li>注文管理タブで「新規注文」ボタンをクリック</li>
-                  <li>数量と納期を入力</li>
-                  <li>ステータスを選択（保留中/処理中/完了/キャンセル）</li>
-                  <li>「保存」をクリック</li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">4</div>
-              <div class="help-step-content">
-                <strong>入荷予定の登録：</strong>
-                <ul>
-                  <li>入荷管理タブで「新規入荷予定」ボタンをクリック</li>
-                  <li>数量と予定日を入力</li>
-                  <li>実際に入荷したら「実際の入荷日」と「入荷済」ステータスを設定</li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="help-step">
-              <div class="help-step-number">5</div>
-              <div class="help-step-content">
-                <strong>製品ステータスの確認：</strong>
-                在庫状況タブでは、製品が5つのステージに分類されます：
-                <ul>
-                  <li><strong>入荷予定：</strong> まだ到着していない製品</li>
-                  <li><strong>入荷済：</strong> 到着したが検査前（薄いグレー）</li>
-                  <li><strong>検査中：</strong> 測定ファイルがアップロードされた製品（グレー）</li>
-                  <li><strong>検査完了：</strong> すべてのデータが揃った製品（濃いグレー）</li>
-                  <li><strong>出荷済：</strong> 顧客に発送済み（非表示）</li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="help-tip">
-              <strong>💡 ヒント：</strong> 測定ファイル（.txt）をアップロードすると、
-              自動的にステータスが「検査中」に設定されます。
-            </div>
-
-            <div class="help-note">
-              <strong>📝 注意：</strong> メイン画面のファイルカードは、ステータスに応じて
-              背景色の濃さが変わります。完了した製品ほど濃い色で表示されます。
-            </div>
-          </div>
-
-          <!-- Section 12: Troubleshooting -->
-          <div class="help-section">
-            <div class="help-section-title">
-              <span class="help-section-icon">🔧</span>
-              トラブルシューティング
-            </div>
-
-            <div class="help-step-content">
-              <strong>Q: 重量をインポートしたのにファイルが表示されない</strong><br>
-              A: 測定データがまだアップロードされていない可能性があります。測定データをアップロードすると自動的に表示されます。
-            </div>
-
-            <div class="help-step-content" style="margin-top: 16px;">
-              <strong>Q: ダブルタップがうまく動作しない</strong><br>
-              A: より速く2回クリックしてください。300ミリ秒以内に2回クリックする必要があります。
-            </div>
-
-            <div class="help-step-content" style="margin-top: 16px;">
-              <strong>Q: 重量編集ボタンが表示されない</strong><br>
-              A: 重量の編集はnaemuraとiwatsukiのみ可能です。権限がない場合は「閲覧のみ」と表示されます。
-            </div>
-
-            <div class="help-step-content" style="margin-top: 16px;">
-              <strong>Q: アーカイブしたファイルを元に戻したい</strong><br>
-              A: 現在はアーカイブビュー機能が未実装です。管理者に連絡してデータベースから復元してもらってください。
-            </div>
-          </div>
-
-          <!-- Footer -->
-          <div
-            style="text-align: center; padding-top: 24px; border-top: 1px solid #e9ecef; color: #6c757d; font-size: 14px;">
-            <p style="margin: 0;">水平ノズル検査システム v2.2.0</p>
-            <p style="margin: 8px 0 0 0;">問題が発生した場合は、システム管理者にお問い合わせください。</p>
-          </div>
-
-        </div>
-      </div>
-    </div>
-
-    <div class="top-row">
-      <div class="column-left">
-        <div class="file-selection-form">
-          <h3>ファイル選択</h3>
-          <p>始めのファイル番号とファイル数を入力してください</p>
-          <form id="rangeSelectForm" onsubmit="selectFileRange(event)">
-            <div class="row">
-              <div class="col-md-5">
-                <label for="startFile" class="form-label">始めのファイル</label>
-                <input type="number" class="form-control" id="startFile" name="startFile" placeholder="e.g., 240" />
-              </div>
-              <div class="col-md-5">
-                <label for="fileCount" class="form-label">ファイル数</label>
-                <input type="number" class="form-control" id="fileCount" name="fileCount" placeholder="e.g., 10"
-                  min="1" />
-              </div>
-              <div class="col-md-2 d-flex align-items-end">
-                <button type="submit" class="btn btn-info w-100">選択</button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      <div class="column-middle">
-        <div class="upload-form">
-          <h4 class="mb-3">測定データアップロード</h4>
-          <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
-            <input type="file" id="files" name="files" accept=".txt" multiple required style="display: none"
-              onchange="showLotDialog()" />
-            <input type="hidden" name="lot" id="lotInput" value="" />
-            <label for="files" class="btn btn-primary d-flex align-items-center justify-content: center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                class="bi bi-upload me-2" viewBox="0 0 16 16">
-                <path
-                  d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
-                <path
-                  d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z" />
-              </svg>
-              アップロード (.txt)
-            </label>
-          </form>
-        </div>
-      </div>
-
-      <!-- Lot Dialog Modal -->
-      <div id="lotModal"
-        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 30px; border-radius: 10px; max-width: 400px; width: 90%;">
-          <h4 style="margin-bottom: 20px;">📦 生産ロット番号を入力</h4>
-          <p style="color: #666; margin-bottom: 15px;">このバッチのファイルのロット番号を入力してください</p>
-          <input type="text" id="lotNumberInput" class="form-control" placeholder="例: LOT-2025-001"
-            style="margin-bottom: 20px;" />
-          <div style="display: flex; gap: 10px; justify-content: flex-end;">
-            <button onclick="cancelLotDialog()" class="btn btn-secondary">キャンセル</button>
-            <button onclick="confirmLot()" class="btn btn-primary">確認</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="column-right">
-        <div class="action-buttons">
-          <% if (canEditWeights) { %>
-            <button id="saveWeightsBtn" class="btn btn-primary">💾 重量データ保存</button>
-            <% } else { %>
-              <div class="alert alert-info" style="padding: 8px 12px; margin-bottom: 8px; font-size: 13px;">
-                ℹ️ 重量の編集は <strong>naemura</strong> と <strong>iwatsuki</strong> のみ可能です
-              </div>
-              <% } %>
-                <button id="viewSelectedBtn" class="btn btn-info" disabled>検査成績書作成へ</button>
-                <button id="archiveSelectedBtn" class="btn btn-warning" disabled>📦 選択を完了済みに</button>
-                <button id="importWeightsBtn" class="btn btn-secondary">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                    class="bi bi-upload me-1" viewBox="0 0 16 16">
-                    <path
-                      d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
-                    <path
-                      d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z" />
-                  </svg>
-                  Data Import (.xlsx)
-                </button>
-                <button id="exportWeightsBtn" class="btn btn-secondary">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                    class="bi bi-download me-1" viewBox="0 0 16 16">
-                    <path
-                      d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
-                    <path
-                      d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z" />
-                  </svg>
-                  Data Export (.xlsx)
-                </button>
-                <input type="file" id="weightFileInput" accept=".xlsx,.xls" style="display: none;" />
-                <!-- NEW: Stock Management Button -->
-                <a href="/stock-management" class="btn btn-info"
-                  style="color: white; display: flex; align-items: center; justify-content: center; text-decoration: none;">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                    class="bi bi-box-seam me-1" viewBox="0 0 16 16">
-                    <path
-                      d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5l2.404.961L10.404 2l-2.218-.887zm3.564 1.426L5.596 5 8 5.961 14.154 3.5l-2.404-.961zm3.25 1.7-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.762V6.838L1 4.239v7.923l6.5 2.6zM7.443.184a1.5 1.5 0 0 1 1.114 0l7.129 2.852A.5.5 0 0 1 16 3.5v8.662a1 1 0 0 1-.629.928l-7.185 2.874a.5.5 0 0 1-.372 0L.63 13.09a1 1 0 0 1-.63-.928V3.5a.5.5 0 0 1 .314-.464L7.443.184z" />
-                  </svg>
-                  在庫管理
-                </a>
-        </div>
-      </div>
-    </div>
-
-    <form id="viewSelectedForm" action="/summary" method="get" style="display: none">
-      <input type="hidden" name="selectedFiles" id="selectedFilesInput" value="" />
-    </form>
-
-    <h2 class="mb-3">ファイル一覧</h2>
-
-    <% if (files && files.length> 0) { %>
-      <div class="file-grid">
-        <% var sortedFiles=[]; files.forEach(function(file) { sortedFiles.push(file); }); sortedFiles.sort(function(a,
-          b) { var numA=parseInt((a.filename.match(/^\d+/) || ['0'])[0], 10); var
-          numB=parseInt((b.filename.match(/^\d+/) || ['0'])[0], 10); return numA - numB; });
-          sortedFiles.forEach(function(file) { var fileNumber=file.filename; var match=file.filename.match(/^(\d+)/); if
-          (match) { fileNumber=match[1]; } %>
-          <div class="file-card" data-file-id="<%= file.$id %>" data-filename="<%= file.filename %>" <% if
-            (file.statusColor) { %>style="background-color: <%= file.statusColor %>; opacity: <%= file.statusOpacity %>
-                ;"<% } %>>
-                  <div class="delete-overlay">Release to Delete</div>
-                  <div class="file-content">
-                    <div class="file-number">
-                      <%= fileNumber %>
-                    </div>
-
-                    <div class="weight-section">
-                      <% if (canEditWeights) { %>
-                        <input type="number" class="weight-input" data-file-id="<%= file.$id %>" step="0.1"
-                          value="<%= file.weight || '' %>" placeholder="Weight (g)" />
-                        <% if (file.weight) { %>
-                          <div class="weight-display" style="margin-top: 4px; font-size: 0.85rem;">
-                            <%= parseFloat(file.weight).toFixed(1) %> g
-                          </div>
-                          <% } %>
-                            <% } else { %>
-                              <div class="weight-display">
-                                <strong>重量:</strong>
-                                <%= file.weight ? parseFloat(file.weight).toFixed(1) + ' g' : '未設定' %>
-                              </div>
-                              <% } %>
-                    </div>
-
-                    <div class="view-data-link mt-2">
-                      <a href="/files/<%= file.$id %>" class="btn btn-sm btn-outline-secondary"
-                        style="padding: 4px; font-size: 0.8rem; border-radius: 50%" onclick="event.stopPropagation();">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                          class="bi bi-search" viewBox="0 0 16 16">
-                          <path
-                            d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
-                        </svg>
-                      </a>
-                    </div>
-                  </div>
-          </div>
-          <% }); %>
-      </div>
-      <% } else { %>
-        <div class="alert alert-info">
-          <p>水平ノズル検査データ一覧</p>
-        </div>
-        <% } %>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    // HELP MODAL FUNCTIONS
-    function openHelpModal() {
-      document.getElementById('helpModal').style.display = 'flex';
-      document.body.style.overflow = 'hidden'; // Prevent background scrolling
-    }
-
-    function closeHelpModal() {
-      document.getElementById('helpModal').style.display = 'none';
-      document.body.style.overflow = 'auto'; // Re-enable scrolling
-    }
-
-    // Close modal when clicking outside
-    document.addEventListener('click', function (e) {
-      const modal = document.getElementById('helpModal');
-      if (e.target === modal) {
-        closeHelpModal();
+  });
+
+  return data;
+}
+
+function extractMeasurementValue(parsedData, measureKey) {
+  const config = measurementMapping[measureKey];
+  if (!config) return null;
+
+  if (config.type === 'AVERAGE') {
+    const values = config.indices
+      .map(indexConfig => {
+        // New structure: measurements[index][type]
+        const byIndex = parsedData.measurements[indexConfig.index];
+        const measurement = byIndex && byIndex[indexConfig.type];
+        if (!measurement) return null;
+        return measurement[indexConfig.field];
+      })
+      .filter(v => v !== null);
+
+    if (values.length === 0) return null;
+    const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
+    return config.absolute ? Math.abs(avg) : avg;
+  }
+
+  // New structure: measurements[index][type]
+  const byIndex = parsedData.measurements[config.index];
+  const measurement = byIndex && byIndex[config.type];
+  if (!measurement) return null;
+
+  const value = measurement[config.field];
+  if (value === null || value === undefined) return null;
+  return config.absolute ? Math.abs(value) : value;
+}
+
+function isValidMeasurement(value, measureKey) {
+  if (value === null || value === undefined) return null;
+  
+  const range = validationRanges[measureKey];
+  if (!range) return null;
+  
+  return value >= range.min && value <= range.max;
+}
+
+function processGValues(measurements) {
+  const gKeys = ['G1', 'G2', 'G3', 'G4'];
+
+  // Parse numeric values safely - DB stores them as strings (e.g. "8.020")
+  const validGValues = gKeys
+    .map(key => {
+      const m = measurements[key];
+      if (!m || m.value === null || m.value === undefined || m.value === '-') return null;
+      const numeric = parseFloat(m.value);
+      if (isNaN(numeric)) return null;
+      return { value: numeric, isValid: m.isValid };
+    })
+    .filter(m => m !== null);
+
+  if (validGValues.length === 0) {
+    return { value: null, isValid: null };
+  }
+
+  const gSum = validGValues.reduce((sum, m) => sum + m.value, 0);
+  const gAverage = gSum / validGValues.length;
+  const gRange = validationRanges['G1'];
+  const gIsValid = gAverage >= gRange.min && gAverage <= gRange.max;
+
+  return { value: gAverage, isValid: gIsValid };
+}
+
+// ======================
+// MAIN INDEX ROUTE
+// ======================
+
+app.get("/", requireAuth, async (req, res) => {
+  try {
+    const showArchived = req.query.archived === 'true';
+    const queries = [
+      Query.equal('is_archived', showArchived),
+      Query.orderDesc('uploaded_at'),
+      Query.limit(1000)
+    ];
+
+    const result = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      queries
+    );
+
+    const files = result.documents
+      .filter(doc => doc.status !== 'shipped')           // exclude shipped
+      .filter(doc => doc.measurementA && doc.measurementA !== '-')  // exclude placeholders (no real data yet)
+      .map(doc => {
+        const status = doc.status || 'finished_inspection';
+        const statusCfg = STATUS_CONFIG[status] || STATUS_CONFIG['finished_inspection'];
+        return {
+          ...doc,
+          fileNumber: doc.filename ? doc.filename.replace(/\.(txt|TXT)$/, '') : 'Unknown',
+          statusColor: statusCfg.color,
+          statusOpacity: statusCfg.opacity,
+          statusLabel: statusCfg.label
+        };
+      });
+
+    res.render("index", {
+      files: files,
+      username: req.session.username,
+      displayName: getDisplayName(req.session.username),
+      canEditWeights: req.session.canEditWeights,
+      showArchived: showArchived,
+      statusConfig: STATUS_CONFIG
+    });
+  } catch (error) {
+    console.error("Error fetching files:", error);
+    res.status(500).send("Error loading files");
+  }
+});
+
+// ======================
+// STOCK AVAILABILITY CALCULATION
+// ======================
+
+// Stock allocation now handled by inline functions above
+// See: categorizeInventory, allocateProductsToOrder, allocateToAllOrders
+
+// ======================
+// STOCK MANAGEMENT VIEW
+// ======================
+
+app.get("/stock-management", requireAuth, async (req, res) => {
+  try {
+    // Fetch orders (exclude shipped)
+    const ordersResult = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_ORDERS,
+      [Query.notEqual('status', 'shipped'), Query.orderAsc('due_date'), Query.limit(100)]
+    );
+
+    // Fetch imports (exclude imported)
+    const importsResult = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_IMPORTS,
+      [Query.notEqual('status', 'imported'), Query.orderAsc('scheduled_date'), Query.limit(100)]
+    );
+
+    // Fetch all inspections (not shipped)
+    const inspectionsResult = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      [
+        Query.equal('is_archived', false),
+        Query.orderDesc('uploaded_at'),
+        Query.limit(1000)
+      ]
+    );
+
+    // Group inspections by status (filter shipped, treat NULL as finished_inspection)
+    const inspectionsByStatus = {
+      upcoming_import: [],
+      imported: [],
+      inspection: [],
+      finished_inspection: []
+    };
+
+    // Helper: extract numeric file number for sorting DESC
+    const fileNum = doc => {
+      const m = doc.filename && doc.filename.match(/^(\d+)/);
+      return m ? parseInt(m[1]) : 0;
+    };
+
+    // Also build a map of import_id -> list of filenames for the imports table
+    const importFileMap = {};
+    inspectionsResult.documents.forEach(doc => {
+      const status = doc.status || 'finished_inspection';
+      if (status === 'shipped') return;  // skip shipped
+      if (inspectionsByStatus[status] !== undefined) {
+        inspectionsByStatus[status].push(doc);
+      } else {
+        inspectionsByStatus['finished_inspection'].push(doc);
+      }
+      if (doc.import_id) {
+        if (!importFileMap[doc.import_id]) importFileMap[doc.import_id] = [];
+        importFileMap[doc.import_id].push(doc.filename);
       }
     });
 
-    // Close modal with Escape key
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') {
-        closeHelpModal();
-      }
+    // Sort each section ASC by file number (lowest first: 492, 493, 494...)
+    Object.keys(inspectionsByStatus).forEach(key => {
+      inspectionsByStatus[key].sort((a, b) => fileNum(a) - fileNum(b));
     });
 
-    // GLOBAL FUNCTIONS
-    function showLotDialog() {
-      const filesInput = document.getElementById("files");
-      if (filesInput.files.length > 0) {
-        document.getElementById("lotModal").style.display = "flex";
-        document.getElementById("lotNumberInput").focus();
+    // *** Use inline inventory and allocation system ***
+    // Step 1: Categorize current inventory by status
+    const activeInspections = inspectionsResult.documents.filter(doc => doc.status !== 'shipped');
+    const currentInventory = categorizeInventory(activeInspections);
+    
+    // Step 2: Allocate products to orders by due date priority
+    const allocations = allocateToAllOrders(
+      ordersResult.documents,
+      currentInventory
+    );
+    
+    // Step 3: Enhance order objects with allocation info
+    const ordersWithStock = ordersResult.documents.map(order => {
+      const allocation = allocations[order.$id];
+      return {
+        ...order,
+        stockAvailability: {
+          status: allocation.status,
+          label: allocation.statusLabel,
+          color: allocation.statusColor,
+          allocatedItems: allocation.allocatedItems,
+          breakdown: allocation.breakdown
+        }
+      };
+    });
+
+    // Attach linked_files to each import
+    const importsWithFiles = importsResult.documents.map(imp => ({
+      ...imp,
+      linked_files: importFileMap[imp.$id] || []
+    }));
+
+    res.render("stock-management", {
+      orders: ordersWithStock,  // *** CHANGED: Use ordersWithStock instead of ordersResult.documents ***
+      imports: importsWithFiles,
+      inspectionsByStatus: inspectionsByStatus,
+      statusConfig: STATUS_CONFIG,
+      username: req.session.username,
+      displayName: getDisplayName(req.session.username),
+      canEditWeights: req.session.canEditWeights
+    });
+  } catch (error) {
+    console.error("Error loading stock management:", error);
+    res.status(500).send("Error loading stock management");
+  }
+});
+
+// ======================
+// ORDER MANAGEMENT API
+// ======================
+
+// Create new order
+app.post("/api/orders", requireAuth, async (req, res) => {
+  try {
+    const { quantity, due_date } = req.body;
+
+    if (!quantity || !due_date) {
+      return res.status(400).json({
+        success: false,
+        error: 'Quantity and due date are required'
+      });
+    }
+
+    const order = await databases.createDocument(
+      DATABASE_ID,
+      COLLECTION_ORDERS,
+      ID.unique(),
+      {
+        quantity: parseInt(quantity),
+        due_date: due_date,
+        status: 'pending'
+      }
+    );
+
+    res.json({ success: true, order: order });
+  } catch (error) {
+    console.error("Error creating order:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update order
+app.put("/api/orders/:orderId", requireAuth, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { quantity, due_date, status } = req.body;
+
+    const updateData = {};
+    if (quantity !== undefined) updateData.quantity = parseInt(quantity);
+    if (due_date !== undefined) updateData.due_date = due_date;
+    if (status !== undefined) updateData.status = status;
+
+    const order = await databases.updateDocument(
+      DATABASE_ID,
+      COLLECTION_ORDERS,
+      orderId,
+      updateData
+    );
+
+    res.json({ success: true, order: order });
+  } catch (error) {
+    console.error("Error updating order:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete order
+app.delete("/api/orders/:orderId", requireAuth, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    await databases.deleteDocument(
+      DATABASE_ID,
+      COLLECTION_ORDERS,
+      orderId
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting order:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ======================
+// IMPORT MANAGEMENT API
+// ======================
+
+// Helper: find the highest file number in inspections collection
+async function getLastFileNumber() {
+  try {
+    const result = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      [Query.orderDesc('uploaded_at'), Query.limit(500)]
+    );
+    let max = 0;
+    result.documents.forEach(doc => {
+      const match = doc.filename && doc.filename.match(/^(\d+)/);
+      if (match) {
+        const num = parseInt(match[1]);
+        if (num > max) max = num;
+      }
+    });
+    return max;
+  } catch (e) {
+    console.error('Error getting last file number:', e);
+    return 0;
+  }
+}
+
+// Helper: bulk update inspection status by import_id
+async function updateInspectionStatusByImport(importId, newStatus) {
+  try {
+    const result = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      [Query.equal('import_id', importId), Query.limit(500)]
+    );
+    for (const doc of result.documents) {
+      await databases.updateDocument(
+        DATABASE_ID,
+        COLLECTION_INSPECTIONS,
+        doc.$id,
+        { status: newStatus }
+      );
+    }
+    return result.documents.length;
+  } catch (e) {
+    console.error('Error bulk updating statuses:', e);
+    return 0;
+  }
+}
+
+// Create new import + auto-generate placeholder file records
+app.post("/api/imports", requireAuth, async (req, res) => {
+  try {
+    const { quantity, scheduled_date } = req.body;
+
+    if (!quantity || !scheduled_date) {
+      return res.status(400).json({
+        success: false,
+        error: 'Quantity and scheduled date are required'
+      });
+    }
+
+    const qty = parseInt(quantity);
+
+    // Step 1: Create the import record
+    const importDoc = await databases.createDocument(
+      DATABASE_ID,
+      COLLECTION_IMPORTS,
+      ID.unique(),
+      {
+        quantity: qty,
+        scheduled_date: scheduled_date,
+        status: 'scheduled'
+      }
+    );
+
+    // Step 2: Find the last file number and create sequential placeholders
+    const lastNumber = await getLastFileNumber();
+    const lotNumber = lastNumber + 1;  // Lot = youngest (lowest) number in the batch
+    const createdFiles = [];
+    const errors = [];
+
+    for (let i = 1; i <= qty; i++) {
+      const fileNumber = lastNumber + i;
+      const filename = `${fileNumber}.txt`;
+
+      try {
+        // Match exact same fields as real upload to satisfy Appwrite schema
+        await databases.createDocument(
+          DATABASE_ID,
+          COLLECTION_INSPECTIONS,
+          ID.unique(),
+          {
+            filename: filename,
+            uploaded_at: new Date().toISOString(),
+            weight: null,
+            lot: lotNumber,  // All files in batch share the same lot (lowest number)
+            is_archived: false,
+            status: 'upcoming_import',
+            import_id: importDoc.$id,
+            // Measurements - use '-' as placeholder (same as real upload)
+            measurementA: '-', measurementB: '-', measurementC: '-',
+            measurementD: '-', measurementE: '-', measurementF: '-',
+            measurementG1: '-', measurementG2: '-', measurementG3: '-',
+            measurementG4: '-', measurementH: '-', measurementI: '-',
+            measurementJ: '-', measurementK: '-', measurementL: '-',
+            // Validity flags - null until real data arrives
+            isValidA: null, isValidB: null, isValidC: null,
+            isValidD: null, isValidE: null, isValidF: null,
+            isValidG1: null, isValidG2: null, isValidG3: null,
+            isValidG4: null, isValidH: null, isValidI: null,
+            isValidJ: null, isValidK: null, isValidL: null,
+            // Status fields
+            inspectionStatus: 'pending',
+            failedMeasurements: ''
+          }
+        );
+        createdFiles.push(filename);
+      } catch (err) {
+        console.error(`Failed to create placeholder ${filename}:`, err.message);
+        errors.push({ file: filename, error: err.message });
       }
     }
 
-    function cancelLotDialog() {
-      document.getElementById("lotModal").style.display = "none";
-      document.getElementById("files").value = "";
-      document.getElementById("lotNumberInput").value = "";
+    if (errors.length > 0) {
+      console.error('Some placeholders failed:', JSON.stringify(errors));
+      // Still return success for the import, but note errors
+      return res.json({
+        success: true,
+        import: importDoc,
+        createdFiles: createdFiles,
+        startNumber: lastNumber + 1,
+        endNumber: lastNumber + qty,
+        errors: errors
+      });
     }
 
-    function confirmLot() {
-      const lotNumber = document.getElementById("lotNumberInput").value.trim();
-      if (!lotNumber) {
-        alert("ロット番号を入力してください");
+    res.json({
+      success: true,
+      import: importDoc,
+      createdFiles: createdFiles,
+      startNumber: lastNumber + 1,
+      endNumber: lastNumber + qty
+    });
+  } catch (error) {
+    console.error("Error creating import:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update import + sync linked inspection statuses
+app.put("/api/imports/:importId", requireAuth, async (req, res) => {
+  try {
+    const { importId } = req.params;
+    const { quantity, scheduled_date, status, actual_date } = req.body;
+
+    const updateData = {};
+    if (quantity !== undefined) updateData.quantity = parseInt(quantity);
+    if (scheduled_date !== undefined) updateData.scheduled_date = scheduled_date;
+    if (status !== undefined) updateData.status = status;
+    if (actual_date !== undefined) updateData.actual_date = actual_date;
+
+    const importDoc = await databases.updateDocument(
+      DATABASE_ID,
+      COLLECTION_IMPORTS,
+      importId,
+      updateData
+    );
+
+    // Sync linked inspection statuses when import status changes
+    let updatedCount = 0;
+    if (status === 'arrived') {
+      // Import arrived → move linked inspections to 'imported'
+      updatedCount = await updateInspectionStatusByImport(importId, 'imported');
+    }
+
+    res.json({ success: true, import: importDoc, updatedInspections: updatedCount });
+  } catch (error) {
+    console.error("Error updating import:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete import
+app.delete("/api/imports/:importId", requireAuth, async (req, res) => {
+  try {
+    const { importId } = req.params;
+
+    await databases.deleteDocument(
+      DATABASE_ID,
+      COLLECTION_IMPORTS,
+      importId
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting import:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ======================
+// INSPECTION STATUS UPDATE API
+// ======================
+
+app.put("/api/inspections/:inspectionId/status", requireAuth, async (req, res) => {
+  try {
+    const { inspectionId } = req.params;
+    const { status } = req.body;
+
+    if (!status || !STATUS_CONFIG[status]) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid status'
+      });
+    }
+
+    const inspection = await databases.updateDocument(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      inspectionId,
+      { status: status }
+    );
+
+    res.json({ success: true, inspection: inspection });
+  } catch (error) {
+    console.error("Error updating inspection status:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Bulk advance all inspections from one status to another
+app.put("/api/inspections/advance-status", requireAuth, async (req, res) => {
+  try {
+    const { fromStatus, toStatus } = req.body;
+
+    if (!fromStatus || !toStatus || !STATUS_CONFIG[fromStatus] || !STATUS_CONFIG[toStatus]) {
+      return res.status(400).json({ success: false, error: 'Invalid status values' });
+    }
+
+    // Fetch all docs with fromStatus
+    const result = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      [Query.equal('status', fromStatus), Query.limit(500)]
+    );
+
+    let updated = 0;
+    for (const doc of result.documents) {
+      await databases.updateDocument(
+        DATABASE_ID,
+        COLLECTION_INSPECTIONS,
+        doc.$id,
+        { status: toStatus }
+      );
+      updated++;
+    }
+
+    res.json({ success: true, updated: updated });
+  } catch (error) {
+    console.error("Error advancing status:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ======================
+// FILE UPLOAD (TXT)
+// ======================
+
+app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "No file uploaded" 
+      });
+    }
+
+    // Process each uploaded file
+    const allResults = { successful: [], failed: [], updated: [] };
+
+    for (const file of req.files) {
+      try {
+        await processSingleUpload(file, req, allResults);
+      } catch (err) {
+        allResults.failed.push({ filename: file.originalname, error: err.message });
+      }
+    }
+
+    if (allResults.successful.length === 0 && allResults.updated.length === 0) {
+      return res.status(400).json({ success: false, error: allResults.failed.map(f => f.error).join(', ') });
+    }
+
+    return res.json({ success: true, results: allResults });
+  } catch (error) {
+    console.error("Upload error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+async function processSingleUpload(file, req, results) {
+    const fileContent = file.buffer.toString("utf-8");
+    const parsedData = parseTxtFile(fileContent);
+    const filename = file.originalname;
+
+    const existingFiles = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      [Query.equal('filename', filename), Query.limit(1)]
+    );
+
+    const measurements = {};
+    const validations = {};
+
+    // Skip M and N — they are manual/visual fields not stored in Appwrite
+    const dbKeys = Object.keys(measurementMapping).filter(k => k !== 'M' && k !== 'N');
+    dbKeys.forEach(key => {
+      const value = extractMeasurementValue(parsedData, key);
+      // Appwrite stores measurements as String — convert numeric values
+      measurements[`measurement${key}`] = value !== null ? String(value) : '-';
+      validations[`isValid${key}`] = isValidMeasurement(value, key);
+    });
+
+    if (existingFiles.documents.length > 0) {
+      const existingDoc = existingFiles.documents[0];
+      const isPlaceholder = !existingDoc.measurementA || existingDoc.measurementA === '-';
+
+      if (isPlaceholder) {
+        // Placeholder exists from import schedule — fill in the real measurement data
+        await databases.updateDocument(
+          DATABASE_ID,
+          COLLECTION_INSPECTIONS,
+          existingDoc.$id,
+          {
+            uploaded_at: new Date().toISOString(),
+            is_archived: false,
+            status: 'inspection',
+            // Keep existing lot and import_id from placeholder, only overwrite measurements
+            ...measurements,
+            ...validations
+          }
+        );
+        results.updated.push({ filename });
+        return;
+      } else {
+        // Real data already exists — skip with error
+        results.failed.push({ filename, error: `${filename} already has measurement data` });
         return;
       }
-      document.getElementById("lotInput").value = lotNumber;
-      document.getElementById("lotModal").style.display = "none";
-      document.getElementById("uploadForm").submit();
     }
 
-    document.addEventListener("DOMContentLoaded", function () {
-      const fileCards = document.querySelectorAll(".file-card");
-      const selectedFiles = new Set();
-      const archiveSelectedFiles = new Set();
-      let pressTimer;
-      let archiveMode = false;
-      let lastTapTime = 0;
-      let lastTappedCard = null;
-
-      const userCanEditWeights = <% if (canEditWeights) { %> true <% } else { %> false <% } %>;
-
-      async function saveWeight(fileId, weight) {
-        if (!userCanEditWeights) {
-          alert('⚠️ 権限がありません\n\n重量の編集は naemura と iwatsuki のみ可能です。');
-          return false;
-        }
-        try {
-          if (!weight || isNaN(weight)) return false;
-          const formattedWeight = parseFloat(weight).toFixed(1);
-          const response = await fetch("/update-weights", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ weights: [{ fileId: fileId, weight: formattedWeight }] }),
-          });
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to save weight');
-          }
-          const result = await response.json();
-          if (result.success) {
-            const card = document.querySelector(".file-card[data-file-id='" + fileId + "']");
-            let weightDisplay = card.querySelector(".weight-display");
-            if (!weightDisplay) {
-              weightDisplay = document.createElement("div");
-              weightDisplay.className = "weight-display";
-              weightDisplay.style.marginTop = "4px";
-              weightDisplay.style.fontSize = "0.85rem";
-              card.querySelector(".weight-section").appendChild(weightDisplay);
-            }
-            weightDisplay.textContent = formattedWeight + " g";
-            return true;
-          }
-          return false;
-        } catch (error) {
-          console.error("Error:", error);
-          if (error.message.includes('Not authorized')) {
-            alert('⚠️ 権限がありません\n\n重量の編集は naemura と iwatsuki のみ可能です。');
-          } else {
-            alert('❌ 保存エラー: ' + error.message);
-          }
-          return false;
-        }
+    // No existing file — create fresh
+    await databases.createDocument(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      ID.unique(),
+      {
+        filename: filename,
+        lot: parsedData.lot || null,
+        weight: null,
+        uploaded_at: new Date().toISOString(),
+        is_archived: false,
+        status: 'inspection',
+        ...measurements,
+        ...validations
       }
+    );
 
-        <% if (canEditWeights) { %>
-        document.querySelectorAll(".weight-input").forEach(function (input, index, inputs) {
-          input.addEventListener("change", async function (e) {
-            let weight = this.value;
-            const fileId = this.dataset.fileId;
-            if (weight && !isNaN(weight)) {
-              await saveWeight(fileId, weight);
-            }
-          });
+    results.successful.push({ filename });
+}
 
-          input.addEventListener("focus", function () {
-            this.setSelectionRange(this.value.length, this.value.length);
-          });
+// ======================
+// FILE DATA RETRIEVAL
+// ======================
 
-          input.addEventListener("keypress", function (e) {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              const nextInput = inputs[index + 1];
-              if (nextInput) nextInput.focus();
-              else this.blur();
-            }
-          });
+app.get("/files/:fileId", requireAuth, async (req, res) => {
+  try {
+    const inspection = await databases.getDocument(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      req.params.fileId
+    );
 
-          input.addEventListener("click", function (e) {
-            e.stopPropagation();
-          });
-        });
+    const measurements = {
+      A: { value: inspection.measurementA, isValid: inspection.isValidA },
+      B: { value: inspection.measurementB, isValid: inspection.isValidB },
+      C: { value: inspection.measurementC, isValid: inspection.isValidC },
+      D: { value: inspection.measurementD, isValid: inspection.isValidD },
+      E: { value: inspection.measurementE, isValid: inspection.isValidE },
+      F: { value: inspection.measurementF, isValid: inspection.isValidF },
+      G1: { value: inspection.measurementG1, isValid: inspection.isValidG1 },
+      G2: { value: inspection.measurementG2, isValid: inspection.isValidG2 },
+      G3: { value: inspection.measurementG3, isValid: inspection.isValidG3 },
+      G4: { value: inspection.measurementG4, isValid: inspection.isValidG4 },
+      H: { value: inspection.measurementH, isValid: inspection.isValidH },
+      I: { value: inspection.measurementI, isValid: inspection.isValidI },
+      J: { value: inspection.measurementJ, isValid: inspection.isValidJ },
+      K: { value: inspection.measurementK, isValid: inspection.isValidK },
+      L: { value: inspection.measurementL, isValid: inspection.isValidL }
+    };
 
-        const saveWeightsBtn = document.getElementById("saveWeightsBtn");
-        if (saveWeightsBtn) {
-          saveWeightsBtn.addEventListener("click", async function () {
-            try {
-              const weightInputs = document.querySelectorAll(".weight-input");
-              const weights = [];
-              weightInputs.forEach(function (input) {
-                const fileId = input.dataset.fileId;
-                const weight = input.value;
-                if (weight && !isNaN(weight)) {
-                  weights.push({ fileId: fileId, weight: parseFloat(weight).toFixed(1) });
-                }
-              });
+    const gValue = processGValues(measurements);
 
-              if (weights.length === 0) {
-                alert("保存する重量がありません!");
-                return;
-              }
-
-              const response = await fetch("/update-weights", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ weights: weights }),
-              });
-
-              if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to save');
-              }
-
-              const result = await response.json();
-              if (result.success) {
-                alert("✓ " + result.count + "件の重量データを保存しました");
-                weights.forEach(function (item) {
-                  const card = document.querySelector(".file-card[data-file-id='" + item.fileId + "']");
-                  let weightDisplay = card.querySelector(".weight-display");
-                  if (!weightDisplay) {
-                    weightDisplay = document.createElement("div");
-                    weightDisplay.className = "weight-display";
-                    weightDisplay.style.marginTop = "4px";
-                    weightDisplay.style.fontSize = "0.85rem";
-                    card.querySelector(".weight-section").appendChild(weightDisplay);
-                  }
-                  weightDisplay.textContent = item.weight + " g";
-                });
-              }
-            } catch (error) {
-              console.error("Error:", error);
-              if (error.message.includes('Not authorized')) {
-                alert('⚠️ 権限がありません\n\n重量の編集は naemura と iwatsuki のみ可能です。');
-              } else {
-                alert("❌ 保存エラー: " + error.message);
-              }
-            }
-          });
-        }
-        <% } %>
-
-        const lotNumberInput = document.getElementById('lotNumberInput');
-      if (lotNumberInput) {
-        lotNumberInput.addEventListener('keypress', function (e) {
-          if (e.key === 'Enter') { confirmLot(); }
-        });
-      }
-
-      function updateButtons() {
-        const viewSelectedBtn = document.getElementById("viewSelectedBtn");
-        const archiveSelectedBtn = document.getElementById("archiveSelectedBtn");
-        const selectedFilesInput = document.getElementById("selectedFilesInput");
-
-        if (archiveMode) {
-          // Archive mode
-          viewSelectedBtn.disabled = true;
-          viewSelectedBtn.textContent = "検査成績書作成へ";
-
-          if (archiveSelectedFiles.size > 0) {
-            archiveSelectedBtn.disabled = false;
-            archiveSelectedBtn.textContent = `📦 完了済み (${archiveSelectedFiles.size}件)`;
-          } else {
-            archiveSelectedBtn.disabled = true;
-            archiveSelectedBtn.textContent = "📦 選択を完了済みに";
-          }
-        } else {
-          // Normal selection mode
-          archiveSelectedBtn.disabled = true;
-          archiveSelectedBtn.textContent = "📦 選択を完了済みに";
-
-          if (selectedFiles.size > 0) {
-            viewSelectedBtn.disabled = false;
-            viewSelectedBtn.textContent = "選択されたファイル：" + selectedFiles.size;
-            selectedFilesInput.value = Array.from(selectedFiles).join(",");
-          } else {
-            viewSelectedBtn.disabled = true;
-            viewSelectedBtn.textContent = "検査成績書作成へ";
-            selectedFilesInput.value = "";
-          }
-        }
-      }
-
-      function toggleFileSelection(card) {
-        if (archiveMode) return; // Don't allow normal selection in archive mode
-
-        const fileId = card.dataset.fileId;
-        if (card.classList.contains("selected")) {
-          selectedFiles.delete(fileId);
-          card.classList.remove("selected");
-        } else {
-          selectedFiles.add(fileId);
-          card.classList.add("selected");
-        }
-        updateButtons();
-      }
-
-      function handleDoubleTap(card) {
-        const fileId = card.dataset.fileId;
-
-        if (card.classList.contains("archive-selected")) {
-          archiveSelectedFiles.delete(fileId);
-          card.classList.remove("archive-selected");
-        } else {
-          archiveSelectedFiles.add(fileId);
-          card.classList.add("archive-selected");
-        }
-
-        // Enter archive mode if any files are selected for archive
-        if (archiveSelectedFiles.size > 0 && !archiveMode) {
-          archiveMode = true;
-          // Clear normal selections
-          selectedFiles.clear();
-          fileCards.forEach(c => c.classList.remove("selected"));
-        } else if (archiveSelectedFiles.size === 0 && archiveMode) {
-          archiveMode = false;
-        }
-
-        updateButtons();
-      }
-
-      window.selectFileRange = function (event) {
-        event.preventDefault();
-        if (archiveMode) {
-          alert("アーカイブモードでは範囲選択はできません");
-          return;
-        }
-
-        const startFile = parseInt(document.getElementById("startFile").value);
-        const fileCount = parseInt(document.getElementById("fileCount").value);
-        if (isNaN(startFile) || isNaN(fileCount) || fileCount < 1) {
-          alert("有効なファイル番号とファイル数を入力してください");
-          return;
-        }
-        const endFile = startFile + fileCount - 1;
-        selectedFiles.clear();
-        fileCards.forEach(function (card) { card.classList.remove("selected"); });
-        fileCards.forEach(function (card) {
-          const filename = card.dataset.filename;
-          const match = filename.match(/^\d+/);
-          if (match) {
-            const fileNumber = parseInt(match[0]);
-            if (fileNumber >= startFile && fileNumber <= endFile) {
-              card.classList.add("selected");
-              selectedFiles.add(card.dataset.fileId);
-            }
-          }
-        });
-        updateButtons();
-      };
-
-      document.getElementById("viewSelectedBtn").addEventListener("click", function (e) {
-        e.preventDefault();
-        if (selectedFiles.size > 0 && !archiveMode) {
-          document.getElementById("viewSelectedForm").submit();
-        }
-      });
-
-      // Archive button handler
-      document.getElementById("archiveSelectedBtn").addEventListener("click", async function (e) {
-        e.preventDefault();
-
-        if (archiveSelectedFiles.size === 0) return;
-
-        const confirmMsg = `${archiveSelectedFiles.size}件のファイルを完了済みにしますか？\n\n完了済みにすると、画面から非表示になりますが、データベースには保存されています。\n\n本当に実行しますか？`;
-
-        if (!confirm(confirmMsg)) return;
-
-        try {
-          const response = await fetch('/archive-files', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fileIds: Array.from(archiveSelectedFiles) })
-          });
-
-          const result = await response.json();
-
-          if (result.success) {
-            alert(`✓ ${result.archived}件のファイルを完了済みにしました`);
-            window.location.reload();
-          } else {
-            throw new Error(result.error || 'アーカイブに失敗しました');
-          }
-        } catch (error) {
-          console.error('Error:', error);
-          alert('❌ エラー: ' + error.message);
-        }
-      });
-
-      fileCards.forEach(function (card) {
-        card.addEventListener("click", function (e) {
-          if (!e.target.closest("input") && !e.target.closest("a")) {
-            const currentTime = Date.now();
-            const timeDiff = currentTime - lastTapTime;
-
-            // Double tap detection (within 300ms)
-            if (timeDiff < 300 && lastTappedCard === card) {
-              handleDoubleTap(card);
-            } else if (!archiveMode) {
-              toggleFileSelection(card);
-            }
-
-            lastTapTime = currentTime;
-            lastTappedCard = card;
-          }
-        });
-
-        card.addEventListener("mousedown", function (e) {
-          if (e.target.closest("input") || e.target.closest("a")) return;
-          pressTimer = setTimeout(function () {
-            card.classList.add("deleting");
-          }, 2000);
-        });
-
-        card.addEventListener("mouseup", function () {
-          clearTimeout(pressTimer);
-          if (card.classList.contains("deleting")) {
-            card.classList.remove("deleting");
-            if (confirm("本当にファイル " + card.dataset.filename + " を削除しますか？\n\n⚠️ この操作はデータベースからデータを完全に削除します。")) {
-              fetch("/delete-file", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ fileId: card.dataset.fileId }),
-              })
-                .then(function (response) { return response.json(); })
-                .then(function (result) {
-                  if (result.success) {
-                    card.remove();
-                    alert("✓ ファイルを削除しました");
-                  } else {
-                    throw new Error(result.error || "削除に失敗しました");
-                  }
-                })
-                .catch(function (error) {
-                  console.error("Error:", error);
-                  alert("❌ 削除エラー: " + error.message);
-                });
-            }
-          }
-        });
-
-        card.addEventListener("mouseleave", function () {
-          clearTimeout(pressTimer);
-          card.classList.remove("deleting");
-        });
-      });
-
-      // EXPORT WEIGHTS AS EXCEL
-      const exportWeightsBtn = document.getElementById("exportWeightsBtn");
-      if (exportWeightsBtn) {
-        exportWeightsBtn.addEventListener("click", async function () {
-          try {
-            window.location.href = '/export-weights';
-          } catch (error) {
-            console.error('Error:', error);
-            alert('❌ エクスポートエラー: ' + error.message);
-          }
-        });
-      }
-
-      // IMPORT WEIGHTS FROM EXCEL
-      // ============ IMPORT WITH PROGRESS BAR ============
-      const importWeightsBtn = document.getElementById("importWeightsBtn");
-      const weightFileInput = document.getElementById("weightFileInput");
-
-      if (importWeightsBtn && weightFileInput) {
-        importWeightsBtn.addEventListener("click", function () {
-          weightFileInput.click();
-        });
-
-        weightFileInput.addEventListener("change", async function (e) {
-          if (!this.files || this.files.length === 0) return;
-
-          const file = this.files[0];
-          const formData = new FormData();
-          formData.append('weightFile', file);
-
-          try {
-            // Show progress bar
-            showProgressBar();
-
-            // Start import (don't wait for response, poll progress instead)
-            const responsePromise = fetch('/import-weights', {
-              method: 'POST',
-              body: formData
-            });
-
-            // Poll progress while importing
-            let result = null;
-            let importComplete = false;
-
-            const progressPollInterval = setInterval(async () => {
-              try {
-                const progressResponse = await fetch('/import-progress');
-                const progress = await progressResponse.json();
-
-                if (progress.total === 0) {
-                  clearInterval(progressPollInterval);
-                  return;
-                }
-
-                const percent = Math.round((progress.current / progress.total) * 100);
-                updateProgressBar(progress.current, progress.total, percent);
-
-                // Check if import is complete
-                if (progress.status === 'complete' || progress.status === 'error') {
-                  clearInterval(progressPollInterval);
-                  importComplete = true;
-                }
-              } catch (e) {
-                console.error('Progress check failed:', e);
-              }
-            }, 300); // Check every 300ms
-
-            // Wait for import to finish
-            const response = await responsePromise;
-
-            if (!response.ok) {
-              const error = await response.json();
-              clearInterval(progressPollInterval);
-              throw new Error(error.error || 'Import failed');
-            }
-
-            result = await response.json();
-
-            // Wait a bit for progress to show 100%
-            await new Promise(resolve => setTimeout(resolve, 500));
-            clearInterval(progressPollInterval);
-
-            if (result.success || result.ok) {
-              // Show success message
-              let message = `✓ ${result.updated}件の重量データを更新しました`;
-              if (result.verified > 0) {
-                message += `\n✓ ${result.verified}件が確認されました`;
-              }
-              if (result.verifyFailed > 0) {
-                message += `\n⚠️ ${result.verifyFailed}件で確認失敗`;
-              }
-              if (result.notFound > 0) {
-                message += `\n⚠️ ${result.notFound}件がデータベースに見つかりません`;
-              }
-
-              // Update progress to 100%
-              updateProgressBar(result.updated, result.updated, 100);
-
-              // Show alert after 1 second
-              setTimeout(() => {
-                hideProgressBar();
-                alert(message);
-                window.location.reload();
-              }, 1000);
-            } else {
-              throw new Error(result.error || 'Import failed');
-            }
-          } catch (error) {
-            console.error('Error:', error);
-            hideProgressBar();
-            alert('❌ インポートエラー: ' + error.message);
-          }
-
-          this.value = '';
-        });
-      }
-
-      // ============ PROGRESS BAR HELPER FUNCTIONS ============
-      function showProgressBar() {
-        // Create progress bar container if it doesn't exist
-        if (!document.getElementById('import-progress-container')) {
-          const progressHTML = `
-              <div id="import-progress-container" style="
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: white;
-                padding: 30px;
-                border-radius: 12px;
-                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-                z-index: 10000;
-                min-width: 400px;
-                text-align: center;
-              ">
-                <h4 style="margin-bottom: 20px; color: #333;">📊 インポート中...</h4>
-                
-                <div style="
-                  width: 100%;
-                  height: 40px;
-                  background: #e0e0e0;
-                  border-radius: 8px;
-                  overflow: hidden;
-                  margin-bottom: 15px;
-                  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
-                ">
-                  <div id="import-progress-bar" style="
-                    height: 100%;
-                    width: 0%;
-                    background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%);
-                    transition: width 0.3s ease;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-weight: bold;
-                    font-size: 14px;
-                    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-                  "></div>
-                </div>
-                
-                <div id="import-progress-text" style="
-                  font-size: 16px;
-                  color: #666;
-                  margin-bottom: 10px;
-                ">0 / 0</div>
-                
-                <div id="import-progress-percent" style="
-                  font-size: 14px;
-                  color: #999;
-                ">0%</div>
-              </div>
-            `;
-          document.body.insertAdjacentHTML('beforeend', progressHTML);
-        }
-
-        document.getElementById('import-progress-container').style.display = 'block';
-      }
-
-      function updateProgressBar(current, total, percent) {
-        const progressBar = document.getElementById('import-progress-bar');
-        const progressText = document.getElementById('import-progress-text');
-        const progressPercent = document.getElementById('import-progress-percent');
-
-        if (progressBar) {
-          progressBar.style.width = percent + '%';
-          progressBar.textContent = percent + '%';
-        }
-        if (progressText) {
-          progressText.textContent = `${current} / ${total}`;
-        }
-        if (progressPercent) {
-          progressPercent.textContent = `${percent}% 完了`;
-        }
-      }
-
-      function hideProgressBar() {
-        const container = document.getElementById('import-progress-container');
-        if (container) {
-          container.style.display = 'none';
-        }
-      }
+    res.render("fileData", {
+      file: inspection,
+      measurements: measurements,
+      gValue: gValue,
+      validationRanges: validationRanges,
+      username: req.session.username,
+      displayName: getDisplayName(req.session.username),
+      canEditWeights: req.session.canEditWeights
     });
-  </script>
-</body>
+  } catch (error) {
+    console.error("Error fetching file data:", error);
+    res.status(404).send("File not found");
+  }
+});
 
-</html>
+// ======================
+// UPDATE WEIGHT
+// ======================
+
+app.post("/update-weight", requireWeightEditAuth, async (req, res) => {
+  try {
+    const { fileId, weight } = req.body;
+
+    if (!fileId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'File ID is required' 
+      });
+    }
+
+    const weightValue = weight && weight.trim() !== '' ? parseFloat(weight) : null;
+
+    if (weightValue !== null && (isNaN(weightValue) || weightValue < 0)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Weight must be a positive number or empty'
+      });
+    }
+
+    const formattedWeight = weightValue !== null ? parseFloat(weightValue.toFixed(1)) : null;
+
+    await databases.updateDocument(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      fileId,
+      { 
+        weight: formattedWeight,
+        status: 'finished_inspection'
+      }
+    );
+
+    res.json({ 
+      success: true,
+      weight: formattedWeight 
+    });
+  } catch (error) {
+    console.error("Error updating weight:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Alias for frontend compatibility (some templates use /update-weights plural)
+app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
+  try {
+    const { weights } = req.body;
+
+    if (!weights || !Array.isArray(weights) || weights.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Weights array is required' 
+      });
+    }
+
+    const results = [];
+    const errors = [];
+
+    for (const item of weights) {
+      const { fileId, weight } = item;
+
+      if (!fileId) {
+        errors.push({ error: 'File ID is required' });
+        continue;
+      }
+
+      const weightValue = weight && weight.toString().trim() !== '' ? parseFloat(weight) : null;
+
+      if (weightValue !== null && (isNaN(weightValue) || weightValue < 0)) {
+        errors.push({ fileId, error: 'Weight must be a positive number or empty' });
+        continue;
+      }
+
+      const formattedWeight = weightValue !== null ? parseFloat(weightValue.toFixed(1)) : null;
+
+      try {
+        await databases.updateDocument(
+          DATABASE_ID,
+          COLLECTION_INSPECTIONS,
+          fileId,
+          { 
+            weight: formattedWeight,
+            status: 'finished_inspection'
+          }
+        );
+        results.push({ fileId, weight: formattedWeight, success: true });
+      } catch (err) {
+        errors.push({ fileId, error: err.message });
+      }
+    }
+
+    res.json({ 
+      success: errors.length === 0, 
+      updated: results.length,
+      results: results.length > 0 ? results : undefined,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    console.error("Error updating weights:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// ======================
+// WEIGHT EXCEL IMPORT
+// ======================
+
+// Store import progress globally
+let importProgress = { current: 0, total: 0, status: 'idle' };
+
+app.get("/import-progress", requireWeightEditAuth, (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  return res.json(importProgress);
+});
+
+app.post("/import-weights", requireWeightEditAuth, (req, res, next) => {
+  upload.any()(req, res, (err) => {
+    if (err) {
+      console.error("Upload error:", err.message);
+      importProgress = { current: 0, total: 0, status: 'error' };
+      return res.status(400).json({ ok: false, error: "Upload failed" });
+    }
+    processImport(req, res);
+  });
+});
+
+async function processImport(req, res) {
+  res.setHeader('Content-Type', 'application/json');
+  
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ ok: false });
+    }
+
+    const file = req.files[0];
+    console.log("Processing file:", file.originalname);
+    
+    const buf = XLSX.read(file.buffer, { type: 'buffer' });
+    const ws = buf.Sheets[buf.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    
+    console.log("Read", rows.length, "rows from Excel");
+
+    const totalRows = rows.length - 1; // Exclude header
+    importProgress = { current: 0, total: totalRows, status: 'processing' };
+
+    let updated = 0;
+    let skipped = 0;
+    let notFound = 0;
+    let verified = 0;
+    let verifyFailed = 0;
+
+    for (let i = 1; i < rows.length; i++) {
+      try {
+        const row = rows[i];
+        if (!row || !row[0] || !row[1]) continue;
+
+        // Get file number from column A (remove .txt if present)
+        const fileNum = String(row[0]).trim().replace(/\.txt$/i, '');
+        
+        // Get weight from column B
+        const weight = parseFloat(String(row[1]).trim());
+
+        if (!fileNum || isNaN(weight) || weight < 0) continue;
+
+        // Build filename with .txt extension
+        const filename = fileNum + '.txt';
+        const roundedWeight = Math.round(weight * 10) / 10;
+
+        // Find document in Appwrite
+        const result = await databases.listDocuments(
+          DATABASE_ID, 
+          COLLECTION_INSPECTIONS, 
+          [Query.equal('filename', filename)]
+        );
+        
+        if (result.documents && result.documents.length > 0) {
+          const doc = result.documents[0];
+          const docId = doc.$id;
+          
+          // OPTIMIZATION: Check if weight already exists and matches
+          if (doc.weight !== null && doc.weight !== undefined) {
+            const existingWeight = parseFloat(doc.weight);
+            if (existingWeight === roundedWeight) {
+              skipped++;
+              console.log(`⏭️  SKIPPED: ${filename} - weight already set to ${roundedWeight}g`);
+              importProgress.current = i;
+              continue; // SKIP TO NEXT ROW - NO DATABASE CALL NEEDED
+            }
+          }
+          
+          // ONLY UPDATE if weight is missing or different
+          console.log(`Row ${i}: ${fileNum} → ${roundedWeight}g (updating)`);
+          
+          await databases.updateDocument(
+            DATABASE_ID, 
+            COLLECTION_INSPECTIONS, 
+            docId, 
+            { 
+              weight: roundedWeight, 
+              status: 'finished_inspection' 
+            }
+          );
+          
+          updated++;
+          console.log(`✓ Updated: ${filename} with weight ${roundedWeight}g`);
+          
+          // VERIFY: Read it back to confirm it was saved
+          const verifyResult = await databases.getDocument(
+            DATABASE_ID, 
+            COLLECTION_INSPECTIONS, 
+            docId
+          );
+          
+          if (verifyResult.weight === roundedWeight && verifyResult.status === 'finished_inspection') {
+            verified++;
+            console.log(`✓ VERIFIED: ${filename} - weight is ${verifyResult.weight}g in database`);
+          } else {
+            verifyFailed++;
+            console.log(`✗ VERIFY FAILED: ${filename} - expected ${roundedWeight}g, got ${verifyResult.weight}g`);
+          }
+        } else {
+          notFound++;
+          console.log(`✗ Not found in database: ${filename}`);
+        }
+      } catch (rowErr) {
+        console.error("Row error:", rowErr.message);
+      }
+      
+      // Update progress after each row
+      importProgress.current = i;
+    }
+
+    console.log(`\n========== IMPORT SUMMARY ==========`);
+    console.log(`File: ${file.originalname}`);
+    console.log(`Total rows read: ${rows.length - 1}`);
+    console.log(`Rows SKIPPED (already have correct weight): ${skipped}`);
+    console.log(`Successfully updated: ${updated}`);
+    console.log(`Successfully verified: ${verified}`);
+    console.log(`Verification failed: ${verifyFailed}`);
+    console.log(`Not found in database: ${notFound}`);
+    console.log(`====================================\n`);
+    
+    const responseData = { 
+      ok: true, 
+      success: true,
+      updated: updated,
+      skipped: skipped,
+      verified: verified,
+      verifyFailed: verifyFailed,
+      notFound: notFound,
+      message: `Import complete: ${updated} updated, ${skipped} skipped (already have weight), ${verified} verified`
+    };
+    
+    importProgress = { current: totalRows, total: totalRows, status: 'complete' };
+    
+    res.status(200);
+    res.setHeader('Content-Type', 'application/json');
+    return res.json(responseData);
+    
+  } catch (e) {
+    console.error("Import error:", e.message, e.stack);
+    importProgress = { current: 0, total: 0, status: 'error' };
+    return res.status(200).json({ ok: false, error: e.message });
+  }
+}
+
+// ======================
+// WEIGHT EXCEL EXPORT (SIMPLIFIED)
+// ======================
+
+app.get("/export-weights", requireWeightEditAuth, async (req, res) => {
+  try {
+    // Fetch ALL inspections (not just those with weights)
+    const result = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      [Query.limit(10000)]  // Increased limit to get all files
+    );
+
+    // Create export data for ALL files
+    const dataWithWeights = result.documents
+      .map(doc => {
+        // Extract just the number from filename (e.g., "483.txt" → "483")
+        const fileNumber = doc.filename.replace('.txt', '').replace(/[^0-9]/g, '');
+        return {
+          'ファイル番号': fileNumber,  // Just the number, no .txt
+          '重量 (g)': doc.weight || ''  // Weight (empty if not filled)
+        };
+      })
+      .sort((a, b) => {
+        const numA = parseInt(a['ファイル番号']) || 0;
+        const numB = parseInt(b['ファイル番号']) || 0;
+        return numA - numB;
+      });
+
+    if (dataWithWeights.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No files in database to export'
+      });
+    }
+
+    // Create workbook
+    const worksheet = XLSX.utils.json_to_sheet(dataWithWeights);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Weights');
+
+    // Set column widths
+    worksheet['!cols'] = [
+      { wch: 15 }, // ファイル番号
+      { wch: 12 }  // 重量 (g)
+    ];
+
+    // Generate Excel file
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    // Send file with proper headers
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="weights_${new Date().toISOString().split('T')[0]}.xlsx"`);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.send(buffer);
+  } catch (error) {
+    console.error("Error exporting weights:", error);
+    res.setHeader('Content-Type', 'application/json');
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// ======================
+// MEASUREMENT EXCEL EXPORT
+// ======================
+
+app.get("/export-measurements", requireAuth, async (req, res) => {
+  try {
+    // Fetch all inspections with measurements
+    const result = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_INSPECTIONS,
+      [Query.limit(1000)]
+    );
+
+    // Build data array with measurements
+    const dataWithMeasurements = result.documents
+      .map(doc => ({
+        filename: doc.filename,
+        lot: doc.lot || '',
+        weight: doc.weight || '',
+        status: doc.status || 'unknown',
+        measurementA: doc.measurementA || '',
+        measurementB: doc.measurementB || '',
+        measurementC: doc.measurementC || '',
+        measurementD: doc.measurementD || '',
+        measurementE: doc.measurementE || '',
+        measurementF: doc.measurementF || '',
+        measurementG1: doc.measurementG1 || '',
+        measurementG2: doc.measurementG2 || '',
+        measurementG3: doc.measurementG3 || '',
+        measurementG4: doc.measurementG4 || '',
+        measurementH: doc.measurementH || '',
+        measurementI: doc.measurementI || '',
+        measurementJ: doc.measurementJ || '',
+        measurementK: doc.measurementK || '',
+        measurementL: doc.measurementL || '',
+        isValidA: doc.isValidA || '',
+        isValidB: doc.isValidB || '',
+        isValidC: doc.isValidC || '',
+        isValidD: doc.isValidD || '',
+        isValidE: doc.isValidE || '',
+        isValidF: doc.isValidF || '',
+        isValidG1: doc.isValidG1 || '',
+        isValidG2: doc.isValidG2 || '',
+        isValidG3: doc.isValidG3 || '',
+        isValidG4: doc.isValidG4 || '',
+        isValidH: doc.isValidH || '',
+        isValidI: doc.isValidI || '',
+        isValidJ: doc.isValidJ || '',
+        isValidK: doc.isValidK || '',
+        isValidL: doc.isValidL || ''
+      }))
+      .sort((a, b) => {
+        const numA = parseInt(a.filename.replace('.txt', '')) || 0;
+        const numB = parseInt(b.filename.replace('.txt', '')) || 0;
+        return numA - numB;
+      });
+
+    if (dataWithMeasurements.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No measurement data to export'
+      });
+    }
+
+    // Create workbook
+    const worksheet = XLSX.utils.json_to_sheet(dataWithMeasurements);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Measurements');
+
+    // Set column widths
+    worksheet['!cols'] = Array(35).fill({ wch: 12 });
+
+    // Generate Excel file
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    // Send file with proper headers
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="measurements_export_${new Date().toISOString().split('T')[0]}.xlsx"`);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.send(buffer);
+  } catch (error) {
+    console.error("Error exporting measurements:", error);
+    res.setHeader('Content-Type', 'application/json');
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// ======================
+// ARCHIVE FILES (Hide without deleting)
+// ======================
+
+app.post("/archive-files", requireAuth, async (req, res) => {
+  try {
+    const { fileIds } = req.body;
+    
+    if (!Array.isArray(fileIds) || fileIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No file IDs provided'
+      });
+    }
+
+    let archived = 0;
+    let errors = [];
+
+    for (const fileId of fileIds) {
+      try {
+        await databases.updateDocument(
+          DATABASE_ID,
+          COLLECTION_INSPECTIONS,
+          fileId,
+          { is_archived: true }
+        );
+        archived++;
+      } catch (err) {
+        console.error(`Failed to archive ${fileId}:`, err);
+        errors.push(fileId);
+      }
+    }
+
+    res.json({
+      success: true,
+      archived: archived,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    console.error("Error archiving files:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ======================
+// UNARCHIVE FILES (Restore visibility)
+// ======================
+
+app.post("/unarchive-files", requireAuth, async (req, res) => {
+  try {
+    const { fileIds } = req.body;
+    
+    if (!Array.isArray(fileIds) || fileIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No file IDs provided'
+      });
+    }
+
+    let unarchived = 0;
+    let errors = [];
+
+    for (const fileId of fileIds) {
+      try {
+        await databases.updateDocument(
+          DATABASE_ID,
+          COLLECTION_INSPECTIONS,
+          fileId,
+          { is_archived: false }
+        );
+        unarchived++;
+      } catch (err) {
+        console.error(`Failed to unarchive ${fileId}:`, err);
+        errors.push(fileId);
+      }
+    }
+
+    res.json({
+      success: true,
+      unarchived: unarchived,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    console.error("Error unarchiving files:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ======================
+// SUMMARY ROUTE
+// ======================
+
+app.get("/summary", requireAuth, async (req, res) => {
+  try {
+    const selectedFilesParam = req.query.selectedFiles || "";
+    const fileIds = selectedFilesParam
+      .split(",")
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0);
+
+    if (fileIds.length === 0) {
+      return res.redirect("/");
+    }
+
+    const files = [];
+    const fileData = {};
+
+    for (const fileId of fileIds) {
+      try {
+        const inspection = await databases.getDocument(
+          DATABASE_ID,
+          COLLECTION_INSPECTIONS,
+          fileId
+        );
+
+        files.push(inspection);
+
+        const measurements = {
+          A: { value: inspection.measurementA, isValid: inspection.isValidA },
+          B: { value: inspection.measurementB, isValid: inspection.isValidB },
+          C: { value: inspection.measurementC, isValid: inspection.isValidC },
+          D: { value: inspection.measurementD, isValid: inspection.isValidD },
+          E: { value: inspection.measurementE, isValid: inspection.isValidE },
+          F: { value: inspection.measurementF, isValid: inspection.isValidF },
+          G1: { value: inspection.measurementG1, isValid: inspection.isValidG1 },
+          G2: { value: inspection.measurementG2, isValid: inspection.isValidG2 },
+          G3: { value: inspection.measurementG3, isValid: inspection.isValidG3 },
+          G4: { value: inspection.measurementG4, isValid: inspection.isValidG4 },
+          H: { value: inspection.measurementH, isValid: inspection.isValidH },
+          I: { value: inspection.measurementI, isValid: inspection.isValidI },
+          J: { value: inspection.measurementJ, isValid: inspection.isValidJ },
+          K: { value: inspection.measurementK, isValid: inspection.isValidK },
+          L: { value: inspection.measurementL, isValid: inspection.isValidL }
+        };
+
+        const gValue = processGValues(measurements);
+        
+        fileData[inspection.$id] = {
+          ...measurements,
+          G: gValue
+        };
+
+      } catch (error) {
+        console.error(`Error fetching inspection ${fileId}:`, error);
+      }
+    }
+
+    res.render("summary", {
+      files: files,
+      fileData: fileData,
+      validationRanges: validationRanges,
+      username: req.session.username,
+      displayName: getDisplayName(req.session.username),
+      inspectorName: getDisplayName(req.session.username),
+    });
+  } catch (error) {
+    console.error("Error generating summary:", error);
+    res.status(500).send("Error generating summary");
+  }
+});
+
+// ======================
+// HEALTH CHECK
+// ======================
+
+app.get("/health", (req, res) => {
+  res.json({
+    status: "OK",
+    database: "Appwrite",
+    schema: "Efficient with Stock Management",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// ======================
+// ERROR HANDLERS
+// ======================
+
+app.use((req, res) => {
+  res.status(404).send("Page not found");
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send("Something went wrong!");
+});
+
+// ======================
+// START SERVER
+// ======================
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Database: Appwrite (Efficient Schema with Stock Management)`);
+  console.log(`Authentication: ENABLED (Database Sessions)`);
+  console.log(`Authorized weight editors: ${AUTHORIZED_USERS.join(', ')}`);
+  console.log(`✨ Stock Management System Enabled`);
+  console.log(`📊 Excel import/export enabled`);
+});
+
+module.exports = app;
