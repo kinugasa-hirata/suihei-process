@@ -783,10 +783,123 @@
         }
       }
 
-      // Initialize on page load
+      // Initialize on page load — render server-side data into tables
       document.addEventListener('DOMContentLoaded', function() {
-        const settings = loadSettings();
-        console.log('Current Lot Number Settings:', settings);
+        loadSettings(); // keep settings modal working
+
+        // ── Orders ────────────────────────────────────────────────────
+        const orders = <%- JSON.stringify(orders) %>;
+        const ordersList  = document.getElementById('ordersList');
+        const ordersTable = document.getElementById('ordersTable');
+        const ordersEmpty = document.getElementById('ordersEmpty');
+
+        if (orders && orders.length > 0) {
+          ordersTable.style.display = '';
+          ordersEmpty.style.display = 'none';
+          orders.forEach(o => {
+            const stock  = o.stockAvailability || {};
+            const items  = stock.allocatedItems || [];
+            const itemIds = items.map(i => i.$id).join(',');
+            const dueDate = o.due_date ? new Date(o.due_date).toLocaleDateString('ja-JP') : '—';
+            const createdAt = o.$createdAt ? new Date(o.$createdAt).toLocaleDateString('ja-JP') : '—';
+            const canShip = stock.status === 'fulfilled' || stock.status === 'partial';
+            const statusMap = { pending:'pending', processing:'processing', shipped:'shipped' };
+            const statusLabel = statusMap[o.status] || o.status;
+            ordersList.insertAdjacentHTML('beforeend', `
+              <tr>
+                <td>${createdAt}</td>
+                <td>${o.quantity}</td>
+                <td>${dueDate}</td>
+                <td><span class="badge bg-secondary">${statusLabel}</span></td>
+                <td>
+                  <span style="background:${stock.color||'#e9ecef'};padding:2px 8px;border-radius:4px;font-size:0.82rem;">
+                    ${stock.label || '—'}
+                  </span>
+                </td>
+                <td style="font-size:0.82rem;">${items.length > 0 ? items.map(i => i.filename || i.$id).join(', ') : '—'}</td>
+                <td>
+                  <button class="btn btn-sm btn-outline-primary me-1" onclick="editOrder('${o.$id}')">編集</button>
+                  <button class="btn btn-sm btn-outline-danger me-1" onclick="deleteOrder('${o.$id}')">削除</button>
+                  ${canShip ? `<button class="btn btn-sm btn-success"
+                    data-order-id="${o.$id}" data-quantity="${o.quantity}" data-item-ids="${itemIds}"
+                    onclick="shipOrderFromBtn(this)">出荷</button>` : ''}
+                </td>
+              </tr>`);
+          });
+        } else {
+          ordersTable.style.display  = 'none';
+          ordersEmpty.style.display  = '';
+        }
+
+        // ── Imports ───────────────────────────────────────────────────
+        const imports = <%- JSON.stringify(imports) %>;
+        const importsList  = document.getElementById('importsList');
+        const importsTable = document.getElementById('importsTable');
+        const importsEmpty = document.getElementById('importsEmpty');
+
+        if (imports && imports.length > 0) {
+          importsTable.style.display = '';
+          importsEmpty.style.display = 'none';
+          imports.forEach(imp => {
+            const scheduled = imp.scheduled_date ? new Date(imp.scheduled_date).toLocaleDateString('ja-JP') : '—';
+            const actual    = imp.actual_date    ? new Date(imp.actual_date).toLocaleDateString('ja-JP')    : '—';
+            const files     = imp.linked_files || [];
+            importsList.insertAdjacentHTML('beforeend', `
+              <tr>
+                <td>${new Date(imp.$createdAt).toLocaleDateString('ja-JP')}</td>
+                <td>${imp.quantity}</td>
+                <td>${scheduled}</td>
+                <td>${actual}</td>
+                <td><span class="badge bg-secondary">${imp.status}</span></td>
+                <td>
+                  <button class="btn btn-sm btn-outline-primary me-1" onclick="editImport('${imp.$id}')">編集</button>
+                  <button class="btn btn-sm btn-outline-danger" onclick="deleteImport('${imp.$id}')">削除</button>
+                  ${files.length > 0 ? `<div style="font-size:0.78rem;color:#666;margin-top:4px;">${files.join(', ')}</div>` : ''}
+                </td>
+              </tr>`);
+          });
+        } else {
+          importsTable.style.display  = 'none';
+          importsEmpty.style.display  = '';
+        }
+
+        // ── Inventory ─────────────────────────────────────────────────
+        const byStatus = <%- JSON.stringify(inspectionsByStatus) %>;
+        const statusConfig = <%- JSON.stringify(statusConfig) %>;
+        const invDiv = document.getElementById('inventoryContent');
+        invDiv.innerHTML = '';
+
+        const statusOrder = ['upcoming_import','imported','inspection','finished_inspection'];
+        let hasAny = false;
+        statusOrder.forEach(key => {
+          const docs = byStatus[key] || [];
+          if (docs.length === 0) return;
+          hasAny = true;
+          const cfg = statusConfig[key] || {};
+          const rows = docs.map(d => `
+            <tr>
+              <td>${d.filename || '—'}</td>
+              <td>${d.lot || '—'}</td>
+              <td>${d.weight != null ? d.weight + 'g' : '<em style="color:#aaa;">未設定</em>'}</td>
+              <td><a href="/files/${d.$id}" target="_blank" class="btn btn-sm btn-outline-secondary">詳細</a></td>
+            </tr>`).join('');
+          invDiv.insertAdjacentHTML('beforeend', `
+            <div style="margin-bottom:1.5rem;">
+              <h5 style="color:${cfg.color||'#333'};margin-bottom:0.5rem;">
+                ${cfg.label || key} <span class="badge bg-secondary ms-1">${docs.length}</span>
+              </h5>
+              <div class="table-responsive">
+                <table class="table table-sm custom-table">
+                  <thead><tr><th>ファイル</th><th>ロット</th><th>重量</th><th></th></tr></thead>
+                  <tbody>${rows}</tbody>
+                </table>
+              </div>
+            </div>`);
+        });
+
+        if (!hasAny) {
+          invDiv.innerHTML = '<p style="color:#6c757d;text-align:center;padding:2rem;">在庫データがありません</p>';
+        }
       });
     </script>
   </body>

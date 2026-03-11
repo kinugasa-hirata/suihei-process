@@ -897,6 +897,51 @@ app.delete("/api/orders/:orderId", requireAuth, async (req, res) => {
   }
 });
 
+// Get single order (for edit modal)
+app.get("/api/orders/:orderId", requireAuth, async (req, res) => {
+  try {
+    const doc = await databases.getDocument(DATABASE_ID, COLLECTION_ORDERS, req.params.orderId);
+    res.json(doc);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Ship order: mark order as shipped, mark allocated inspections as shipped
+app.put("/api/orders/:orderId/ship", requireAuth, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { itemIds } = req.body; // array of inspection $ids to mark shipped
+
+    // Mark each inspection as shipped
+    let shippedCount = 0;
+    if (itemIds && itemIds.length > 0) {
+      for (const itemId of itemIds) {
+        await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, itemId, { status: 'shipped' });
+        shippedCount++;
+      }
+    }
+
+    // Mark the order as shipped
+    await databases.updateDocument(DATABASE_ID, COLLECTION_ORDERS, orderId, { status: 'shipped' });
+
+    res.json({ success: true, shippedCount });
+  } catch (error) {
+    console.error("Error shipping order:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get single import (for edit modal)
+app.get("/api/imports/:importId", requireAuth, async (req, res) => {
+  try {
+    const doc = await databases.getDocument(DATABASE_ID, COLLECTION_IMPORTS, req.params.importId);
+    res.json(doc);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ======================
 // IMPORT MANAGEMENT API
 // ======================
