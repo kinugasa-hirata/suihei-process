@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,46 +10,259 @@
     .container { max-width: 1200px; margin-top: 2rem; }
     .header { background: white; padding: 2rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin-top: 2rem; }
-    .file-card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-decoration: none; color: inherit; }
+    .file-card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-decoration: none; color: inherit; display: block; }
     .file-card:hover { box-shadow: 0 6px 16px rgba(0,0,0,0.15); }
     .file-number { font-size: 1.8rem; font-weight: bold; color: #0066cc; }
+
+    /* Upload area */
+    .upload-zone {
+      border: 2px dashed #b0c4de;
+      border-radius: 8px;
+      padding: 2.5rem 2rem;
+      text-align: center;
+      background: white;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .upload-zone:hover,
+    .upload-zone.drag-over {
+      border-color: #0d6efd;
+      background: #f0f6ff;
+    }
+    .upload-zone .upload-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .upload-zone p { margin: 0; color: #555; }
+    .upload-zone .hint { font-size: 0.82rem; color: #999; margin-top: 0.4rem; }
+
+    /* Result list */
+    .result-item { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.4rem 0; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
+    .result-item:last-child { border-bottom: none; }
+    .badge-ok   { background: #d1e7dd; color: #0a3622; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+    .badge-upd  { background: #cff4fc; color: #055160; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+    .badge-fail { background: #f8d7da; color: #58151c; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>水平ノズル検査</h1>
-      <p>Horizontal Nozzle Inspection System</p>
-      <div style="margin-top: 1rem;">
-        <strong><%= displayName %></strong>
-        <form action="/logout" method="POST" style="display: inline; margin-left: 1rem;">
-          <button type="submit" class="btn btn-sm btn-outline-secondary">Logout</button>
-        </form>
-      </div>
-    </div>
+<div class="container">
 
-    <h2>ファイル一覧</h2>
-    <div class="file-grid">
-      <% if (files && files.length > 0) { %>
-        <% for (var i = 0; i < files.length; i++) { %>
-          <a href="/files/<%= files[i].id %>" class="file-card">
-            <div class="file-number"><%= files[i].fileNumber %></div>
-            <div style="margin: 0.5rem 0; color: #666;">
-              <% if (files[i].weight) { %>
-                Weight: <%= files[i].weight %>g
-              <% } else { %>
-                <em>未設定</em>
-              <% } %>
-            </div>
-            <div style="display: inline-block; padding: 0.4rem 0.8rem; border-radius: 16px; font-size: 0.8rem; margin-top: 0.5rem; background-color: <%= files[i].statusColor %>; opacity: <%= files[i].statusOpacity %>; color: #333;">
-              <%= files[i].statusLabel %>
-            </div>
-          </a>
-        <% } %>
-      <% } else { %>
-        <p>No files to display</p>
-      <% } %>
+  <!-- Header -->
+  <div class="header">
+    <h1>水平ノズル検査</h1>
+    <p>Horizontal Nozzle Inspection System</p>
+    <div style="margin-top: 1rem;">
+      <strong><%= displayName %></strong>
+      <form action="/logout" method="POST" style="display:inline; margin-left:1rem;">
+        <button type="submit" class="btn btn-sm btn-outline-secondary">Logout</button>
+      </form>
     </div>
   </div>
+
+  <!-- ===== TXT Upload Section ===== -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-body">
+      <h5 class="card-title mb-3">📂 TXTファイルをアップロード</h5>
+
+      <!-- Drop zone -->
+      <div class="upload-zone mb-3" id="dropZone">
+        <div class="upload-icon">📄</div>
+        <p><strong>ここにファイルをドロップ</strong>、または下のボタンから選択</p>
+        <p class="hint">複数ファイル対応（.txt のみ）</p>
+      </div>
+
+      <!-- Hidden file input + visible controls -->
+      <input type="file" id="fileInput" accept=".txt" multiple style="display:none;">
+      <div class="d-flex align-items-center gap-3 flex-wrap">
+        <button class="btn btn-outline-primary" onclick="document.getElementById('fileInput').click()">
+          📁 ファイルを選択
+        </button>
+        <span id="selectedFilesLabel" class="text-muted" style="font-size:0.9rem;">
+          選択されていません
+        </span>
+        <button class="btn btn-success ms-auto" id="uploadBtn" disabled onclick="doUpload()">
+          ⬆ アップロード
+        </button>
+      </div>
+
+      <!-- Progress bar (hidden until upload starts) -->
+      <div id="progressWrap" class="mt-3" style="display:none;">
+        <div class="progress" style="height: 8px;">
+          <div id="progressBar"
+               class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+               style="width:100%;"></div>
+        </div>
+        <p class="text-muted mt-1" style="font-size:0.85rem;">アップロード中...</p>
+      </div>
+
+      <!-- Results (hidden until response arrives) -->
+      <div id="uploadResults" class="mt-3" style="display:none;">
+        <hr class="mt-2 mb-2">
+        <h6 id="resultsSummary" class="mb-2"></h6>
+        <div id="resultsList"></div>
+      </div>
+    </div>
+  </div>
+  <!-- ===== End Upload Section ===== -->
+
+  <!-- File list heading -->
+  <h2>ファイル一覧</h2>
+
+  <!-- File grid -->
+  <div class="file-grid">
+    <% if (files && files.length > 0) { %>
+      <% for (var i = 0; i < files.length; i++) { %>
+        <a href="/files/<%= files[i].$id %>" class="file-card">
+          <div class="file-number"><%= files[i].fileNumber %></div>
+          <div style="margin: 0.5rem 0; color: #666;">
+            <% if (files[i].weight) { %>
+              Weight: <%= files[i].weight %>g
+            <% } else { %>
+              <em>未設定</em>
+            <% } %>
+          </div>
+          <div style="display:inline-block; padding:0.4rem 0.8rem; border-radius:16px; font-size:0.8rem; margin-top:0.5rem; background-color:<%= files[i].statusColor || '#e9ecef' %>; color:#333;">
+            <%= files[i].statusLabel %>
+          </div>
+        </a>
+      <% } %>
+    <% } else { %>
+      <p>No files to display</p>
+    <% } %>
+  </div>
+
+</div><!-- /container -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  const fileInput = document.getElementById('fileInput');
+  const dropZone  = document.getElementById('dropZone');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const label     = document.getElementById('selectedFilesLabel');
+
+  let selectedFiles = null;
+
+  // ── File input change ───────────────────────────────────────────────
+  fileInput.addEventListener('change', () => setFiles(fileInput.files));
+
+  function setFiles(files) {
+    if (!files || files.length === 0) return;
+    const valid = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.txt'));
+    if (valid.length === 0) {
+      alert('.txt ファイルのみ対応しています');
+      return;
+    }
+    if (valid.length < files.length) {
+      alert(`.txt 以外のファイルは除外されました（${files.length - valid.length} 件）`);
+    }
+    selectedFiles = valid;
+    label.textContent = valid.length === 1
+      ? valid[0].name
+      : `${valid.length} ファイル選択済み`;
+    uploadBtn.disabled = false;
+    // Clear old results when new files are chosen
+    document.getElementById('uploadResults').style.display = 'none';
+  }
+
+  // ── Drag & Drop ─────────────────────────────────────────────────────
+  dropZone.addEventListener('click', () => fileInput.click());
+
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+  dropZone.addEventListener('dragleave', e => {
+    // Only remove if leaving the zone entirely (not a child element)
+    if (!dropZone.contains(e.relatedTarget)) {
+      dropZone.classList.remove('drag-over');
+    }
+  });
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    setFiles(e.dataTransfer.files);
+  });
+
+  // ── Upload ──────────────────────────────────────────────────────────
+  async function doUpload() {
+    if (!selectedFiles || selectedFiles.length === 0) return;
+
+    uploadBtn.disabled = true;
+    document.getElementById('progressWrap').style.display  = 'block';
+    document.getElementById('uploadResults').style.display = 'none';
+
+    const formData = new FormData();
+    selectedFiles.forEach(f => formData.append('files', f));
+
+    try {
+      const res  = await fetch('/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      showResults(data);
+    } catch (err) {
+      showResults({ success: false, error: err.message });
+    } finally {
+      document.getElementById('progressWrap').style.display = 'none';
+      uploadBtn.disabled = false;
+    }
+  }
+
+  // ── Render results ──────────────────────────────────────────────────
+  function showResults(data) {
+    const wrap    = document.getElementById('uploadResults');
+    const summary = document.getElementById('resultsSummary');
+    const list    = document.getElementById('resultsList');
+
+    wrap.style.display = 'block';
+    list.innerHTML     = '';
+
+    // Hard failure (network / server crash before any processing)
+    if (!data.success && !data.results) {
+      summary.className   = 'mb-2 text-danger';
+      summary.textContent = '❌ アップロードに失敗しました';
+      list.innerHTML = `<p class="text-danger" style="font-size:.9rem;">${data.error || '不明なエラー'}</p>`;
+      return;
+    }
+
+    const r   = data.results  || {};
+    const ok  = r.successful  || [];
+    const upd = r.updated     || [];
+    const ng  = r.failed      || [];
+    const total = ok.length + upd.length + ng.length;
+
+    const allFailed = ng.length === total && total > 0;
+    summary.className   = 'mb-2 ' + (allFailed ? 'text-danger' : 'text-success');
+    summary.textContent =
+      `結果: ${ok.length} 件 新規登録  /  ${upd.length} 件 更新（プレースホルダー置換）  /  ${ng.length} 件 失敗  — 合計 ${total} 件`;
+
+    // New uploads
+    ok.forEach(item => {
+      list.insertAdjacentHTML('beforeend', `
+        <div class="result-item">
+          <span class="badge-ok">新規</span>
+          <span>${item.filename}</span>
+        </div>`);
+    });
+
+    // Placeholder updates
+    upd.forEach(item => {
+      list.insertAdjacentHTML('beforeend', `
+        <div class="result-item">
+          <span class="badge-upd">更新</span>
+          <span>${item.filename} — プレースホルダーを実データで置換しました</span>
+        </div>`);
+    });
+
+    // Failures
+    ng.forEach(item => {
+      list.insertAdjacentHTML('beforeend', `
+        <div class="result-item">
+          <span class="badge-fail">失敗</span>
+          <span>${item.filename} — ${item.error || '不明なエラー'}</span>
+        </div>`);
+    });
+
+    // Auto-reload the file grid after a short delay so new cards appear
+    if (ok.length + upd.length > 0) {
+      setTimeout(() => location.reload(), 2000);
+    }
+  }
+</script>
 </body>
 </html>
