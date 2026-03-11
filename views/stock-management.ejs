@@ -934,31 +934,92 @@
         }
 
         // ── Imports ───────────────────────────────────────────────────
+        // Build a flat map of lot → files[] from ALL inspections (regardless of status)
+        const allDocsByLot = {};
+        Object.values(byStatus).forEach(docs => {
+          docs.forEach(d => {
+            const lot = d.lot != null ? String(d.lot) : null;
+            if (!lot) return;
+            if (!allDocsByLot[lot]) allDocsByLot[lot] = [];
+            allDocsByLot[lot].push(parseInt((d.filename||'').replace('.txt','')) || 0);
+          });
+        });
+        Object.values(allDocsByLot).forEach(arr => arr.sort((a,b) => a - b));
+
         const imports = <%- JSON.stringify(imports) %>;
         const importsList  = document.getElementById('importsList');
         const importsTable = document.getElementById('importsTable');
         const importsEmpty = document.getElementById('importsEmpty');
 
+        // Also build lot → files from import_id-linked files (for newer imports)
+        const importLinkedLots = {}; // importId → lot numbers[]
+        imports.forEach(imp => {
+          const files = imp.linked_files || [];
+          if (files.length > 0) {
+            importLinkedLots[imp.$id] = files
+              .map(f => parseInt(f.replace('.txt','')) || 0)
+              .filter(n => n > 0)
+              .sort((a,b) => a - b);
+          }
+        });
+
+        // For imports with no linked files, assign unmatched lots sequentially by createdAt
+        const usedLots = new Set(
+          Object.values(importLinkedLots).flat().map(n => {
+            // find which lot this number belongs to
+            for (const [lot, nums] of Object.entries(allDocsByLot)) {
+              if (nums.includes(n)) return lot;
+            }
+            return null;
+          }).filter(Boolean)
+        );
+        const unlinkedLotsSorted = Object.keys(allDocsByLot)
+          .filter(lot => !usedLots.has(lot))
+          .sort((a,b) => (parseInt(a)||0) - (parseInt(b)||0));
+
+        const importsNoLink = [...imports]
+          .filter(imp => !importLinkedLots[imp.$id])
+          .sort((a,b) => new Date(a.$createdAt) - new Date(b.$createdAt));
+
+        const fallbackLotMap = {}; // importId → nums[]
+        importsNoLink.forEach((imp, i) => {
+          const lot = unlinkedLotsSorted[i];
+          if (lot) fallbackLotMap[imp.$id] = allDocsByLot[lot] || [];
+        });
+
         if (imports && imports.length > 0) {
           importsTable.style.display = '';
           importsEmpty.style.display = 'none';
-          imports.forEach(imp => {
+
+          // Sort imports by scheduled_date ascending (oldest first = lowest lot)
+          const sortedImports = [...imports].sort((a,b) =>
+            new Date(a.scheduled_date||a.$createdAt) - new Date(b.scheduled_date||b.$createdAt)
+          );
+
+          sortedImports.forEach(imp => {
+            const nums = importLinkedLots[imp.$id] || fallbackLotMap[imp.$id] || [];
+            const chips = nums.map(n =>
+              `<span style="display:inline-block;background:#e2f0fb;border:1px solid #9ec5fe;border-radius:4px;padding:1px 8px;font-size:0.8rem;margin:2px;color:#084298;">${n}</span>`
+            ).join('');
+
             const scheduled = imp.scheduled_date ? new Date(imp.scheduled_date).toLocaleDateString('ja-JP') : '—';
             const actual    = imp.actual_date    ? new Date(imp.actual_date).toLocaleDateString('ja-JP')    : '—';
-            const files     = imp.linked_files || [];
+            const statusColors = { scheduled:'#0dcaf0', arrived:'#198754', imported:'#6c757d' };
+            const stColor = statusColors[imp.status] || '#6c757d';
+
             importsList.insertAdjacentHTML('beforeend', `
               <tr>
                 <td style="white-space:nowrap;">${new Date(imp.$createdAt).toLocaleDateString('ja-JP')}</td>
                 <td>${imp.quantity}</td>
                 <td style="white-space:nowrap;">${scheduled}</td>
                 <td style="white-space:nowrap;">${actual}</td>
-                <td><span class="badge bg-secondary">${imp.status}</span></td>
+                <td><span style="background:${stColor};color:white;padding:2px 8px;border-radius:4px;font-size:0.78rem;">${imp.status}</span></td>
                 <td>
-                  <div style="display:flex;flex-wrap:wrap;gap:2px;align-items:center;">
+                  <div style="display:flex;flex-wrap:wrap;gap:2px;align-items:center;margin-bottom:4px;">
                     <button class="btn btn-sm btn-outline-primary me-1" onclick="editImport('${imp.$id}')">編集</button>
                     <button class="btn btn-sm btn-outline-danger me-1" onclick="deleteImport('${imp.$id}')">削除</button>
-                    ${fileChipsFromNames(files)}
                   </div>
+                  <div style="line-height:1.8;">${chips || '<em style="color:#aaa;font-size:0.8rem;">—</em>'}</div>
                 </td>
               </tr>`);
           });
