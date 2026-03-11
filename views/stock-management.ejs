@@ -848,8 +848,38 @@
         const settings = loadSettings();
         const MIN_FILE_NUM = settings.minFileNum || 488;
 
-        // ── Orders ────────────────────────────────────────────────────
-        const orders = <%- JSON.stringify(orders) %>;
+        // ── Orders: re-allocate using only inventory >= MIN_FILE_NUM ──
+        // This correctly ignores already-shipped products (< MIN_FILE_NUM)
+        const orders  = <%- JSON.stringify(orders) %>;
+        const byStatus = <%- JSON.stringify(inspectionsByStatus) %>;
+
+        // Flatten all inventory items >= MIN_FILE_NUM, priority: finished → inspection → imported → upcoming
+        const INV_PRIORITY = ['finished_inspection','inspection','imported','upcoming_import'];
+        const flatInventory = [];
+        INV_PRIORITY.forEach((st, pri) => {
+          (byStatus[st] || []).forEach(d => {
+            const n = parseInt((d.filename||'').replace('.txt','')) || 0;
+            if (n >= MIN_FILE_NUM) flatInventory.push({ ...d, _num: n, _pri: pri });
+          });
+        });
+        flatInventory.sort((a, b) => a._pri !== b._pri ? a._pri - b._pri : a._num - b._num);
+
+        // Allocate greedily by due-date order (earliest due first gets first pick)
+        const ordersByDue = [...orders].sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+        const takenIds = new Set();
+        const reAlloc  = {}; // orderId → items[]
+        ordersByDue.forEach(o => {
+          const qty = parseInt(o.quantity) || 0;
+          const picked = [];
+          for (const item of flatInventory) {
+            if (!takenIds.has(item.$id) && picked.length < qty) {
+              picked.push(item);
+              takenIds.add(item.$id);
+            }
+          }
+          reAlloc[o.$id] = picked; // already sorted by priority then num
+        });
+
         const ordersList  = document.getElementById('ordersList');
         const ordersTable = document.getElementById('ordersTable');
         const ordersEmpty = document.getElementById('ordersEmpty');
@@ -857,36 +887,38 @@
         if (orders && orders.length > 0) {
           ordersTable.style.display = '';
           ordersEmpty.style.display = 'none';
-          orders.forEach(o => {
-            const stock  = o.stockAvailability || {};
-            const allItems = stock.allocatedItems || [];
-            // Filter to only show file numbers >= MIN_FILE_NUM
-            const items = allItems.filter(i => {
-              const n = parseInt((i.filename||'').replace('.txt','')) || 0;
-              return n >= MIN_FILE_NUM;
-            }).sort((a, b) => {
-              const na = parseInt((a.filename||'').replace('.txt','')) || 0;
-              const nb = parseInt((b.filename||'').replace('.txt','')) || 0;
-              return na - nb;
-            });
+          // Display in due-date order (earliest first)
+          ordersByDue.forEach(o => {
+            const items   = reAlloc[o.$id] || [];
             const itemIds = items.map(i => i.$id).join(',');
+            const filled  = items.length;
+            const needed  = parseInt(o.quantity) || 0;
             const dueDate   = o.due_date   ? new Date(o.due_date).toLocaleDateString('ja-JP')   : '—';
             const createdAt = o.$createdAt ? new Date(o.$createdAt).toLocaleDateString('ja-JP') : '—';
-            const canShip = items.length > 0;
+
+            // Stock status badge based on re-allocation
+            let stockBg, stockLabel;
+            if (filled === 0)           { stockBg = '#6c757d'; stockLabel = '在庫なし'; }
+            else if (filled < needed)   { stockBg = '#fd7e14'; stockLabel = `不足 (${filled}/${needed})`; }
+            else                        { stockBg = '#198754'; stockLabel = `出荷可能 (${filled})`; }
+
+            const canShip = filled > 0;
             const statusColors = { pending:'#ffc107', processing:'#0d6efd', completed:'#198754', cancelled:'#dc3545' };
-            const statusColor = statusColors[o.status] || '#6c757d';
+            const statusColor  = statusColors[o.status] || '#6c757d';
+
+            // Chip display: group consecutive numbers as ranges for compactness
+            const chips = items.map(i =>
+              `<span style="display:inline-block;background:#e9ecef;border-radius:4px;padding:1px 7px;font-size:0.78rem;margin:2px;">${i._num}</span>`
+            ).join('');
+
             ordersList.insertAdjacentHTML('beforeend', `
               <tr>
                 <td style="white-space:nowrap;">${createdAt}</td>
-                <td>${o.quantity}</td>
+                <td>${needed}</td>
                 <td style="white-space:nowrap;">${dueDate}</td>
                 <td><span style="background:${statusColor};color:white;padding:2px 8px;border-radius:4px;font-size:0.78rem;">${o.status}</span></td>
-                <td>
-                  <span style="background:${stock.color||'#e9ecef'};color:white;padding:2px 8px;border-radius:4px;font-size:0.78rem;display:inline-block;">
-                    ${stock.label || '—'} ${items.length > 0 ? '('+items.length+')' : ''}
-                  </span>
-                </td>
-                <td>${fileChips(items, MIN_FILE_NUM)}</td>
+                <td><span style="background:${stockBg};color:white;padding:2px 8px;border-radius:4px;font-size:0.78rem;white-space:nowrap;">${stockLabel}</span></td>
+                <td style="line-height:1.8;">${chips || '<em style="color:#aaa;font-size:0.8rem;">—</em>'}</td>
                 <td style="white-space:nowrap;">
                   <button class="btn btn-sm btn-outline-primary me-1" onclick="editOrder('${o.$id}')">編集</button>
                   <button class="btn btn-sm btn-outline-danger me-1" onclick="deleteOrder('${o.$id}')">削除</button>
@@ -936,7 +968,6 @@
         }
 
         // ── Inventory: compact lot-grouped chip view ──────────────────
-        const byStatus = <%- JSON.stringify(inspectionsByStatus) %>;
         const statusConfig = <%- JSON.stringify(statusConfig) %>;
         const invDiv = document.getElementById('inventoryContent');
         invDiv.innerHTML = '';
