@@ -436,6 +436,21 @@
             </small>
           </div>
 
+          <div class="mb-3">
+            <label for="minFileNum" class="form-label-custom">注文表示の最小製品番号</label>
+            <input 
+              type="number" 
+              class="form-control" 
+              id="minFileNum" 
+              name="minFileNum" 
+              min="1" 
+              placeholder="例: 488"
+            >
+            <small class="text-muted">
+              注文の割当製品表示でこの番号より小さい製品番号を非表示にします（出荷済の古い製品を除外）。
+            </small>
+          </div>
+
           <div class="alert alert-info" role="alert">
             <strong>使い方:</strong> 
             <ul style="margin: 0.5rem 0 0 0; padding-left: 1.5rem;">
@@ -536,7 +551,7 @@
         if (settings) {
           return JSON.parse(settings);
         }
-        return { startNumber: 434, currentNumber: 434 };
+        return { startNumber: 434, currentNumber: 434, minFileNum: 488 };
       }
 
       function saveSettings(settings) {
@@ -555,6 +570,7 @@
         const settings = loadSettings();
         document.getElementById('lotStartNumber').value = settings.startNumber;
         document.getElementById('lotCurrentNumber').value = settings.currentNumber;
+        document.getElementById('minFileNum').value = settings.minFileNum || 488;
         document.getElementById('settingsModalBackdrop').classList.add('show');
         document.getElementById('settingsModal').classList.add('show');
       }
@@ -578,7 +594,8 @@
 
         const settings = {
           startNumber: startNumber,
-          currentNumber: startNumber
+          currentNumber: startNumber,
+          minFileNum: parseInt(document.getElementById('minFileNum').value) || 488
         };
         
         saveSettings(settings);
@@ -784,8 +801,52 @@
       }
 
       // Initialize on page load — render server-side data into tables
+      // ── Chip helper: render lot number chips ascending ──────────────
+      function fileChips(items, minNum) {
+        const sorted = [...items]
+          .map(i => ({ num: parseInt((i.filename||'').replace('.txt','')) || 0, id: i.$id, filename: i.filename }))
+          .filter(i => i.num >= (minNum || 0))
+          .sort((a, b) => a.num - b.num);
+        if (sorted.length === 0) return '<em style="color:#aaa;font-size:0.8rem;">なし</em>';
+        return sorted.map(i =>
+          `<span style="display:inline-block;background:#e9ecef;border-radius:4px;padding:1px 7px;font-size:0.78rem;margin:2px;">${i.num}</span>`
+        ).join('');
+      }
+
+      // Same but from raw string filenames (imports linked_files array)
+      function fileChipsFromNames(names) {
+        const nums = names
+          .map(n => parseInt(n.replace('.txt','')) || 0)
+          .filter(n => n > 0)
+          .sort((a, b) => a - b);
+        if (nums.length === 0) return '';
+        return nums.map(n =>
+          `<span style="display:inline-block;background:#e2f0fb;border-radius:4px;padding:1px 7px;font-size:0.78rem;margin:2px;">${n}</span>`
+        ).join('');
+      }
+
+      // Group docs by lot number, return sorted array of { lot, nums[] }
+      function groupByLot(docs) {
+        const map = {};
+        docs.forEach(d => {
+          const lot = d.lot != null ? String(d.lot) : '—';
+          const num = parseInt((d.filename||'').replace('.txt','')) || 0;
+          if (!map[lot]) map[lot] = { lot, nums: [], docs: [] };
+          map[lot].nums.push(num);
+          map[lot].docs.push(d);
+        });
+        // Sort lots ascending by lot number, then sort each group's nums ascending
+        return Object.values(map)
+          .sort((a, b) => (parseInt(a.lot)||0) - (parseInt(b.lot)||0))
+          .map(g => ({ ...g, nums: g.nums.sort((a,b) => a - b) }));
+      }
+
       document.addEventListener('DOMContentLoaded', function() {
-        loadSettings(); // keep settings modal working
+        loadSettings();
+
+        // ── Settings: min file number to display (default 488) ──────
+        const settings = loadSettings();
+        const MIN_FILE_NUM = settings.minFileNum || 488;
 
         // ── Orders ────────────────────────────────────────────────────
         const orders = <%- JSON.stringify(orders) %>;
@@ -798,26 +859,35 @@
           ordersEmpty.style.display = 'none';
           orders.forEach(o => {
             const stock  = o.stockAvailability || {};
-            const items  = stock.allocatedItems || [];
+            const allItems = stock.allocatedItems || [];
+            // Filter to only show file numbers >= MIN_FILE_NUM
+            const items = allItems.filter(i => {
+              const n = parseInt((i.filename||'').replace('.txt','')) || 0;
+              return n >= MIN_FILE_NUM;
+            }).sort((a, b) => {
+              const na = parseInt((a.filename||'').replace('.txt','')) || 0;
+              const nb = parseInt((b.filename||'').replace('.txt','')) || 0;
+              return na - nb;
+            });
             const itemIds = items.map(i => i.$id).join(',');
-            const dueDate = o.due_date ? new Date(o.due_date).toLocaleDateString('ja-JP') : '—';
+            const dueDate   = o.due_date   ? new Date(o.due_date).toLocaleDateString('ja-JP')   : '—';
             const createdAt = o.$createdAt ? new Date(o.$createdAt).toLocaleDateString('ja-JP') : '—';
-            const canShip = stock.status === 'fulfilled' || stock.status === 'partial';
-            const statusMap = { pending:'pending', processing:'processing', shipped:'shipped' };
-            const statusLabel = statusMap[o.status] || o.status;
+            const canShip = items.length > 0;
+            const statusColors = { pending:'#ffc107', processing:'#0d6efd', completed:'#198754', cancelled:'#dc3545' };
+            const statusColor = statusColors[o.status] || '#6c757d';
             ordersList.insertAdjacentHTML('beforeend', `
               <tr>
-                <td>${createdAt}</td>
+                <td style="white-space:nowrap;">${createdAt}</td>
                 <td>${o.quantity}</td>
-                <td>${dueDate}</td>
-                <td><span class="badge bg-secondary">${statusLabel}</span></td>
+                <td style="white-space:nowrap;">${dueDate}</td>
+                <td><span style="background:${statusColor};color:white;padding:2px 8px;border-radius:4px;font-size:0.78rem;">${o.status}</span></td>
                 <td>
-                  <span style="background:${stock.color||'#e9ecef'};padding:2px 8px;border-radius:4px;font-size:0.82rem;">
-                    ${stock.label || '—'}
+                  <span style="background:${stock.color||'#e9ecef'};color:white;padding:2px 8px;border-radius:4px;font-size:0.78rem;display:inline-block;">
+                    ${stock.label || '—'} ${items.length > 0 ? '('+items.length+')' : ''}
                   </span>
                 </td>
-                <td style="font-size:0.82rem;">${items.length > 0 ? items.map(i => i.filename || i.$id).join(', ') : '—'}</td>
-                <td>
+                <td>${fileChips(items, MIN_FILE_NUM)}</td>
+                <td style="white-space:nowrap;">
                   <button class="btn btn-sm btn-outline-primary me-1" onclick="editOrder('${o.$id}')">編集</button>
                   <button class="btn btn-sm btn-outline-danger me-1" onclick="deleteOrder('${o.$id}')">削除</button>
                   ${canShip ? `<button class="btn btn-sm btn-success"
@@ -846,15 +916,17 @@
             const files     = imp.linked_files || [];
             importsList.insertAdjacentHTML('beforeend', `
               <tr>
-                <td>${new Date(imp.$createdAt).toLocaleDateString('ja-JP')}</td>
+                <td style="white-space:nowrap;">${new Date(imp.$createdAt).toLocaleDateString('ja-JP')}</td>
                 <td>${imp.quantity}</td>
-                <td>${scheduled}</td>
-                <td>${actual}</td>
+                <td style="white-space:nowrap;">${scheduled}</td>
+                <td style="white-space:nowrap;">${actual}</td>
                 <td><span class="badge bg-secondary">${imp.status}</span></td>
                 <td>
-                  <button class="btn btn-sm btn-outline-primary me-1" onclick="editImport('${imp.$id}')">編集</button>
-                  <button class="btn btn-sm btn-outline-danger" onclick="deleteImport('${imp.$id}')">削除</button>
-                  ${files.length > 0 ? `<div style="font-size:0.78rem;color:#666;margin-top:4px;">${files.join(', ')}</div>` : ''}
+                  <div style="display:flex;flex-wrap:wrap;gap:2px;align-items:center;">
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editImport('${imp.$id}')">編集</button>
+                    <button class="btn btn-sm btn-outline-danger me-1" onclick="deleteImport('${imp.$id}')">削除</button>
+                    ${fileChipsFromNames(files)}
+                  </div>
                 </td>
               </tr>`);
           });
@@ -863,35 +935,58 @@
           importsEmpty.style.display  = '';
         }
 
-        // ── Inventory ─────────────────────────────────────────────────
+        // ── Inventory: compact lot-grouped chip view ──────────────────
         const byStatus = <%- JSON.stringify(inspectionsByStatus) %>;
         const statusConfig = <%- JSON.stringify(statusConfig) %>;
         const invDiv = document.getElementById('inventoryContent');
         invDiv.innerHTML = '';
 
-        const statusOrder = ['upcoming_import','imported','inspection','finished_inspection'];
+        // Status display order: most ready first, then working backwards
+        const statusOrder = ['finished_inspection','inspection','imported','upcoming_import'];
+        const statusStyles = {
+          finished_inspection: { bg:'#d1e7dd', border:'#a3cfbb', text:'#0f5132', label:'検査完了' },
+          inspection:          { bg:'#cff4fc', border:'#9eeaf9', text:'#055160', label:'検査中'   },
+          imported:            { bg:'#fff3cd', border:'#ffe69c', text:'#664d03', label:'入荷済'   },
+          upcoming_import:     { bg:'#f8d7da', border:'#f1aeb5', text:'#842029', label:'入荷予定' }
+        };
+
         let hasAny = false;
         statusOrder.forEach(key => {
           const docs = byStatus[key] || [];
           if (docs.length === 0) return;
           hasAny = true;
-          const cfg = statusConfig[key] || {};
-          const rows = docs.map(d => `
-            <tr>
-              <td>${d.filename || '—'}</td>
-              <td>${d.lot || '—'}</td>
-              <td>${d.weight != null ? d.weight + 'g' : '<em style="color:#aaa;">未設定</em>'}</td>
-              <td><a href="/files/${d.$id}" target="_blank" class="btn btn-sm btn-outline-secondary">詳細</a></td>
-            </tr>`).join('');
+          const st = statusStyles[key] || { bg:'#f8f9fa', border:'#dee2e6', text:'#333', label: key };
+          const groups = groupByLot(docs);
+
+          // Build lot rows
+          const lotRows = groups.map(g => {
+            const chips = g.nums.map(n =>
+              `<span style="display:inline-block;background:white;border:1px solid ${st.border};border-radius:4px;padding:1px 8px;font-size:0.8rem;margin:2px;color:${st.text};font-weight:500;">${n}</span>`
+            ).join('');
+            return `
+              <tr>
+                <td style="white-space:nowrap;font-weight:600;color:${st.text};font-size:0.88rem;">Lot ${g.lot}</td>
+                <td><span style="background:${st.border};color:${st.text};padding:1px 8px;border-radius:10px;font-size:0.78rem;">${g.nums.length} 個</span></td>
+                <td style="line-height:1.8;">${chips}</td>
+              </tr>`;
+          }).join('');
+
           invDiv.insertAdjacentHTML('beforeend', `
             <div style="margin-bottom:1.5rem;">
-              <h5 style="color:${cfg.color||'#333'};margin-bottom:0.5rem;">
-                ${cfg.label || key} <span class="badge bg-secondary ms-1">${docs.length}</span>
-              </h5>
+              <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.6rem;">
+                <span style="background:${st.bg};border:1px solid ${st.border};color:${st.text};padding:4px 14px;border-radius:20px;font-weight:700;font-size:0.95rem;">${st.label}</span>
+                <span style="color:#6c757d;font-size:0.85rem;">${docs.length} 個 / ${groups.length} ロット</span>
+              </div>
               <div class="table-responsive">
-                <table class="table table-sm custom-table">
-                  <thead><tr><th>ファイル</th><th>ロット</th><th>重量</th><th></th></tr></thead>
-                  <tbody>${rows}</tbody>
+                <table class="table table-sm" style="margin-bottom:0;">
+                  <thead style="background:#f8f9fa;">
+                    <tr>
+                      <th style="font-size:0.8rem;width:90px;">ロット</th>
+                      <th style="font-size:0.8rem;width:60px;">数量</th>
+                      <th style="font-size:0.8rem;">製品番号 (昇順)</th>
+                    </tr>
+                  </thead>
+                  <tbody>${lotRows}</tbody>
                 </table>
               </div>
             </div>`);
