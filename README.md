@@ -2,7 +2,7 @@
 
 A web application for managing CMM measurement data from horizontal nozzle inspections, tracking inventory status, and coordinating orders and import schedules.
 
----
+---=
 
 ## Features
 
