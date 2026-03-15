@@ -684,6 +684,11 @@ app.get("/", requireAuth, async (req, res) => {
           statusOpacity: statusCfg.opacity,
           statusLabel: statusCfg.label
         };
+      })
+      .sort((a, b) => {
+        const numA = parseInt(a.fileNumber) || 0;
+        const numB = parseInt(b.fileNumber) || 0;
+        return numA - numB;
       });
 
     res.render("index", {

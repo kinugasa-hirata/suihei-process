@@ -26,18 +26,17 @@
 
     /* File grid */
     .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin-top: 1rem; }
-    .file-card-wrap { position: relative; }
+    .file-card-wrap { position: relative; cursor: pointer; }
     .file-card {
       background: white; padding: 1.2rem; border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-decoration: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       color: inherit; display: block;
       border: 2px solid transparent;
       transition: border-color 0.15s, box-shadow 0.15s;
+      user-select: none;
     }
     .file-card:hover { box-shadow: 0 6px 16px rgba(0,0,0,0.15); }
-    .file-card-wrap.selected .file-card { border-color: #0d6efd; box-shadow: 0 0 0 3px rgba(13,110,253,0.15); }
-    .file-checkbox-label { position: absolute; top: 8px; right: 8px; z-index: 2; cursor: pointer; }
-    .file-checkbox-label input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #0d6efd; }
+    .file-card-wrap.selected .file-card { border-color: #0d6efd; box-shadow: 0 0 0 3px rgba(13,110,253,0.15); background: #f0f6ff; }
     .file-number { font-size: 1.6rem; font-weight: bold; color: #0066cc; }
 
     /* Inline weight input */
@@ -143,7 +142,7 @@
   </div>
 
   <!-- ── File list heading + toolbar ── -->
-  <div class="d-flex align-items-center justify-content-between mb-0 flex-wrap gap-2">
+  <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
     <h2 class="mb-0">ファイル一覧</h2>
     <div class="d-flex align-items-center gap-2 flex-wrap">
       <span id="selectedCount" class="text-muted" style="font-size:0.9rem;">0 件選択中</span>
@@ -152,16 +151,38 @@
     </div>
   </div>
 
+  <!-- ── Range selector ── -->
+  <div class="card mb-3 shadow-sm">
+    <div class="card-body py-2">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span style="font-size:0.9rem; font-weight:600; white-space:nowrap;">範囲選択:</span>
+        <label style="font-size:0.85rem; color:#555; white-space:nowrap;">開始番号</label>
+        <input type="number" id="rangeStart" class="form-control form-control-sm" style="width:90px;" placeholder="例: 476" min="1">
+        <label style="font-size:0.85rem; color:#555; white-space:nowrap;">件数</label>
+        <input type="number" id="rangeCount" class="form-control form-control-sm" style="width:70px;" placeholder="例: 3" min="1">
+        <button class="btn btn-sm btn-outline-primary" onclick="selectRange()">選択</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="clearSelection()">解除</button>
+        <span id="rangeInfo" style="font-size:0.82rem; color:#888;"></span>
+      </div>
+    </div>
+  </div>
+
   <!-- ── File grid ── -->
   <div class="file-grid">
     <% if (files && files.length > 0) { %>
       <% for (var i = 0; i < files.length; i++) { %>
-        <div class="file-card-wrap" id="wrap-<%= files[i].$id %>">
-          <label class="file-checkbox-label" onclick="event.stopPropagation()">
-            <input type="checkbox" class="file-checkbox" value="<%= files[i].$id %>" onchange="onCheckChange()">
-          </label>
-          <a href="/files/<%= files[i].$id %>" class="file-card" id="card-<%= files[i].$id %>">
-            <div class="file-number"><%= files[i].fileNumber %></div>
+        <div class="file-card-wrap" id="wrap-<%= files[i].$id %>"
+             data-filenumber="<%= files[i].fileNumber %>"
+             onclick="toggleCard('<%= files[i].$id %>', event)">
+          <input type="checkbox" class="file-checkbox" value="<%= files[i].$id %>"
+                 id="cb-<%= files[i].$id %>" style="display:none;" onchange="onCheckChange()">
+          <div class="file-card" id="card-<%= files[i].$id %>">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+              <div class="file-number"><%= files[i].fileNumber %></div>
+              <span class="select-indicator" id="sel-<%= files[i].$id %>"
+                    style="width:20px;height:20px;border-radius:50%;border:2px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:2px;">
+              </span>
+            </div>
             <div class="weight-display" id="wdisplay-<%= files[i].$id %>">
               <% if (files[i].weight) { %>
                 ⚖ <%= files[i].weight %>g
@@ -170,7 +191,7 @@
               <% } %>
             </div>
             <% if (canEditWeights) { %>
-              <div class="weight-edit-row" onclick="event.preventDefault(); event.stopPropagation();">
+              <div class="weight-edit-row" onclick="event.stopPropagation();">
                 <input
                   type="text"
                   inputmode="decimal"
@@ -181,13 +202,13 @@
                   placeholder="g"
                   onkeydown="if(event.key==='Enter'){saveWeight('<%= files[i].$id %>')}"
                 >
-                <button class="weight-save-btn" onclick="saveWeight('<%= files[i].$id %>')">保存</button>
+                <button class="weight-save-btn" onclick="event.stopPropagation(); saveWeight('<%= files[i].$id %>')">保存</button>
               </div>
             <% } %>
             <div class="status-badge" data-color="<%= files[i].statusColor || '#e9ecef' %>">
               <%= files[i].statusLabel %>
             </div>
-          </a>
+          </div>
         </div>
       <% } %>
     <% } else { %>
@@ -373,14 +394,40 @@
     }
   }
 
-  // ── Summary selection ───────────────────────────────────────────────
+  // ── Card tap toggle ────────────────────────────────────────────────
+  function toggleCard(fileId, event) {
+    // Don't toggle if clicking on weight input or save button
+    if (event.target.tagName === 'INPUT' || event.target.tagName === 'BUTTON') return;
+    const cb = document.getElementById('cb-' + fileId);
+    if (!cb) return;
+    cb.checked = !cb.checked;
+    onCheckChange();
+  }
+
+  // ── Selection UI update ─────────────────────────────────────────────
   function onCheckChange() {
     const checked = document.querySelectorAll('.file-checkbox:checked');
     document.getElementById('selectedCount').textContent = `${checked.length} 件選択中`;
     document.getElementById('summaryBtn').disabled = checked.length === 0;
     document.querySelectorAll('.file-card-wrap').forEach(wrap => {
       const cb = wrap.querySelector('.file-checkbox');
-      wrap.classList.toggle('selected', cb && cb.checked);
+      const isChecked = cb && cb.checked;
+      wrap.classList.toggle('selected', isChecked);
+      // Update circle indicator
+      const sel = document.getElementById('sel-' + (cb ? cb.value : ''));
+      if (sel) {
+        if (isChecked) {
+          sel.style.background = '#0d6efd';
+          sel.style.border = '2px solid #0d6efd';
+          sel.style.color = 'white';
+          sel.textContent = '✓';
+        } else {
+          sel.style.background = 'transparent';
+          sel.style.border = '2px solid #ccc';
+          sel.style.color = '';
+          sel.textContent = '';
+        }
+      }
     });
   }
 
@@ -391,6 +438,54 @@
     all.forEach(cb => { cb.checked = doCheck; });
     onCheckChange();
   }
+
+  function clearSelection() {
+    document.querySelectorAll('.file-checkbox').forEach(cb => { cb.checked = false; });
+    onCheckChange();
+    document.getElementById('rangeInfo').textContent = '';
+  }
+
+  // ── Range selection ─────────────────────────────────────────────────
+  function selectRange() {
+    const start = parseInt(document.getElementById('rangeStart').value);
+    const count = parseInt(document.getElementById('rangeCount').value);
+    const info  = document.getElementById('rangeInfo');
+
+    if (isNaN(start) || isNaN(count) || count < 1) {
+      info.textContent = '開始番号と件数を入力してください';
+      info.style.color = '#dc3545';
+      return;
+    }
+
+    const end = start + count - 1;
+
+    // First clear all
+    document.querySelectorAll('.file-checkbox').forEach(cb => { cb.checked = false; });
+
+    // Select cards whose file number falls in [start, end]
+    let found = 0;
+    document.querySelectorAll('.file-card-wrap').forEach(wrap => {
+      const num = parseInt(wrap.dataset.filenumber);
+      if (num >= start && num <= end) {
+        const cb = wrap.querySelector('.file-checkbox');
+        if (cb) { cb.checked = true; found++; }
+      }
+    });
+
+    onCheckChange();
+
+    if (found === 0) {
+      info.textContent = `${start}〜${end} は見つかりませんでした`;
+      info.style.color = '#dc3545';
+    } else {
+      info.textContent = `${start}〜${end}（${found} 件選択）`;
+      info.style.color = '#198754';
+    }
+  }
+
+  // Allow pressing Enter in range inputs
+  document.getElementById('rangeStart').addEventListener('keydown', e => { if (e.key === 'Enter') selectRange(); });
+  document.getElementById('rangeCount').addEventListener('keydown', e => { if (e.key === 'Enter') selectRange(); });
 
   function openSummary() {
     const ids = Array.from(document.querySelectorAll('.file-checkbox:checked'))
