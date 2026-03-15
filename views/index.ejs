@@ -90,24 +90,41 @@
     </div>
   </div>
 
-  <!-- ── Navigation ── -->
-  <div class="nav-bar" style="justify-content:space-between;">
-    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
-      <a href="/stock-management" class="btn btn-outline-primary">📦 在庫管理</a>
+  <!-- ── Navigation + Upload combined row ── -->
+  <input type="file" id="fileInput" accept=".txt" multiple style="display:none;">
+  <% if (canEditWeights) { %>
+    <input type="file" id="excelImportInput" accept=".xlsx,.xls" style="display:none;" onchange="doExcelImport(this)">
+  <% } %>
+
+  <div class="card mb-3 shadow-sm">
+    <div class="card-body py-2" style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+      <!-- Left: nav buttons -->
+      <a href="/stock-management" class="btn btn-sm btn-outline-primary">📦 在庫管理</a>
       <% if (canEditWeights) { %>
-        <a href="/export-weights" class="btn btn-outline-secondary">📤 重量エクスポート</a>
-        <button class="btn btn-outline-success" onclick="document.getElementById('excelImportInput').click()">
-          📥 Excel 重量インポート
-        </button>
-        <input type="file" id="excelImportInput" accept=".xlsx,.xls" style="display:none;" onchange="doExcelImport(this)">
+        <a href="/export-weights" class="btn btn-sm btn-outline-secondary">📤 重量エクスポート</a>
+        <button class="btn btn-sm btn-outline-success" onclick="document.getElementById('excelImportInput').click()">📥 Excel インポート</button>
       <% } %>
-    </div>
-    <div>
-      <a href="/export-measurements" class="btn btn-outline-secondary" style="opacity:0.6;font-size:0.85rem;">📊 測定値エクスポート</a>
+
+      <!-- Divider -->
+      <div style="width:1px; height:24px; background:#dee2e6; margin:0 4px;"></div>
+
+      <!-- Center: upload zone -->
+      <div id="dropZone" class="upload-zone" style="flex:1; min-width:200px; padding:0.5rem 1rem; display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; justify-content:center; min-height:unset; border-radius:6px;">
+        <span style="font-size:0.85rem; color:#777;">📄 TXTをドロップ、または</span>
+        <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">📁 選択</button>
+        <span id="selectedFilesLabel" class="text-muted" style="font-size:0.82rem;">未選択</span>
+        <button class="btn btn-sm btn-success" id="uploadBtn" disabled onclick="event.stopPropagation(); doUpload()">⬆ アップロード</button>
+      </div>
+
+      <!-- Divider -->
+      <div style="width:1px; height:24px; background:#dee2e6; margin:0 4px;"></div>
+
+      <!-- Right: measurement export -->
+      <a href="/export-measurements" class="btn btn-sm btn-outline-secondary" style="opacity:0.55; font-size:0.8rem;">📊 測定値</a>
     </div>
   </div>
 
-  <!-- ── Excel Import Progress (hidden until import starts) ── -->
+  <!-- ── Excel Import Progress ── -->
   <div id="importProgressWrap" class="card mb-3 shadow-sm" style="display:none;">
     <div class="card-body py-2">
       <div class="d-flex align-items-center gap-3">
@@ -121,17 +138,9 @@
     </div>
   </div>
 
-  <!-- ── TXT Upload ── -->
-  <div class="card mb-4 shadow-sm">
-    <div class="card-body py-3">
-      <input type="file" id="fileInput" accept=".txt" multiple style="display:none;">
-      <div id="dropZone" class="upload-zone" style="padding:0.9rem 1.5rem; display:flex; align-items:center; justify-content:center; gap:1rem; flex-wrap:wrap; min-height:unset;">
-        <span style="font-size:1.2rem;">📂</span>
-        <span style="font-size:0.9rem; color:#555;">ここにTXTファイルをドロップ、または</span>
-        <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">📁 ファイルを選択</button>
-        <span id="selectedFilesLabel" class="text-muted" style="font-size:0.85rem;">選択されていません</span>
-        <button class="btn btn-sm btn-success" id="uploadBtn" disabled onclick="event.stopPropagation(); doUpload()">⬆ アップロード</button>
-      </div>
+  <!-- ── Upload results / progress ── -->
+  <div class="card mb-4 shadow-sm" id="uploadCard" style="display:none;">
+    <div class="card-body py-2">
       <div id="progressWrap" class="mt-3" style="display:none;">
         <div class="progress" style="height:8px;">
           <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width:100%;"></div>
@@ -261,6 +270,7 @@
   async function doUpload() {
     if (!selectedFiles || selectedFiles.length === 0) return;
     uploadBtn.disabled = true;
+    document.getElementById('uploadCard').style.display    = 'block';
     document.getElementById('progressWrap').style.display  = 'block';
     document.getElementById('uploadResults').style.display = 'none';
     const formData = new FormData();
