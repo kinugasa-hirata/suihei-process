@@ -283,10 +283,15 @@
           <div class="header-title">在庫管理システム</div>
           <div class="header-subtitle">Stock Management System - Orders, Imports & Inventory</div>
         </div>
-        <button class="settings-btn" onclick="openSettingsModal()">
-          <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem; font-size: 20px;">settings</span>
-          設定
-        </button>
+        <div style="display:flex;gap:0.75rem;align-items:center;">
+          <a href="/" class="btn btn-outline-secondary" style="display:flex;align-items:center;gap:6px;">
+            <span class="material-icons" style="font-size:18px;">home</span> ホーム
+          </a>
+          <button class="settings-btn" onclick="openSettingsModal()">
+            <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem; font-size: 20px;">settings</span>
+            設定
+          </button>
+        </div>
       </div>
 
       <!-- Navigation Tabs -->
@@ -720,6 +725,32 @@
         }
       }
 
+      async function confirmArrival(importId, count) {
+        const confirmed = confirm(
+          `入荷を確認しますか？\n` +
+          `対象: ${count} 個\n\n` +
+          `この入荷はリストから非表示になりますが、\nAppwriteのデータは保持されます。`
+        );
+        if (!confirmed) return;
+        try {
+          const today = new Date().toISOString().split('T')[0];
+          const response = await fetch(`/api/imports/${importId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'imported', actual_date: today })
+          });
+          const result = await response.json();
+          if (result.success) {
+            alert(`入荷確認完了: ${count} 個を入荷済に設定しました`);
+            location.reload();
+          } else {
+            alert('処理に失敗しました: ' + result.error);
+          }
+        } catch (error) {
+          alert('エラーが発生しました: ' + error.message);
+        }
+      }
+
       document.getElementById('importForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
@@ -1018,6 +1049,7 @@
                   <div style="display:flex;flex-wrap:wrap;gap:2px;align-items:center;margin-bottom:4px;">
                     <button class="btn btn-sm btn-outline-primary me-1" onclick="editImport('${imp.$id}')">編集</button>
                     <button class="btn btn-sm btn-outline-danger me-1" onclick="deleteImport('${imp.$id}')">削除</button>
+                    ${(imp.status === 'scheduled' || imp.status === 'arrived') ? `<button class="btn btn-sm btn-success" onclick="confirmArrival('${imp.$id}', ${nums.length})">✓ 入荷確認</button>` : ''}
                   </div>
                   <div style="line-height:1.8;">${chips || '<em style="color:#aaa;font-size:0.8rem;">—</em>'}</div>
                 </td>
@@ -1035,11 +1067,13 @@
 
         // Status display order: most ready first, then working backwards
         const statusOrder = ['finished_inspection','inspection','imported','upcoming_import'];
+        // Status styles: bg=section bg, chipBg=chip background, chipBorder=chip border,
+        // chipBorderStyle=solid|dashed|dotted, text=text color, label=Japanese label
         const statusStyles = {
-          finished_inspection: { bg:'#d1e7dd', border:'#a3cfbb', text:'#0f5132', label:'検査完了' },
-          inspection:          { bg:'#cff4fc', border:'#9eeaf9', text:'#055160', label:'検査中'   },
-          imported:            { bg:'#fff3cd', border:'#ffe69c', text:'#664d03', label:'入荷済'   },
-          upcoming_import:     { bg:'#f8d7da', border:'#f1aeb5', text:'#842029', label:'入荷予定' }
+          finished_inspection: { bg:'#d1e7dd', chipBg:'#d1e7dd', chipBorder:'#198754', chipBorderStyle:'solid',  text:'#0f5132', label:'検査完了' },
+          inspection:          { bg:'#fff9e6', chipBg:'#fff3cd', chipBorder:'#e6a817', chipBorderStyle:'solid',  text:'#664d03', label:'検査中'   },
+          imported:            { bg:'#f0f6ff', chipBg:'white',   chipBorder:'#6ea8fe', chipBorderStyle:'solid',  text:'#084298', label:'入荷済'   },
+          upcoming_import:     { bg:'#fafafa', chipBg:'white',   chipBorder:'#adb5bd', chipBorderStyle:'dotted', text:'#495057', label:'入荷予定' }
         };
 
         let hasAny = false;
@@ -1053,20 +1087,20 @@
           // Build lot rows
           const lotRows = groups.map(g => {
             const chips = g.nums.map(n =>
-              `<span style="display:inline-block;background:white;border:1px solid ${st.border};border-radius:4px;padding:1px 8px;font-size:0.8rem;margin:2px;color:${st.text};font-weight:500;">${n}</span>`
+              `<span style="display:inline-block;background:${st.chipBg};border:2px ${st.chipBorderStyle} ${st.chipBorder};border-radius:4px;padding:2px 9px;font-size:0.82rem;margin:2px;color:${st.text};font-weight:500;">${n}</span>`
             ).join('');
             return `
-              <tr>
+              <tr style="background:${st.bg}20;">
                 <td style="white-space:nowrap;font-weight:600;color:${st.text};font-size:0.88rem;">Lot ${g.lot}</td>
-                <td><span style="background:${st.border};color:${st.text};padding:1px 8px;border-radius:10px;font-size:0.78rem;">${g.nums.length} 個</span></td>
-                <td style="line-height:1.8;">${chips}</td>
+                <td><span style="background:${st.chipBorder};color:white;padding:1px 8px;border-radius:10px;font-size:0.78rem;">${g.nums.length} 個</span></td>
+                <td style="line-height:2.0;">${chips}</td>
               </tr>`;
           }).join('');
 
           invDiv.insertAdjacentHTML('beforeend', `
             <div style="margin-bottom:1.5rem;">
               <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.6rem;">
-                <span style="background:${st.bg};border:1px solid ${st.border};color:${st.text};padding:4px 14px;border-radius:20px;font-weight:700;font-size:0.95rem;">${st.label}</span>
+                <span style="background:${st.bg};border:2px solid ${st.chipBorder};color:${st.text};padding:4px 14px;border-radius:20px;font-weight:700;font-size:0.95rem;">${st.label}</span>
                 <span style="color:#6c757d;font-size:0.85rem;">${docs.length} 個 / ${groups.length} ロット</span>
               </div>
               <div class="table-responsive">
