@@ -684,11 +684,6 @@ app.get("/", requireAuth, async (req, res) => {
           statusOpacity: statusCfg.opacity,
           statusLabel: statusCfg.label
         };
-      })
-      .sort((a, b) => {
-        const numA = parseInt(a.fileNumber) || 0;
-        const numB = parseInt(b.fileNumber) || 0;
-        return numA - numB;
       });
 
     res.render("index", {
@@ -729,7 +724,7 @@ app.get("/stock-management", requireAuth, async (req, res) => {
     const importsResult = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_IMPORTS,
-      [Query.notEqual('status', 'imported'), Query.orderAsc('scheduled_date'), Query.limit(100)]
+      [Query.notEqual('status', 'arrived'), Query.orderAsc('scheduled_date'), Query.limit(100)]
     );
 
     // Fetch all inspections (not shipped)

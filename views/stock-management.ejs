@@ -737,7 +737,7 @@
           const response = await fetch(`/api/imports/${importId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'imported', actual_date: today })
+            body: JSON.stringify({ status: 'arrived', actual_date: today })
           });
           const result = await response.json();
           if (result.success) {
