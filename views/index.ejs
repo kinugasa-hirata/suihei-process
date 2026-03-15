@@ -39,6 +39,14 @@
     .file-card-wrap.selected .file-card { border-color: #0d6efd; box-shadow: 0 0 0 3px rgba(13,110,253,0.15); background: #f0f6ff; }
     .file-number { font-size: 1.6rem; font-weight: bold; color: #0066cc; }
 
+    /* Status border styles */
+    .file-card.status-upcoming_import { border: 2px dashed #adb5bd; }
+    .file-card.status-imported        { border: 2px dashed #6ea8fe; }
+    .file-card.status-inspection      { border: 2px dashed #e6a817; background: #fffdf0; }
+    .file-card.status-finished_inspection { border: 2px solid #198754; background: #f6fff9; }
+    /* Keep selected style dominant */
+    .file-card-wrap.selected .file-card { border: 2px solid #0d6efd !important; background: #f0f6ff !important; }
+
     /* Inline weight input */
     .weight-display { margin: 0.4rem 0; color: #666; font-size: 0.9rem; }
     .weight-edit-row { display: flex; gap: 4px; margin-top: 6px; }
@@ -176,7 +184,7 @@
              onclick="toggleCard('<%= files[i].$id %>', event)">
           <input type="checkbox" class="file-checkbox" value="<%= files[i].$id %>"
                  id="cb-<%= files[i].$id %>" style="display:none;" onchange="onCheckChange()">
-          <div class="file-card" id="card-<%= files[i].$id %>">
+          <div class="file-card status-<%= files[i].status || 'finished_inspection' %>" id="card-<%= files[i].$id %>">
             <div style="display:flex; justify-content:space-between; align-items:flex-start;">
               <div class="file-number"><%= files[i].fileNumber %></div>
               <span class="select-indicator" id="sel-<%= files[i].$id %>"
@@ -324,7 +332,12 @@
         if (card) {
           card.style.transition = 'background 0.3s';
           card.style.background = '#d1e7dd';
-          setTimeout(() => { card.style.background = 'white'; }, 800);
+          // After weight save, upgrade to finished_inspection style
+          setTimeout(() => {
+            card.style.background = '';
+            card.classList.remove('status-upcoming_import','status-imported','status-inspection');
+            card.classList.add('status-finished_inspection');
+          }, 800);
         }
       } else {
         alert('保存失敗: ' + (data.error || '不明なエラー'));
