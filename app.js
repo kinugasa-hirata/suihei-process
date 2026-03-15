@@ -673,7 +673,6 @@ app.get("/", requireAuth, async (req, res) => {
 
     const files = result.documents
       .filter(doc => doc.status !== 'shipped')           // exclude shipped
-      .filter(doc => doc.measurementA && doc.measurementA !== '-')  // exclude placeholders (no real data yet)
       .map(doc => {
         const status = doc.status || 'finished_inspection';
         const statusCfg = STATUS_CONFIG[status] || STATUS_CONFIG['finished_inspection'];

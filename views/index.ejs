@@ -181,6 +181,7 @@
       <% for (var i = 0; i < files.length; i++) { %>
         <div class="file-card-wrap" id="wrap-<%= files[i].$id %>"
              data-filenumber="<%= files[i].fileNumber %>"
+             data-status="<%= files[i].status || 'finished_inspection' %>"
              onclick="toggleCard('<%= files[i].$id %>', event)">
           <input type="checkbox" class="file-checkbox" value="<%= files[i].$id %>"
                  id="cb-<%= files[i].$id %>" style="display:none;" onchange="onCheckChange()">
@@ -194,11 +195,13 @@
             <div class="weight-display" id="wdisplay-<%= files[i].$id %>">
               <% if (files[i].weight) { %>
                 ⚖ <%= files[i].weight %>g
+              <% } else if (files[i].status === 'upcoming_import' || files[i].status === 'imported') { %>
+                <em style="color:#aaa;">未入荷</em>
               <% } else { %>
                 <em style="color:#aaa;">重量未設定</em>
               <% } %>
             </div>
-            <% if (canEditWeights) { %>
+            <% if (canEditWeights && files[i].status !== 'upcoming_import') { %>
               <div class="weight-edit-row" onclick="event.stopPropagation();">
                 <input
                   type="text"
@@ -411,6 +414,9 @@
   function toggleCard(fileId, event) {
     // Don't toggle if clicking on weight input or save button
     if (event.target.tagName === 'INPUT' || event.target.tagName === 'BUTTON') return;
+    const wrap = document.getElementById('wrap-' + fileId);
+    const status = wrap ? wrap.dataset.status : '';
+    // For upcoming/imported placeholders, just toggle selection (no detail page)
     const cb = document.getElementById('cb-' + fileId);
     if (!cb) return;
     cb.checked = !cb.checked;
