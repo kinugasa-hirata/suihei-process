@@ -1,7 +1,6 @@
 // app.js - EFFICIENT SCHEMA VERSION WITH STOCK MANAGEMENT
 // Updated: Added stock management system for orders and imports
 // Modified: Excel import/export, Status tracking, Order management
-// FIX: Weight field now defaults to NULL for placeholder records (not lot value)
 
 const express = require("express");
 const multer = require("multer");
@@ -23,6 +22,10 @@ const PORT = process.env.PORT || 3000;
 
 // Users who can edit weights (naemura, iwatsuki)
 const AUTHORIZED_USERS = ['naemura', 'iwatsuki'];
+
+// Authentication: Any username with any 4-digit password can log in
+// Only AUTHORIZED_USERS (above) can edit weights
+// All other users can view and upload files but cannot edit weights
 
 function isValidPassword(password) {
   return /^\d{4}$/.test(password);
@@ -669,7 +672,7 @@ app.get("/", requireAuth, async (req, res) => {
     );
 
     const files = result.documents
-      .filter(doc => doc.status !== 'shipped')           // exclude shipped
+      .filter(doc => doc.status !== 'shipped')
       .map(doc => {
         const status = doc.status || 'finished_inspection';
         const statusCfg = STATUS_CONFIG[status] || STATUS_CONFIG['finished_inspection'];
@@ -680,7 +683,8 @@ app.get("/", requireAuth, async (req, res) => {
           statusOpacity: statusCfg.opacity,
           statusLabel: statusCfg.label
         };
-      });
+      })
+      .sort((a, b) => (parseInt(a.fileNumber) || 0) - (parseInt(b.fileNumber) || 0));
 
     res.render("index", {
       files: files,
@@ -720,7 +724,7 @@ app.get("/stock-management", requireAuth, async (req, res) => {
     const importsResult = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_IMPORTS,
-      [Query.notEqual('status', 'arrived'), Query.orderAsc('scheduled_date'), Query.limit(100)]
+      [Query.notEqual('status', 'imported'), Query.orderAsc('scheduled_date'), Query.limit(100)]
     );
 
     // Fetch all inspections (not shipped)
@@ -1026,7 +1030,6 @@ app.post("/api/imports", requireAuth, async (req, res) => {
 
       try {
         // Match exact same fields as real upload to satisfy Appwrite schema
-        // ★ FIX: weight is explicitly set to null (not lot value)
         await databases.createDocument(
           DATABASE_ID,
           COLLECTION_INSPECTIONS,
@@ -1034,7 +1037,7 @@ app.post("/api/imports", requireAuth, async (req, res) => {
           {
             filename: filename,
             uploaded_at: new Date().toISOString(),
-            weight: null,  // ← EXPLICITLY NULL, not lot value (FIX: was showing lot number)
+            weight: null,
             lot: lotNumber,  // All files in batch share the same lot (lowest number)
             is_archived: false,
             status: 'upcoming_import',
@@ -1383,14 +1386,18 @@ app.post("/update-weight", requireWeightEditAuth, async (req, res) => {
 
     const formattedWeight = weightValue !== null ? parseFloat(weightValue.toFixed(1)) : null;
 
+    // Fetch current status first — never downgrade a shipped item
+    const currentDoc = await databases.getDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId);
+    const updateData = { weight: formattedWeight };
+    if (currentDoc.status === 'inspection' || currentDoc.status === 'imported') {
+      updateData.status = 'finished_inspection';
+    }
+
     await databases.updateDocument(
       DATABASE_ID,
       COLLECTION_INSPECTIONS,
       fileId,
-      { 
-        weight: formattedWeight,
-        status: 'finished_inspection'
-      }
+      updateData
     );
 
     res.json({ 
@@ -1439,14 +1446,16 @@ app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
       const formattedWeight = weightValue !== null ? parseFloat(weightValue.toFixed(1)) : null;
 
       try {
+        const currentDoc2 = await databases.getDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId);
+        const bulkUpdateData = { weight: formattedWeight };
+        if (currentDoc2.status === 'inspection' || currentDoc2.status === 'imported') {
+          bulkUpdateData.status = 'finished_inspection';
+        }
         await databases.updateDocument(
           DATABASE_ID,
           COLLECTION_INSPECTIONS,
           fileId,
-          { 
-            weight: formattedWeight,
-            status: 'finished_inspection'
-          }
+          bulkUpdateData
         );
         results.push({ fileId, weight: formattedWeight, success: true });
       } catch (err) {
@@ -1546,15 +1555,12 @@ async function processImport(req, res) {
         if (result.documents && result.documents.length > 0) {
           const docId = result.documents[0].$id;
           
-          // Update the document
+          // Update ONLY weight — never touch status (shipped items must stay shipped)
           const updateResult = await databases.updateDocument(
             DATABASE_ID, 
             COLLECTION_INSPECTIONS, 
             docId, 
-            { 
-              weight: roundedWeight, 
-              status: 'finished_inspection' 
-            }
+            { weight: roundedWeight }
           );
           
           updated++;
@@ -1567,7 +1573,7 @@ async function processImport(req, res) {
             docId
           );
           
-          if (verifyResult.weight === roundedWeight && verifyResult.status === 'finished_inspection') {
+          if (verifyResult.weight === roundedWeight) {
             verified++;
             console.log(`✓ VERIFIED: ${filename} - weight is ${verifyResult.weight}g in database`);
           } else {
