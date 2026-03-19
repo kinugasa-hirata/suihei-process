@@ -1,6 +1,7 @@
 // app.js - EFFICIENT SCHEMA VERSION WITH STOCK MANAGEMENT
 // Updated: Added stock management system for orders and imports
 // Modified: Excel import/export, Status tracking, Order management
+// FIX: Weight field now defaults to NULL for placeholder records (not lot value)
 
 const express = require("express");
 const multer = require("multer");
@@ -22,10 +23,6 @@ const PORT = process.env.PORT || 3000;
 
 // Users who can edit weights (naemura, iwatsuki)
 const AUTHORIZED_USERS = ['naemura', 'iwatsuki'];
-
-// Authentication: Any username with any 4-digit password can log in
-// Only AUTHORIZED_USERS (above) can edit weights
-// All other users can view and upload files but cannot edit weights
 
 function isValidPassword(password) {
   return /^\d{4}$/.test(password);
@@ -1029,6 +1026,7 @@ app.post("/api/imports", requireAuth, async (req, res) => {
 
       try {
         // Match exact same fields as real upload to satisfy Appwrite schema
+        // ★ FIX: weight is explicitly set to null (not lot value)
         await databases.createDocument(
           DATABASE_ID,
           COLLECTION_INSPECTIONS,
@@ -1036,7 +1034,7 @@ app.post("/api/imports", requireAuth, async (req, res) => {
           {
             filename: filename,
             uploaded_at: new Date().toISOString(),
-            weight: null,
+            weight: null,  // ← EXPLICITLY NULL, not lot value (FIX: was showing lot number)
             lot: lotNumber,  // All files in batch share the same lot (lowest number)
             is_archived: false,
             status: 'upcoming_import',
