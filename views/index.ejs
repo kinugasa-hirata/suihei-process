@@ -184,6 +184,7 @@
   <!-- ── File grid ── -->
   <div class="file-grid">
     <% if (files && files.length > 0) { %>
+      <% files.sort((a, b) => a.fileNumber - b.fileNumber); %>
       <% for (var i = 0; i < files.length; i++) { %>
         <div class="file-card-wrap" id="wrap-<%= files[i].$id %>"
              data-filenumber="<%= files[i].fileNumber %>"
