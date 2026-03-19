@@ -1375,7 +1375,8 @@ app.post("/update-weight", requireWeightEditAuth, async (req, res) => {
       });
     }
 
-    const weightValue = weight && weight.trim() !== '' ? parseFloat(weight) : null;
+    const weightStr = weight !== null && weight !== undefined ? String(weight).trim() : '';
+    const weightValue = weightStr !== '' ? parseFloat(weightStr) : null;
 
     if (weightValue !== null && (isNaN(weightValue) || weightValue < 0)) {
       return res.status(400).json({
