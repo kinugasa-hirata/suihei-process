@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -120,7 +120,7 @@
       <div style="width:1px; height:24px; background:#dee2e6; margin:0 4px;"></div>
 
       <!-- Right: measurement export -->
-      <a href="/export-measurements" class="btn btn-sm btn-outline-secondary" style="opacity:0.55; font-size:0.8rem;">📊 測定値エクスポート</a>
+      <a href="/export-measurements" class="btn btn-sm btn-outline-secondary" style="opacity:0.55; font-size:0.8rem;">📊 測定値</a>
     </div>
   </div>
 
@@ -184,7 +184,6 @@
   <!-- ── File grid ── -->
   <div class="file-grid">
     <% if (files && files.length > 0) { %>
-      <% files.sort((a, b) => a.fileNumber - b.fileNumber); %>
       <% for (var i = 0; i < files.length; i++) { %>
         <div class="file-card-wrap" id="wrap-<%= files[i].$id %>"
              data-filenumber="<%= files[i].fileNumber %>"
