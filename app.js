@@ -20,12 +20,7 @@ const PORT = process.env.PORT || 3000;
 // USER CONFIGURATION
 // ======================
 
-// Users who can edit weights (naemura, iwatsuki)
 const AUTHORIZED_USERS = ['naemura', 'iwatsuki'];
-
-// Authentication: Any username with any 4-digit password can log in
-// Only AUTHORIZED_USERS (above) can edit weights
-// All other users can view and upload files but cannot edit weights
 
 function isValidPassword(password) {
   return /^\d{4}$/.test(password);
@@ -111,8 +106,8 @@ const measurementMapping = {
   'C': { index: 1, type: 'DISTANCE', field: 'y', absolute: true },
   'D': { index: 4, type: 'PT-COMP', field: 'x', absolute: true },
   'E': { index: 8, type: 'CIRCLE', field: 'diameter', absolute: false },
-  'F': { 
-    type: 'AVERAGE', 
+  'F': {
+    type: 'AVERAGE',
     indices: [
       { index: 2, type: 'CIRCLE', field: 'diameter' },
       { index: 4, type: 'CIRCLE', field: 'diameter' },
@@ -189,23 +184,23 @@ function generateSessionId() {
 
 async function getSession(sessionId) {
   if (!sessionId) return null;
-  
+
   try {
     const sessions = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_SESSIONS,
       [Query.equal('session_id', sessionId), Query.limit(1)]
     );
-    
+
     if (sessions.documents.length === 0) return null;
-    
+
     const session = sessions.documents[0];
-    
+
     if (new Date(session.expires_at) < new Date()) {
       await databases.deleteDocument(DATABASE_ID, COLLECTION_SESSIONS, session.$id);
       return null;
     }
-    
+
     return session;
   } catch (error) {
     console.error('Error getting session:', error);
@@ -216,11 +211,11 @@ async function getSession(sessionId) {
 async function createSession(username) {
   const sessionId = generateSessionId();
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  
+
   console.log(`[SESSION] Creating session for user: ${username}`);
   console.log(`[SESSION] Session ID: ${sessionId.substring(0, 10)}...`);
   console.log(`[SESSION] Can edit weights: ${canEditWeights(username)}`);
-  
+
   try {
     const doc = await databases.createDocument(
       DATABASE_ID,
@@ -248,14 +243,14 @@ async function createSession(username) {
 
 async function deleteSession(sessionId) {
   if (!sessionId) return;
-  
+
   try {
     const sessions = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_SESSIONS,
       [Query.equal('session_id', sessionId), Query.limit(1)]
     );
-    
+
     if (sessions.documents.length > 0) {
       await databases.deleteDocument(
         DATABASE_ID,
@@ -275,35 +270,35 @@ async function deleteSession(sessionId) {
 async function requireAuth(req, res, next) {
   const sessionId = req.cookies.session_id;
   const session = await getSession(sessionId);
-  
+
   if (!session) {
     return res.redirect('/login');
   }
-  
+
   req.session = {
     username: session.username,
     canEditWeights: session.can_edit_weights
   };
-  
+
   next();
 }
 
 async function requireWeightEditAuth(req, res, next) {
   const sessionId = req.cookies.session_id;
   const session = await getSession(sessionId);
-  
+
   if (!session || !session.can_edit_weights) {
-    return res.status(403).json({ 
-      success: false, 
-      error: 'Not authorized to edit weights. Only naemura and iwatsuki can edit weights.' 
+    return res.status(403).json({
+      success: false,
+      error: 'Not authorized to edit weights. Only naemura and iwatsuki can edit weights.'
     });
   }
-  
+
   req.session = {
     username: session.username,
     canEditWeights: session.can_edit_weights
   };
-  
+
   next();
 }
 
@@ -317,29 +312,29 @@ app.get("/login", (req, res) => {
 
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
-  
+
   if (!username || !password) {
-    return res.render("login", { 
-      error: "Username and password are required" 
+    return res.render("login", {
+      error: "Username and password are required"
     });
   }
-  
+
   if (!isValidPassword(password)) {
-    return res.render("login", { 
-      error: "Password must be exactly 4 digits" 
+    return res.render("login", {
+      error: "Invalid username or password"
     });
   }
-  
+
   try {
     const sessionId = await createSession(username);
-    
+
     res.cookie('session_id', sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 24 * 60 * 60 * 1000,
       sameSite: 'lax'
     });
-    
+
     try {
       await databases.createDocument(
         DATABASE_ID,
@@ -354,12 +349,12 @@ app.post("/login", async (req, res) => {
     } catch (logError) {
       console.error('Error logging login:', logError);
     }
-    
+
     res.redirect("/");
   } catch (error) {
     console.error('Login error:', error);
-    res.render("login", { 
-      error: "Login failed. Please try again." 
+    res.render("login", {
+      error: "Login failed. Please try again."
     });
   }
 });
@@ -430,10 +425,10 @@ function getTotalAvailableInventory(inventory) {
  */
 function getInventoryByPriority(inventory) {
   const priority = [];
-  priority.push(...inventory.finished_inspection.map(item => ({...item, priority: 1})));
-  priority.push(...inventory.inspection.map(item => ({...item, priority: 2})));
-  priority.push(...inventory.imported.map(item => ({...item, priority: 3})));
-  priority.push(...inventory.upcoming_import.map(item => ({...item, priority: 4})));
+  priority.push(...inventory.finished_inspection.map(item => ({ ...item, priority: 1 })));
+  priority.push(...inventory.inspection.map(item => ({ ...item, priority: 2 })));
+  priority.push(...inventory.imported.map(item => ({ ...item, priority: 3 })));
+  priority.push(...inventory.upcoming_import.map(item => ({ ...item, priority: 4 })));
   return priority;
 }
 
@@ -443,7 +438,7 @@ function getInventoryByPriority(inventory) {
 function allocateProductsToOrder(order, allOrders, currentInventory) {
   const quantity = parseInt(order.quantity);
   const inventoryByPriority = getInventoryByPriority(currentInventory);
-  
+
   // Mark products allocated to earlier orders
   const allocatedByEarlierOrders = new Set();
   const earlierOrders = allOrders
@@ -471,7 +466,7 @@ function allocateProductsToOrder(order, allOrders, currentInventory) {
 
   // Determine status
   const readyCount = allocatedItems.filter(item => item.status === 'finished_inspection').length;
-  const inProgressCount = allocatedItems.filter(item => 
+  const inProgressCount = allocatedItems.filter(item =>
     item.status === 'inspection' || item.status === 'imported'
   ).length;
 
@@ -499,7 +494,7 @@ function allocateProductsToOrder(order, allOrders, currentInventory) {
  */
 function allocateToAllOrders(orders, currentInventory) {
   const allocations = {};
-  const sortedOrders = [...orders].sort((a, b) => 
+  const sortedOrders = [...orders].sort((a, b) =>
     new Date(a.due_date) - new Date(b.due_date)
   );
 
@@ -619,10 +614,10 @@ function extractMeasurementValue(parsedData, measureKey) {
 
 function isValidMeasurement(value, measureKey) {
   if (value === null || value === undefined) return null;
-  
+
   const range = validationRanges[measureKey];
   if (!range) return null;
-  
+
   return value >= range.min && value <= range.max;
 }
 
@@ -777,13 +772,13 @@ app.get("/stock-management", requireAuth, async (req, res) => {
     // Step 1: Categorize current inventory by status
     const activeInspections = inspectionsResult.documents.filter(doc => doc.status !== 'shipped');
     const currentInventory = categorizeInventory(activeInspections);
-    
+
     // Step 2: Allocate products to orders by due date priority
     const allocations = allocateToAllOrders(
       ordersResult.documents,
       currentInventory
     );
-    
+
     // Step 3: Enhance order objects with allocation info
     const ordersWithStock = ordersResult.documents.map(order => {
       const allocation = allocations[order.$id];
@@ -1214,9 +1209,9 @@ app.put("/api/inspections/advance-status", requireAuth, async (req, res) => {
 app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: "No file uploaded" 
+      return res.status(400).json({
+        success: false,
+        error: "No file uploaded"
       });
     }
 
@@ -1243,74 +1238,74 @@ app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
 });
 
 async function processSingleUpload(file, req, results) {
-    const fileContent = file.buffer.toString("utf-8");
-    const parsedData = parseTxtFile(fileContent);
-    const filename = file.originalname;
+  const fileContent = file.buffer.toString("utf-8");
+  const parsedData = parseTxtFile(fileContent);
+  const filename = file.originalname;
 
-    const existingFiles = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      [Query.equal('filename', filename), Query.limit(1)]
-    );
+  const existingFiles = await databases.listDocuments(
+    DATABASE_ID,
+    COLLECTION_INSPECTIONS,
+    [Query.equal('filename', filename), Query.limit(1)]
+  );
 
-    const measurements = {};
-    const validations = {};
+  const measurements = {};
+  const validations = {};
 
-    // Skip M and N — they are manual/visual fields not stored in Appwrite
-    const dbKeys = Object.keys(measurementMapping).filter(k => k !== 'M' && k !== 'N');
-    dbKeys.forEach(key => {
-      const value = extractMeasurementValue(parsedData, key);
-      // Appwrite stores measurements as String — convert numeric values
-      measurements[`measurement${key}`] = value !== null ? String(value) : '-';
-      validations[`isValid${key}`] = isValidMeasurement(value, key);
-    });
+  // Skip M and N — they are manual/visual fields not stored in Appwrite
+  const dbKeys = Object.keys(measurementMapping).filter(k => k !== 'M' && k !== 'N');
+  dbKeys.forEach(key => {
+    const value = extractMeasurementValue(parsedData, key);
+    // Appwrite stores measurements as String — convert numeric values
+    measurements[`measurement${key}`] = value !== null ? String(value) : '-';
+    validations[`isValid${key}`] = isValidMeasurement(value, key);
+  });
 
-    if (existingFiles.documents.length > 0) {
-      const existingDoc = existingFiles.documents[0];
-      const isPlaceholder = !existingDoc.measurementA || existingDoc.measurementA === '-';
+  if (existingFiles.documents.length > 0) {
+    const existingDoc = existingFiles.documents[0];
+    const isPlaceholder = !existingDoc.measurementA || existingDoc.measurementA === '-';
 
-      if (isPlaceholder) {
-        // Placeholder exists from import schedule — fill in the real measurement data
-        await databases.updateDocument(
-          DATABASE_ID,
-          COLLECTION_INSPECTIONS,
-          existingDoc.$id,
-          {
-            uploaded_at: new Date().toISOString(),
-            is_archived: false,
-            status: 'inspection',
-            // Keep existing lot and import_id from placeholder, only overwrite measurements
-            ...measurements,
-            ...validations
-          }
-        );
-        results.updated.push({ filename });
-        return;
-      } else {
-        // Real data already exists — skip with error
-        results.failed.push({ filename, error: `${filename} already has measurement data` });
-        return;
-      }
+    if (isPlaceholder) {
+      // Placeholder exists from import schedule — fill in the real measurement data
+      await databases.updateDocument(
+        DATABASE_ID,
+        COLLECTION_INSPECTIONS,
+        existingDoc.$id,
+        {
+          uploaded_at: new Date().toISOString(),
+          is_archived: false,
+          status: 'inspection',
+          // Keep existing lot and import_id from placeholder, only overwrite measurements
+          ...measurements,
+          ...validations
+        }
+      );
+      results.updated.push({ filename });
+      return;
+    } else {
+      // Real data already exists — skip with error
+      results.failed.push({ filename, error: `${filename} already has measurement data` });
+      return;
     }
+  }
 
-    // No existing file — create fresh
-    await databases.createDocument(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      ID.unique(),
-      {
-        filename: filename,
-        lot: parsedData.lot || null,
-        weight: null,
-        uploaded_at: new Date().toISOString(),
-        is_archived: false,
-        status: 'inspection',
-        ...measurements,
-        ...validations
-      }
-    );
+  // No existing file — create fresh
+  await databases.createDocument(
+    DATABASE_ID,
+    COLLECTION_INSPECTIONS,
+    ID.unique(),
+    {
+      filename: filename,
+      lot: parsedData.lot || null,
+      weight: null,
+      uploaded_at: new Date().toISOString(),
+      is_archived: false,
+      status: 'inspection',
+      ...measurements,
+      ...validations
+    }
+  );
 
-    results.successful.push({ filename });
+  results.successful.push({ filename });
 }
 
 // ======================
@@ -1369,9 +1364,9 @@ app.post("/update-weight", requireWeightEditAuth, async (req, res) => {
     const { fileId, weight } = req.body;
 
     if (!fileId) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'File ID is required' 
+      return res.status(400).json({
+        success: false,
+        error: 'File ID is required'
       });
     }
 
@@ -1401,15 +1396,15 @@ app.post("/update-weight", requireWeightEditAuth, async (req, res) => {
       updateData
     );
 
-    res.json({ 
+    res.json({
       success: true,
-      weight: formattedWeight 
+      weight: formattedWeight
     });
   } catch (error) {
     console.error("Error updating weight:", error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });
@@ -1420,9 +1415,9 @@ app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
     const { weights } = req.body;
 
     if (!weights || !Array.isArray(weights) || weights.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Weights array is required' 
+      return res.status(400).json({
+        success: false,
+        error: 'Weights array is required'
       });
     }
 
@@ -1464,17 +1459,17 @@ app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
       }
     }
 
-    res.json({ 
-      success: errors.length === 0, 
+    res.json({
+      success: errors.length === 0,
       updated: results.length,
       results: results.length > 0 ? results : undefined,
       errors: errors.length > 0 ? errors : undefined
     });
   } catch (error) {
     console.error("Error updating weights:", error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });
@@ -1504,7 +1499,7 @@ app.post("/import-weights", requireWeightEditAuth, (req, res, next) => {
 
 async function processImport(req, res) {
   res.setHeader('Content-Type', 'application/json');
-  
+
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ ok: false });
@@ -1512,11 +1507,11 @@ async function processImport(req, res) {
 
     const file = req.files[0];
     console.log("Processing file:", file.originalname);
-    
+
     const buf = XLSX.read(file.buffer, { type: 'buffer' });
     const ws = buf.Sheets[buf.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-    
+
     console.log("Read", rows.length, "rows from Excel");
 
     const totalRows = rows.length - 1; // Exclude header
@@ -1534,7 +1529,7 @@ async function processImport(req, res) {
 
         // Get file number from column A (remove .txt if present)
         const fileNum = String(row[0]).trim().replace(/\.txt$/i, '');
-        
+
         // Get weight from column B
         const weight = parseFloat(String(row[1]).trim());
 
@@ -1548,32 +1543,32 @@ async function processImport(req, res) {
 
         // Find document in Appwrite
         const result = await databases.listDocuments(
-          DATABASE_ID, 
-          COLLECTION_INSPECTIONS, 
+          DATABASE_ID,
+          COLLECTION_INSPECTIONS,
           [Query.equal('filename', filename)]
         );
-        
+
         if (result.documents && result.documents.length > 0) {
           const docId = result.documents[0].$id;
-          
+
           // Update ONLY weight — never touch status (shipped items must stay shipped)
           const updateResult = await databases.updateDocument(
-            DATABASE_ID, 
-            COLLECTION_INSPECTIONS, 
-            docId, 
+            DATABASE_ID,
+            COLLECTION_INSPECTIONS,
+            docId,
             { weight: roundedWeight }
           );
-          
+
           updated++;
           console.log(`✓ Updated: ${filename} with weight ${roundedWeight}g`);
-          
+
           // VERIFY: Read it back to confirm it was saved
           const verifyResult = await databases.getDocument(
-            DATABASE_ID, 
-            COLLECTION_INSPECTIONS, 
+            DATABASE_ID,
+            COLLECTION_INSPECTIONS,
             docId
           );
-          
+
           if (verifyResult.weight === roundedWeight) {
             verified++;
             console.log(`✓ VERIFIED: ${filename} - weight is ${verifyResult.weight}g in database`);
@@ -1588,7 +1583,7 @@ async function processImport(req, res) {
       } catch (rowErr) {
         console.error("Row error:", rowErr.message);
       }
-      
+
       // Update progress after each row
       importProgress.current = i;
     }
@@ -1601,9 +1596,9 @@ async function processImport(req, res) {
     console.log(`Verification failed: ${verifyFailed}`);
     console.log(`Not found in database: ${notFound}`);
     console.log(`====================================\n`);
-    
-    const responseData = { 
-      ok: true, 
+
+    const responseData = {
+      ok: true,
       success: true,
       updated: updated,
       verified: verified,
@@ -1611,13 +1606,13 @@ async function processImport(req, res) {
       notFound: notFound,
       message: `Success: ${verified} confirmed in database`
     };
-    
+
     importProgress = { current: totalRows, total: totalRows, status: 'complete' };
-    
+
     res.status(200);
     res.setHeader('Content-Type', 'application/json');
     return res.json(responseData);
-    
+
   } catch (e) {
     console.error("Import error:", e.message, e.stack);
     importProgress = { current: 0, total: 0, status: 'error' };
@@ -1683,9 +1678,9 @@ app.get("/export-weights", requireWeightEditAuth, async (req, res) => {
   } catch (error) {
     console.error("Error exporting weights:", error);
     res.setHeader('Content-Type', 'application/json');
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });
@@ -1773,9 +1768,9 @@ app.get("/export-measurements", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("Error exporting measurements:", error);
     res.setHeader('Content-Type', 'application/json');
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });
@@ -1787,7 +1782,7 @@ app.get("/export-measurements", requireAuth, async (req, res) => {
 app.post("/archive-files", requireAuth, async (req, res) => {
   try {
     const { fileIds } = req.body;
-    
+
     if (!Array.isArray(fileIds) || fileIds.length === 0) {
       return res.status(400).json({
         success: false,
@@ -1834,7 +1829,7 @@ app.post("/archive-files", requireAuth, async (req, res) => {
 app.post("/unarchive-files", requireAuth, async (req, res) => {
   try {
     const { fileIds } = req.body;
-    
+
     if (!Array.isArray(fileIds) || fileIds.length === 0) {
       return res.status(400).json({
         success: false,
@@ -1922,7 +1917,7 @@ app.get("/summary", requireAuth, async (req, res) => {
         };
 
         const gValue = processGValues(measurements);
-        
+
         fileData[inspection.$id] = {
           ...measurements,
           G: gValue
