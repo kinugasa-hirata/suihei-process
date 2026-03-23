@@ -87,6 +87,9 @@
     .breadcrumb-custom { font-size: 0.9rem; color: #6c757d; margin-bottom: 1rem; }
     .breadcrumb-custom a { color: #0d6efd; text-decoration: none; cursor: pointer; }
     .breadcrumb-custom a:hover { text-decoration: underline; }
+
+    /* Header nav row */
+    .header-nav { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem; }
   </style>
 </head>
 <body>
@@ -99,8 +102,18 @@
 
   <!-- Header -->
   <div class="header">
-    <h1>追加工程</h1>
-    <p style="color: #6c757d; margin: 0;">測定データを自動的にExcelに転記します</p>
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h1>追加工程</h1>
+        <p style="color: #6c757d; margin: 0;">測定データを自動的にExcelに転記します</p>
+      </div>
+      <div style="text-align: right; font-size: 0.9rem;">
+        <div style="color: #6c757d;">ログイン中: <strong><%= displayName %></strong></div>
+        <form action="/logout" method="POST" style="display: inline; margin-top: 0.5rem;">
+          <button type="submit" class="btn btn-sm btn-outline-secondary">Logout</button>
+        </form>
+      </div>
+    </div>
   </div>
 
   <!-- Workflow steps -->
@@ -225,62 +238,52 @@
 
 </div><!-- /container -->
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-
 <script>
-  // Global state
   let parsedData = null;
-  let processedWorkbook = null;
   let distanceValues = [];
   let intCircleValues = [];
+  let processedWorkbook = null;
 
-  // File input handler
+  // File input and drag-drop handling
   const dataFile = document.getElementById('dataFile');
   const dropZone = document.getElementById('dropZone');
 
-  dataFile.addEventListener('change', handleDataFile);
+  dataFile.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) handleFileSelect(file);
+  });
 
-  // Drag and drop
   dropZone.addEventListener('click', () => dataFile.click());
   dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
     dropZone.classList.add('drag-over');
   });
-  dropZone.addEventListener('dragleave', () => {
-    dropZone.classList.remove('drag-over');
-  });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
   dropZone.addEventListener('drop', (e) => {
     e.preventDefault();
     dropZone.classList.remove('drag-over');
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      dataFile.files = files;
-      dataFile.dispatchEvent(new Event('change'));
-    }
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileSelect(file);
   });
 
-  function handleDataFile(e) {
-    const file = e.target.files[0];
+  function handleFileSelect(file) {
     if (!file) return;
-
+    
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = (e) => {
       try {
-        const content = event.target.result;
+        const content = e.target.result;
         parsedData = parseData(content);
-        
+
         if (parsedData && parsedData.length > 0) {
           const { distanceVals, intCircleVals } = extractTargetValues(parsedData);
           distanceValues = distanceVals;
           intCircleValues = intCircleVals;
 
-          document.getElementById('dataNameText').textContent = file.name;
           document.getElementById('dataName').style.display = 'block';
-          dropZone.style.display = 'none';
-
-          // Show stats
+          document.getElementById('dataNameText').textContent = `✓ ${file.name} を読み込みました`;
           document.getElementById('statsContainer').style.display = 'block';
           document.getElementById('recordCount').textContent = parsedData.length;
           document.getElementById('distanceCount').textContent = distanceVals.length;

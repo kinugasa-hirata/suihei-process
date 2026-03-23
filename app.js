@@ -1,6 +1,6 @@
-// app.js - EFFICIENT SCHEMA VERSION WITH STOCK MANAGEMENT
-// Updated: Added stock management system for orders and imports
-// Modified: Excel import/export, Status tracking, Order management
+// app.js - EFFICIENT SCHEMA VERSION WITH STOCK MANAGEMENT & TUIKA-PROCESS
+// Updated: Added stock management system, tuika-process route, and login fixes
+// Modified: Excel import/export, Status tracking, Order management, Authentication
 
 const express = require("express");
 const multer = require("multer");
@@ -335,6 +335,8 @@ app.post("/login", async (req, res) => {
       sameSite: 'lax'
     });
 
+    // ✅ FIXED: Don't try to log can_edit_weights to LOGIN_LOGS
+    // Only log username and timestamp
     try {
       await databases.createDocument(
         DATABASE_ID,
@@ -342,12 +344,13 @@ app.post("/login", async (req, res) => {
         ID.unique(),
         {
           username: username,
-          logged_in_at: new Date().toISOString(),
-          can_edit_weights: canEditWeights(username)
+          logged_in_at: new Date().toISOString()
+          // REMOVED: can_edit_weights - this attribute doesn't exist in LOGIN_LOGS
         }
       );
     } catch (logError) {
       console.error('Error logging login:', logError);
+      // Don't fail login just because logging failed
     }
 
     res.redirect("/");
@@ -801,7 +804,7 @@ app.get("/stock-management", requireAuth, async (req, res) => {
     }));
 
     res.render("stock-management", {
-      orders: ordersWithStock,  // *** CHANGED: Use ordersWithStock instead of ordersResult.documents ***
+      orders: ordersWithStock,
       imports: importsWithFiles,
       inspectionsByStatus: inspectionsByStatus,
       statusConfig: STATUS_CONFIG,
@@ -812,6 +815,25 @@ app.get("/stock-management", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("Error loading stock management:", error);
     res.status(500).send("Error loading stock management");
+  }
+});
+
+// ======================
+// TUIKA-PROCESS ROUTE (追加工程)
+// ======================
+
+app.get("/tuika-process", requireAuth, async (req, res) => {
+  try {
+    const displayName = getDisplayName(req.session.username);
+    
+    res.render("tuika-process", {
+      username: req.session.username,
+      displayName: displayName,
+      canEditWeights: req.session.canEditWeights || false
+    });
+  } catch (error) {
+    console.error("Error loading tuika-process page:", error);
+    res.status(500).send("Error loading tuika-process page");
   }
 });
 
@@ -1979,6 +2001,7 @@ app.listen(PORT, () => {
   console.log(`Authorized weight editors: ${AUTHORIZED_USERS.join(', ')}`);
   console.log(`✨ Stock Management System Enabled`);
   console.log(`📊 Excel import/export enabled`);
+  console.log(`🎯 Tuika-Process (追加工程) Enabled`);
 });
 
 module.exports = app;
