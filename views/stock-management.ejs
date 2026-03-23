@@ -1,948 +1,1039 @@
 <!DOCTYPE html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>在庫管理 - Stock Management</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" />
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-    <style>
-      body {
-        background-color: #f5f5f5;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      }
-      .container {
-        max-width: 1400px;
-        margin-top: 2rem;
-        padding-bottom: 3rem;
-      }
-      .header-section {
-        background: white;
-        border-radius: 12px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      .header-title {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #2c3e50;
-        margin-bottom: 0.5rem;
-      }
-      .header-subtitle {
-        color: #7f8c8d;
-        font-size: 1.1rem;
-      }
-      .settings-btn {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: transform 0.2s;
-      }
-      .settings-btn:hover {
-        transform: scale(1.05);
-        color: white;
-      }
-      .nav-tabs-custom {
-        border-bottom: 3px solid #e9ecef;
-        margin-bottom: 2rem;
-      }
-      .nav-tabs-custom .nav-link {
-        color: #6c757d;
-        font-weight: 600;
-        border: none;
-        padding: 1rem 2rem;
-        transition: all 0.3s;
-      }
-      .nav-tabs-custom .nav-link:hover {
-        color: #0d6efd;
-        border-color: transparent;
-      }
-      .nav-tabs-custom .nav-link.active {
-        color: #0d6efd;
-        border: none;
-        border-bottom: 3px solid #0d6efd;
-        background: transparent;
-      }
-      .section-card {
-        background: white;
-        border-radius: 12px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      }
-      .section-title {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #2c3e50;
-        margin-bottom: 1.5rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid #e9ecef;
-      }
-      .table-responsive {
-        border-radius: 8px;
-        overflow: hidden;
-      }
-      .custom-table {
-        margin-bottom: 0;
-      }
-      .custom-table thead {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-      }
-      .custom-table thead th {
-        padding: 1rem;
-        font-weight: 600;
-        border: none;
-      }
-      .custom-table tbody td {
-        padding: 1rem;
-        vertical-align: middle;
-      }
-      .custom-table tbody tr:hover {
-        background-color: #f8f9fa;
-      }
-      .status-badge {
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-size: 0.875rem;
-        font-weight: 600;
-        display: inline-block;
-      }
-      .status-pending     { background-color: #fff3cd; color: #856404; }
-      .status-processing  { background-color: #cfe2ff; color: #084298; }
-      .status-completed   { background-color: #d1e7dd; color: #0f5132; }
-      .status-cancelled   { background-color: #f8d7da; color: #842029; }
-      .status-scheduled   { background-color: #e7f3ff; color: #055160; }
-      .status-arrived     { background-color: #d1e7dd; color: #0f5132; }
-      .btn-action {
-        padding: 0.25rem 0.75rem;
-        font-size: 0.875rem;
-        margin: 0 0.25rem;
-      }
-      .btn-ship {
-        background-color: #0d6efd;
-        color: white;
-        border: none;
-      }
-      .btn-ship:hover {
-        background-color: #0b5ed7;
-        color: white;
-      }
-      .btn-ship:disabled {
-        background-color: #adb5bd;
-        cursor: not-allowed;
-      }
-      .empty-state {
-        text-align: center;
-        padding: 3rem;
-        color: #6c757d;
-      }
-      .empty-state .material-icons {
-        font-size: 4rem;
-        color: #dee2e6;
-        margin-bottom: 1rem;
-      }
-      .stock-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 1rem;
-        margin-top: 1rem;
-      }
-      .stock-item {
-        background: white;
-        border-radius: 8px;
-        padding: 1rem;
-        text-align: center;
-        border: 2px solid #dee2e6;
-        transition: all 0.3s ease;
-        cursor: pointer;
-      }
-      .stock-item:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        transform: translateY(-2px);
-      }
-      .stock-item-number {
-        font-size: 1.8rem;
-        font-weight: bold;
-        color: #0d6efd;
-        margin-bottom: 0.5rem;
-      }
-      .stock-item-weight {
-        font-size: 0.9rem;
-        color: #666;
-      }
-      .status-section {
-        margin-bottom: 2rem;
-      }
-      .status-section-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 1rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-      }
-      .status-section-title {
-        font-size: 1.2rem;
-        font-weight: 600;
-        margin: 0;
-      }
-      .status-section-count {
-        background: rgba(255,255,255,0.3);
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-weight: 600;
-      }
-      .user-info-header {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: white;
-        padding: 12px 24px;
-        border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-        z-index: 1000;
-        display: flex;
-        align-items: center;
-        gap: 15px;
-      }
-      .modal-backdrop-custom {
-        display: none;
-        position: fixed;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        background: rgba(0,0,0,0.5);
-        z-index: 9998;
-      }
-      .modal-backdrop-custom.show { display: block; }
-      .modal-custom {
-        display: none;
-        position: fixed;
-        top: 50%; left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-        z-index: 9999;
-        max-width: 600px;
-        width: 90%;
-        max-height: 90vh;
-        overflow-y: auto;
-      }
-      .modal-custom.show { display: block; }
-      .modal-header-custom {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 12px 12px 0 0;
-      }
-      .modal-body-custom { padding: 2rem; }
-      .form-label-custom {
-        font-weight: 600;
-        color: #2c3e50;
-        margin-bottom: 0.5rem;
-      }
-      .back-to-main {
-        position: fixed;
-        bottom: 30px;
-        right: 30px;
-        background: white;
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        cursor: pointer;
-        z-index: 500;
-        transition: all 0.3s;
-        text-decoration: none;
-      }
-      .back-to-main:hover {
-        box-shadow: 0 6px 16px rgba(0,0,0,0.2);
-        transform: scale(1.1);
-      }
-      .material-icons { font-family: 'Material Icons'; font-weight: normal; font-style: normal; font-size: 24px; display: inline-block; line-height: 1; }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <!-- Header with Settings Button -->
-      <div class="header-section">
-        <div>
-          <div class="header-title">在庫管理システム</div>
-          <div class="header-subtitle">Stock Management System - Orders, Imports & Inventory</div>
-        </div>
-        <div style="display:flex;gap:0.75rem;align-items:center;">
-          <a href="/" class="btn btn-outline-secondary" style="display:flex;align-items:center;gap:6px;">
-            <span class="material-icons" style="font-size:18px;">home</span> ホーム
-          </a>
-          <button class="settings-btn" onclick="openSettingsModal()">
-            <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem; font-size: 20px;">settings</span>
-            設定
-          </button>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>在庫管理 - Stock Management</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <style>
+    body {
+      background-color: #f5f5f5;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin-top: 2rem;
+      padding-bottom: 3rem;
+    }
+
+    .header-section {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #2c3e50;
+      margin-bottom: 0.5rem;
+    }
+
+    .header-subtitle {
+      color: #7f8c8d;
+      font-size: 1.1rem;
+    }
+
+    .settings-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .settings-btn:hover {
+      transform: scale(1.05);
+      color: white;
+    }
+
+    .nav-tabs-custom {
+      border-bottom: 3px solid #e9ecef;
+      margin-bottom: 2rem;
+    }
+
+    .nav-tabs-custom .nav-link {
+      color: #6c757d;
+      font-weight: 600;
+      border: none;
+      padding: 1rem 2rem;
+      transition: all 0.3s;
+    }
+
+    .nav-tabs-custom .nav-link:hover {
+      color: #0d6efd;
+      border-color: transparent;
+    }
+
+    .nav-tabs-custom .nav-link.active {
+      color: #0d6efd;
+      border: none;
+      border-bottom: 3px solid #0d6efd;
+      background: transparent;
+    }
+
+    .section-card {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #2c3e50;
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #e9ecef;
+    }
+
+    .table-responsive {
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .custom-table {
+      margin-bottom: 0;
+    }
+
+    .custom-table thead {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .custom-table thead th {
+      padding: 1rem;
+      font-weight: 600;
+      border: none;
+    }
+
+    .custom-table tbody td {
+      padding: 1rem;
+      vertical-align: middle;
+    }
+
+    .custom-table tbody tr:hover {
+      background-color: #f8f9fa;
+    }
+
+    .status-badge {
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .status-pending {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+
+    .status-processing {
+      background-color: #cfe2ff;
+      color: #084298;
+    }
+
+    .status-completed {
+      background-color: #d1e7dd;
+      color: #0f5132;
+    }
+
+    .status-cancelled {
+      background-color: #f8d7da;
+      color: #842029;
+    }
+
+    .status-scheduled {
+      background-color: #e7f3ff;
+      color: #055160;
+    }
+
+    .status-arrived {
+      background-color: #d1e7dd;
+      color: #0f5132;
+    }
+
+    .btn-action {
+      padding: 0.25rem 0.75rem;
+      font-size: 0.875rem;
+      margin: 0 0.25rem;
+    }
+
+    .btn-ship {
+      background-color: #0d6efd;
+      color: white;
+      border: none;
+    }
+
+    .btn-ship:hover {
+      background-color: #0b5ed7;
+      color: white;
+    }
+
+    .btn-ship:disabled {
+      background-color: #adb5bd;
+      cursor: not-allowed;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: #6c757d;
+    }
+
+    .empty-state .material-icons {
+      font-size: 4rem;
+      color: #dee2e6;
+      margin-bottom: 1rem;
+    }
+
+    .stock-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .stock-item {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+      border: 2px solid #dee2e6;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .stock-item:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .stock-item-number {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #0d6efd;
+      margin-bottom: 0.5rem;
+    }
+
+    .stock-item-weight {
+      font-size: 0.9rem;
+      color: #666;
+    }
+
+    .status-section {
+      margin-bottom: 2rem;
+    }
+
+    .status-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+
+    .status-section-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .status-section-count {
+      background: rgba(255, 255, 255, 0.3);
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+
+    .user-info-header {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .modal-backdrop-custom {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 9998;
+    }
+
+    .modal-backdrop-custom.show {
+      display: block;
+    }
+
+    .modal-custom {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      z-index: 9999;
+      max-width: 600px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-custom.show {
+      display: block;
+    }
+
+    .modal-header-custom {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 1.5rem;
+      border-radius: 12px 12px 0 0;
+    }
+
+    .modal-body-custom {
+      padding: 2rem;
+    }
+
+    .form-label-custom {
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 0.5rem;
+    }
+
+    .back-to-main {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: white;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      cursor: pointer;
+      z-index: 500;
+      transition: all 0.3s;
+      text-decoration: none;
+    }
+
+    .back-to-main:hover {
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+      transform: scale(1.1);
+    }
+
+    .material-icons {
+      font-family: 'Material Icons';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 24px;
+      display: inline-block;
+      line-height: 1;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- Header with Settings Button -->
+    <div class="header-section">
+      <div>
+        <div class="header-title">在庫管理システム</div>
+        <div class="header-subtitle">Stock Management System - Orders, Imports & Inventory</div>
+      </div>
+      <div style="display:flex;gap:0.75rem;align-items:center;">
+        <a href="/" class="btn btn-outline-secondary" style="display:flex;align-items:center;gap:6px;">
+          <span class="material-icons" style="font-size:18px;">home</span> ホーム
+        </a>
+        <button class="settings-btn" onclick="openSettingsModal()">
+          <span class="material-icons"
+            style="vertical-align: middle; margin-right: 0.5rem; font-size: 20px;">settings</span>
+          設定
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-tabs-custom" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders" type="button"
+          role="tab" aria-controls="orders" aria-selected="true">
+          <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">shopping_cart</span>
+          注文管理 (Orders)
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="imports-tab" data-bs-toggle="tab" data-bs-target="#imports" type="button"
+          role="tab" aria-controls="imports" aria-selected="false">
+          <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">local_shipping</span>
+          入荷管理 (Imports)
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory" type="button"
+          role="tab" aria-controls="inventory" aria-selected="false">
+          <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">inventory_2</span>
+          在庫状況 (Inventory)
+        </button>
+      </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+      <!-- Orders Tab -->
+      <div class="tab-pane fade show active" id="orders" role="tabpanel" aria-labelledby="orders-tab">
+        <div class="section-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2 class="section-title" style="margin-bottom: 0;">注文一覧 (Order List)</h2>
+            <button class="btn btn-primary" onclick="openOrderModal()"
+              style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+              <span class="material-icons" style="vertical-align: middle;">add</span> 新規注文
+            </button>
+          </div>
+          <div id="ordersEmpty" class="empty-state" style="display: none;">
+            <span class="material-icons">inbox</span>
+            <p>注文がまだ登録されていません</p>
+          </div>
+          <div class="table-responsive">
+            <table class="table custom-table" id="ordersTable" style="display: none;">
+              <thead>
+                <tr>
+                  <th>注文日</th>
+                  <th>数量</th>
+                  <th>納期</th>
+                  <th>ステータス</th>
+                  <th>在庫状況</th>
+                  <th>割当製品</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="ordersList">
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      <!-- Navigation Tabs -->
-      <ul class="nav nav-tabs-custom" role="tablist">
-        <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders" type="button" role="tab" aria-controls="orders" aria-selected="true">
-            <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">shopping_cart</span>
-            注文管理 (Orders)
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="imports-tab" data-bs-toggle="tab" data-bs-target="#imports" type="button" role="tab" aria-controls="imports" aria-selected="false">
-            <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">local_shipping</span>
-            入荷管理 (Imports)
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory" type="button" role="tab" aria-controls="inventory" aria-selected="false">
-            <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">inventory_2</span>
-            在庫状況 (Inventory)
-          </button>
-        </li>
-      </ul>
-
-      <!-- Tab Content -->
-      <div class="tab-content">
-        <!-- Orders Tab -->
-        <div class="tab-pane fade show active" id="orders" role="tabpanel" aria-labelledby="orders-tab">
-          <div class="section-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-              <h2 class="section-title" style="margin-bottom: 0;">注文一覧 (Order List)</h2>
-              <button class="btn btn-primary" onclick="openOrderModal()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
-                <span class="material-icons" style="vertical-align: middle;">add</span> 新規注文
-              </button>
-            </div>
-            <div id="ordersEmpty" class="empty-state" style="display: none;">
-              <span class="material-icons">inbox</span>
-              <p>注文がまだ登録されていません</p>
-            </div>
-            <div class="table-responsive">
-              <table class="table custom-table" id="ordersTable" style="display: none;">
-                <thead>
-                  <tr>
-                    <th>注文日</th>
-                    <th>数量</th>
-                    <th>納期</th>
-                    <th>ステータス</th>
-                    <th>在庫状況</th>
-                    <th>割当製品</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody id="ordersList">
-                </tbody>
-              </table>
-            </div>
+      <!-- Imports Tab -->
+      <div class="tab-pane fade" id="imports" role="tabpanel" aria-labelledby="imports-tab">
+        <div class="section-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2 class="section-title" style="margin-bottom: 0;">入荷管理</h2>
+            <button class="btn btn-primary" onclick="openImportModal()"
+              style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+              <span class="material-icons" style="vertical-align: middle;">add</span> 新規入荷
+            </button>
+          </div>
+          <div id="importsEmpty" class="empty-state" style="display: none;">
+            <span class="material-icons">inbox</span>
+            <p>入荷予定がまだ登録されていません</p>
+          </div>
+          <div class="table-responsive">
+            <table class="table custom-table" id="importsTable" style="display: none;">
+              <thead>
+                <tr>
+                  <th>日付</th>
+                  <th>数量</th>
+                  <th>予定日</th>
+                  <th>実際の入荷日</th>
+                  <th>ステータス</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="importsList">
+              </tbody>
+            </table>
           </div>
         </div>
+      </div>
 
-        <!-- Imports Tab -->
-        <div class="tab-pane fade" id="imports" role="tabpanel" aria-labelledby="imports-tab">
-          <div class="section-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-              <h2 class="section-title" style="margin-bottom: 0;">入荷管理</h2>
-              <button class="btn btn-primary" onclick="openImportModal()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
-                <span class="material-icons" style="vertical-align: middle;">add</span> 新規入荷
-              </button>
-            </div>
-            <div id="importsEmpty" class="empty-state" style="display: none;">
-              <span class="material-icons">inbox</span>
-              <p>入荷予定がまだ登録されていません</p>
-            </div>
-            <div class="table-responsive">
-              <table class="table custom-table" id="importsTable" style="display: none;">
-                <thead>
-                  <tr>
-                    <th>日付</th>
-                    <th>数量</th>
-                    <th>予定日</th>
-                    <th>実際の入荷日</th>
-                    <th>ステータス</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody id="importsList">
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- Inventory Tab -->
-        <div class="tab-pane fade" id="inventory" role="tabpanel" aria-labelledby="inventory-tab">
-          <div class="section-card">
-            <h2 class="section-title">在庫状況 (Inventory)</h2>
-            <div id="inventoryContent">
-              <div style="text-align: center; padding: 2rem; color: #6c757d;">
-                <p>在庫情報を読み込み中...</p>
-              </div>
+      <!-- Inventory Tab -->
+      <div class="tab-pane fade" id="inventory" role="tabpanel" aria-labelledby="inventory-tab">
+        <div class="section-card">
+          <h2 class="section-title">在庫状況 (Inventory)</h2>
+          <div id="inventoryContent">
+            <div style="text-align: center; padding: 2rem; color: #6c757d;">
+              <p>在庫情報を読み込み中...</p>
             </div>
           </div>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Settings Modal -->
-    <div class="modal-backdrop-custom" id="settingsModalBackdrop" onclick="closeSettingsModal()"></div>
-    <div class="modal-custom" id="settingsModal">
-      <div class="modal-header-custom">
-        <h3 style="margin: 0;">
-          <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">settings</span>
-          ロット番号設定
-        </h3>
-      </div>
-      <div class="modal-body-custom">
-        <form id="settingsForm">
-          <div class="mb-3">
-            <label for="lotStartNumber" class="form-label-custom">ロット番号開始値</label>
-            <input 
-              type="number" 
-              class="form-control" 
-              id="lotStartNumber" 
-              name="lotStartNumber" 
-              min="1" 
-              required
-              placeholder="例: 434"
-            >
-            <small class="text-muted">
-              この値から始まるロット番号が自動で割り当てられます。<br>
-              例: 434 に設定すると、次の製品には 434, 435, 436... が割り当てられます。
-            </small>
-          </div>
-
-          <div class="mb-3">
-            <label for="lotCurrentNumber" class="form-label-custom">現在のロット番号</label>
-            <input 
-              type="number" 
-              class="form-control" 
-              id="lotCurrentNumber" 
-              name="lotCurrentNumber" 
-              min="1" 
-              readonly
-              style="background-color: #f0f0f0;"
-            >
-            <small class="text-muted">
-              次に割り当てられる予定のロット番号です。
-            </small>
-          </div>
-
-          <div class="mb-3">
-            <label for="minFileNum" class="form-label-custom">注文表示の最小製品番号</label>
-            <input 
-              type="number" 
-              class="form-control" 
-              id="minFileNum" 
-              name="minFileNum" 
-              min="1" 
-              placeholder="例: 488"
-            >
-            <small class="text-muted">
-              注文の割当製品表示でこの番号より小さい製品番号を非表示にします（出荷済の古い製品を除外）。
-            </small>
-          </div>
-
-          <div class="alert alert-info" role="alert">
-            <strong>使い方:</strong> 
-            <ul style="margin: 0.5rem 0 0 0; padding-left: 1.5rem;">
-              <li>開始値を設定すると、システムが自動でロット番号を割り当てます</li>
-              <li>既に出荷済みの製品のロット番号は避けるよう設定してください</li>
-              <li>例: 最後に出荷した製品が 461 の場合、434 ではなく 462 から始めるよう設定してください</li>
-            </ul>
-          </div>
-
-          <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-success flex-grow-1">保存</button>
-            <button type="button" class="btn btn-secondary" onclick="closeSettingsModal()">キャンセル</button>
-          </div>
-        </form>
-      </div>
+  <!-- Settings Modal -->
+  <div class="modal-backdrop-custom" id="settingsModalBackdrop" onclick="closeSettingsModal()"></div>
+  <div class="modal-custom" id="settingsModal">
+    <div class="modal-header-custom">
+      <h3 style="margin: 0;">
+        <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">settings</span>
+        ロット番号設定
+      </h3>
     </div>
+    <div class="modal-body-custom">
+      <form id="settingsForm">
+        <div class="mb-3">
+          <label for="lotStartNumber" class="form-label-custom">ロット番号開始値</label>
+          <input type="number" class="form-control" id="lotStartNumber" name="lotStartNumber" min="1" required
+            placeholder="例: 434">
+          <small class="text-muted">
+            この値から始まるロット番号が自動で割り当てられます。<br>
+            例: 434 に設定すると、次の製品には 434, 435, 436... が割り当てられます。
+          </small>
+        </div>
 
-    <!-- Order Modal -->
-    <div class="modal-backdrop-custom" id="orderModalBackdrop" onclick="closeOrderModal()"></div>
-    <div class="modal-custom" id="orderModal">
-      <div class="modal-header-custom">
-        <h3 style="margin: 0;">注文管理</h3>
-      </div>
-      <div class="modal-body-custom">
-        <form id="orderForm">
-          <input type="hidden" id="orderId" name="orderId">
-          <div class="mb-3">
-            <label for="quantity" class="form-label form-label-custom">数量</label>
-            <input type="number" class="form-control" id="quantity" name="quantity" min="1" required>
-          </div>
-          <div class="mb-3">
-            <label for="dueDate" class="form-label form-label-custom">納期</label>
-            <input type="date" class="form-control" id="dueDate" name="due_date" required>
-          </div>
-          <div class="mb-3">
-            <label for="orderStatus" class="form-label form-label-custom">ステータス</label>
-            <select class="form-select" id="orderStatus" name="status">
-              <option value="pending">保留中</option>
-              <option value="processing">処理中</option>
-              <option value="completed">完了</option>
-              <option value="cancelled">キャンセル</option>
-            </select>
-          </div>
-          <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-success flex-grow-1">保存</button>
-            <button type="button" class="btn btn-secondary" onclick="closeOrderModal()">キャンセル</button>
-          </div>
-        </form>
-      </div>
+        <div class="mb-3">
+          <label for="lotCurrentNumber" class="form-label-custom">現在のロット番号</label>
+          <input type="number" class="form-control" id="lotCurrentNumber" name="lotCurrentNumber" min="1" readonly
+            style="background-color: #f0f0f0;">
+          <small class="text-muted">
+            次に割り当てられる予定のロット番号です。
+          </small>
+        </div>
+
+        <div class="mb-3">
+          <label for="minFileNum" class="form-label-custom">注文表示の最小製品番号</label>
+          <input type="number" class="form-control" id="minFileNum" name="minFileNum" min="1" placeholder="例: 488">
+          <small class="text-muted">
+            注文の割当製品表示でこの番号より小さい製品番号を非表示にします（出荷済の古い製品を除外）。
+          </small>
+        </div>
+
+        <div class="alert alert-info" role="alert">
+          <strong>使い方:</strong>
+          <ul style="margin: 0.5rem 0 0 0; padding-left: 1.5rem;">
+            <li>開始値を設定すると、システムが自動でロット番号を割り当てます</li>
+            <li>既に出荷済みの製品のロット番号は避けるよう設定してください</li>
+            <li>例: 最後に出荷した製品が 461 の場合、434 ではなく 462 から始めるよう設定してください</li>
+          </ul>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-success flex-grow-1">保存</button>
+          <button type="button" class="btn btn-secondary" onclick="closeSettingsModal()">キャンセル</button>
+        </div>
+      </form>
     </div>
+  </div>
 
-    <!-- Import Modal -->
-    <div class="modal-backdrop-custom" id="importModalBackdrop" onclick="closeImportModal()"></div>
-    <div class="modal-custom" id="importModal">
-      <div class="modal-header-custom">
-        <h3 style="margin: 0;">入荷管理</h3>
-      </div>
-      <div class="modal-body-custom">
-        <form id="importForm">
-          <input type="hidden" id="importId" name="importId">
-          <div class="mb-3">
-            <label for="importQuantity" class="form-label form-label-custom">数量</label>
-            <input type="number" class="form-control" id="importQuantity" name="quantity" min="1" required>
-          </div>
-          <div class="mb-3">
-            <label for="scheduledDate" class="form-label form-label-custom">予定日</label>
-            <input type="date" class="form-control" id="scheduledDate" name="scheduled_date" required>
-          </div>
-          <div class="mb-3">
-            <label for="actualDate" class="form-label form-label-custom">実際の入荷日</label>
-            <input type="date" class="form-control" id="actualDate" name="actual_date">
-          </div>
-          <div class="mb-3">
-            <label for="importStatus" class="form-label form-label-custom">ステータス</label>
-            <select class="form-select" id="importStatus" name="status">
-              <option value="scheduled">予定</option>
-              <option value="arrived">入荷済</option>
-            </select>
-          </div>
-          <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-success flex-grow-1">保存</button>
-            <button type="button" class="btn btn-secondary" onclick="closeImportModal()">キャンセル</button>
-          </div>
-        </form>
-      </div>
+  <!-- Order Modal -->
+  <div class="modal-backdrop-custom" id="orderModalBackdrop" onclick="closeOrderModal()"></div>
+  <div class="modal-custom" id="orderModal">
+    <div class="modal-header-custom">
+      <h3 style="margin: 0;">注文管理</h3>
     </div>
+    <div class="modal-body-custom">
+      <form id="orderForm">
+        <input type="hidden" id="orderId" name="orderId">
+        <div class="mb-3">
+          <label for="quantity" class="form-label form-label-custom">数量</label>
+          <input type="number" class="form-control" id="quantity" name="quantity" min="1" required>
+        </div>
+        <div class="mb-3">
+          <label for="dueDate" class="form-label form-label-custom">納期</label>
+          <input type="date" class="form-control" id="dueDate" name="due_date" required>
+        </div>
+        <div class="mb-3">
+          <label for="orderStatus" class="form-label form-label-custom">ステータス</label>
+          <select class="form-select" id="orderStatus" name="status">
+            <option value="pending">保留中</option>
+            <option value="processing">処理中</option>
+            <option value="completed">完了</option>
+            <option value="cancelled">キャンセル</option>
+          </select>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-success flex-grow-1">保存</button>
+          <button type="button" class="btn btn-secondary" onclick="closeOrderModal()">キャンセル</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-      // ======================
-      // SETTINGS MANAGEMENT
-      // ======================
-      
-      const STORAGE_KEY = 'lotNumberSettings';
+  <!-- Import Modal -->
+  <div class="modal-backdrop-custom" id="importModalBackdrop" onclick="closeImportModal()"></div>
+  <div class="modal-custom" id="importModal">
+    <div class="modal-header-custom">
+      <h3 style="margin: 0;">入荷管理</h3>
+    </div>
+    <div class="modal-body-custom">
+      <form id="importForm">
+        <input type="hidden" id="importId" name="importId">
+        <div class="mb-3">
+          <label for="importQuantity" class="form-label form-label-custom">数量</label>
+          <input type="number" class="form-control" id="importQuantity" name="quantity" min="1" required>
+        </div>
+        <div class="mb-3">
+          <label for="scheduledDate" class="form-label form-label-custom">予定日</label>
+          <input type="date" class="form-control" id="scheduledDate" name="scheduled_date" required>
+        </div>
+        <div class="mb-3">
+          <label for="actualDate" class="form-label form-label-custom">実際の入荷日</label>
+          <input type="date" class="form-control" id="actualDate" name="actual_date">
+        </div>
+        <div class="mb-3">
+          <label for="importStatus" class="form-label form-label-custom">ステータス</label>
+          <select class="form-select" id="importStatus" name="status">
+            <option value="scheduled">予定</option>
+            <option value="arrived">入荷済</option>
+          </select>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-success flex-grow-1">保存</button>
+          <button type="button" class="btn btn-secondary" onclick="closeImportModal()">キャンセル</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-      function loadSettings() {
-        const settings = localStorage.getItem(STORAGE_KEY);
-        if (settings) {
-          return JSON.parse(settings);
-        }
-        return { startNumber: 434, currentNumber: 434, minFileNum: 488 };
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // ======================
+    // SETTINGS MANAGEMENT
+    // ======================
+
+    const STORAGE_KEY = 'lotNumberSettings';
+
+    function loadSettings() {
+      const settings = localStorage.getItem(STORAGE_KEY);
+      if (settings) {
+        return JSON.parse(settings);
       }
+      return { startNumber: 434, currentNumber: 434, minFileNum: 488 };
+    }
 
-      function saveSettings(settings) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    function saveSettings(settings) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    }
+
+    function getNextLotNumber() {
+      const settings = loadSettings();
+      const nextNumber = settings.currentNumber;
+      settings.currentNumber += 1;
+      saveSettings(settings);
+      return nextNumber;
+    }
+
+    function openSettingsModal() {
+      const settings = loadSettings();
+      document.getElementById('lotStartNumber').value = settings.startNumber;
+      document.getElementById('lotCurrentNumber').value = settings.currentNumber;
+      document.getElementById('minFileNum').value = settings.minFileNum || 488;
+      document.getElementById('settingsModalBackdrop').classList.add('show');
+      document.getElementById('settingsModal').classList.add('show');
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settingsModalBackdrop').classList.remove('show');
+      document.getElementById('settingsModal').classList.remove('show');
+    }
+
+    document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const startNumber = parseInt(document.getElementById('lotStartNumber').value);
+
+      const confirmed = confirm(
+        `ロット番号開始値を ${startNumber} に設定します。\n` +
+        `次のロット番号は ${startNumber} から始まります。\n\n` +
+        `よろしいですか？`
+      );
+
+      if (!confirmed) return;
+
+      const settings = {
+        startNumber: startNumber,
+        currentNumber: startNumber,
+        minFileNum: parseInt(document.getElementById('minFileNum').value) || 488
+      };
+
+      saveSettings(settings);
+      alert(`ロット番号設定を保存しました。\n開始値: ${startNumber}`);
+      closeSettingsModal();
+    });
+
+    // ======================
+    // ORDER MODAL
+    // ======================
+
+    function openOrderModal(orderId = null) {
+      if (orderId) {
+        fetch(`/api/orders/${orderId}`)
+          .then(r => r.json())
+          .then(data => {
+            document.getElementById('orderId').value = data.$id;
+            document.getElementById('quantity').value = data.quantity;
+            document.getElementById('dueDate').value = data.due_date;
+            document.getElementById('orderStatus').value = data.status;
+          });
+      } else {
+        document.getElementById('orderForm').reset();
+        document.getElementById('orderId').value = '';
       }
+      document.getElementById('orderModalBackdrop').classList.add('show');
+      document.getElementById('orderModal').classList.add('show');
+    }
 
-      function getNextLotNumber() {
-        const settings = loadSettings();
-        const nextNumber = settings.currentNumber;
-        settings.currentNumber += 1;
-        saveSettings(settings);
-        return nextNumber;
-      }
+    function closeOrderModal() {
+      document.getElementById('orderModalBackdrop').classList.remove('show');
+      document.getElementById('orderModal').classList.remove('show');
+    }
 
-      function openSettingsModal() {
-        const settings = loadSettings();
-        document.getElementById('lotStartNumber').value = settings.startNumber;
-        document.getElementById('lotCurrentNumber').value = settings.currentNumber;
-        document.getElementById('minFileNum').value = settings.minFileNum || 488;
-        document.getElementById('settingsModalBackdrop').classList.add('show');
-        document.getElementById('settingsModal').classList.add('show');
-      }
+    function editOrder(orderId) { openOrderModal(orderId); }
 
-      function closeSettingsModal() {
-        document.getElementById('settingsModalBackdrop').classList.remove('show');
-        document.getElementById('settingsModal').classList.remove('show');
-      }
-
-      document.getElementById('settingsForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const startNumber = parseInt(document.getElementById('lotStartNumber').value);
-        
-        const confirmed = confirm(
-          `ロット番号開始値を ${startNumber} に設定します。\n` +
-          `次のロット番号は ${startNumber} から始まります。\n\n` +
-          `よろしいですか？`
-        );
-        
-        if (!confirmed) return;
-
-        const settings = {
-          startNumber: startNumber,
-          currentNumber: startNumber,
-          minFileNum: parseInt(document.getElementById('minFileNum').value) || 488
-        };
-        
-        saveSettings(settings);
-        alert(`ロット番号設定を保存しました。\n開始値: ${startNumber}`);
-        closeSettingsModal();
-      });
-
-      // ======================
-      // ORDER MODAL
-      // ======================
-
-      function openOrderModal(orderId = null) {
-        if (orderId) {
-          fetch(`/api/orders/${orderId}`)
-            .then(r => r.json())
-            .then(data => {
-              document.getElementById('orderId').value = data.$id;
-              document.getElementById('quantity').value = data.quantity;
-              document.getElementById('dueDate').value = data.due_date;
-              document.getElementById('orderStatus').value = data.status;
-            });
+    async function deleteOrder(orderId) {
+      if (!confirm('この注文を削除してもよろしいですか？')) return;
+      try {
+        const response = await fetch(`/api/orders/${orderId}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (result.success) {
+          location.reload();
         } else {
-          document.getElementById('orderForm').reset();
-          document.getElementById('orderId').value = '';
+          alert('削除に失敗しました: ' + result.error);
         }
-        document.getElementById('orderModalBackdrop').classList.add('show');
-        document.getElementById('orderModal').classList.add('show');
+      } catch (error) {
+        alert('エラーが発生しました: ' + error.message);
       }
+    }
 
-      function closeOrderModal() {
-        document.getElementById('orderModalBackdrop').classList.remove('show');
-        document.getElementById('orderModal').classList.remove('show');
-      }
-
-      function editOrder(orderId) { openOrderModal(orderId); }
-
-      async function deleteOrder(orderId) {
-        if (!confirm('この注文を削除してもよろしいですか？')) return;
-        try {
-          const response = await fetch(`/api/orders/${orderId}`, { method: 'DELETE' });
-          const result = await response.json();
-          if (result.success) {
-            location.reload();
-          } else {
-            alert('削除に失敗しました: ' + result.error);
-          }
-        } catch (error) {
-          alert('エラーが発生しました: ' + error.message);
-        }
-      }
-
-      document.getElementById('orderForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const orderId = formData.get('orderId');
-        const data = {
-          quantity: formData.get('quantity'),
-          due_date: formData.get('due_date'),
-          status: formData.get('status')
-        };
-        try {
-          const url    = orderId ? `/api/orders/${orderId}` : '/api/orders';
-          const method = orderId ? 'PUT' : 'POST';
-          const response = await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-          });
-          const result = await response.json();
-          if (result.success) {
-            location.reload();
-          } else {
-            alert('保存に失敗しました: ' + result.error);
-          }
-        } catch (error) {
-          alert('エラーが発生しました: ' + error.message);
-        }
-      });
-
-      // ======================
-      // IMPORT MODAL
-      // ======================
-
-      function openImportModal(importId = null) {
-        if (importId) {
-          fetch(`/api/imports/${importId}`)
-            .then(r => r.json())
-            .then(data => {
-              document.getElementById('importId').value = data.$id;
-              document.getElementById('importQuantity').value = data.quantity;
-              document.getElementById('scheduledDate').value = data.scheduled_date;
-              document.getElementById('actualDate').value = data.actual_date || '';
-              document.getElementById('importStatus').value = data.status;
-            });
+    document.getElementById('orderForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const orderId = formData.get('orderId');
+      const data = {
+        quantity: formData.get('quantity'),
+        due_date: formData.get('due_date'),
+        status: formData.get('status')
+      };
+      try {
+        const url = orderId ? `/api/orders/${orderId}` : '/api/orders';
+        const method = orderId ? 'PUT' : 'POST';
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        if (result.success) {
+          location.reload();
         } else {
-          document.getElementById('importForm').reset();
-          document.getElementById('importId').value = '';
+          alert('保存に失敗しました: ' + result.error);
         }
-        document.getElementById('importModalBackdrop').classList.add('show');
-        document.getElementById('importModal').classList.add('show');
+      } catch (error) {
+        alert('エラーが発生しました: ' + error.message);
       }
+    });
 
-      function closeImportModal() {
-        document.getElementById('importModalBackdrop').classList.remove('show');
-        document.getElementById('importModal').classList.remove('show');
-      }
+    // ======================
+    // IMPORT MODAL
+    // ======================
 
-      function editImport(importId) { openImportModal(importId); }
-
-      async function deleteImport(importId) {
-        if (!confirm('この入荷予定を削除してもよろしいですか？')) return;
-        try {
-          const response = await fetch(`/api/imports/${importId}`, { method: 'DELETE' });
-          const result = await response.json();
-          if (result.success) {
-            location.reload();
-          } else {
-            alert('削除に失敗しました: ' + result.error);
-          }
-        } catch (error) {
-          alert('エラーが発生しました: ' + error.message);
-        }
-      }
-
-      async function confirmArrival(importId, count) {
-        const confirmed = confirm(
-          `入荷を確認しますか？\n` +
-          `対象: ${count} 個\n\n` +
-          `この入荷はリストから非表示になりますが、\nAppwriteのデータは保持されます。`
-        );
-        if (!confirmed) return;
-        try {
-          const today = new Date().toISOString().split('T')[0];
-          const response = await fetch(`/api/imports/${importId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'arrived', actual_date: today })
+    function openImportModal(importId = null) {
+      if (importId) {
+        fetch(`/api/imports/${importId}`)
+          .then(r => r.json())
+          .then(data => {
+            document.getElementById('importId').value = data.$id;
+            document.getElementById('importQuantity').value = data.quantity;
+            document.getElementById('scheduledDate').value = data.scheduled_date;
+            document.getElementById('actualDate').value = data.actual_date || '';
+            document.getElementById('importStatus').value = data.status;
           });
-          const result = await response.json();
-          if (result.success) {
-            alert(`入荷確認完了: ${count} 個を入荷済に設定しました`);
-            location.reload();
-          } else {
-            alert('処理に失敗しました: ' + result.error);
-          }
-        } catch (error) {
-          alert('エラーが発生しました: ' + error.message);
+      } else {
+        document.getElementById('importForm').reset();
+        document.getElementById('importId').value = '';
+      }
+      document.getElementById('importModalBackdrop').classList.add('show');
+      document.getElementById('importModal').classList.add('show');
+    }
+
+    function closeImportModal() {
+      document.getElementById('importModalBackdrop').classList.remove('show');
+      document.getElementById('importModal').classList.remove('show');
+    }
+
+    function editImport(importId) { openImportModal(importId); }
+
+    async function deleteImport(importId) {
+      if (!confirm('この入荷予定を削除してもよろしいですか？')) return;
+      try {
+        const response = await fetch(`/api/imports/${importId}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (result.success) {
+          location.reload();
+        } else {
+          alert('削除に失敗しました: ' + result.error);
         }
+      } catch (error) {
+        alert('エラーが発生しました: ' + error.message);
+      }
+    }
+
+    async function confirmArrival(importId, count) {
+      const confirmed = confirm(
+        `入荷を確認しますか？\n` +
+        `対象: ${count} 個\n\n` +
+        `この入荷はリストから非表示になりますが、\nAppwriteのデータは保持されます。`
+      );
+      if (!confirmed) return;
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const response = await fetch(`/api/imports/${importId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'arrived', actual_date: today })
+        });
+        const result = await response.json();
+        if (result.success) {
+          alert(`入荷確認完了: ${count} 個を入荷済に設定しました`);
+          location.reload();
+        } else {
+          alert('処理に失敗しました: ' + result.error);
+        }
+      } catch (error) {
+        alert('エラーが発生しました: ' + error.message);
+      }
+    }
+
+    document.getElementById('importForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const importId = formData.get('importId');
+      const data = {
+        quantity: formData.get('quantity'),
+        scheduled_date: formData.get('scheduled_date'),
+        actual_date: formData.get('actual_date') || null,
+        status: formData.get('status')
+      };
+      try {
+        const url = importId ? `/api/imports/${importId}` : '/api/imports';
+        const method = importId ? 'PUT' : 'POST';
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        if (result.success) {
+          location.reload();
+        } else {
+          alert('保存に失敗しました: ' + result.error);
+        }
+      } catch (error) {
+        alert('エラーが発生しました: ' + error.message);
+      }
+    });
+
+    // ======================
+    // VIEW ITEM
+    // ======================
+
+    function viewItem(itemId) {
+      window.open(`/file-data/${itemId}`, '_blank');
+    }
+
+    // ======================
+    // SHIP ORDER
+    // ======================
+
+    function shipOrderFromBtn(btn) {
+      const orderId = btn.dataset.orderId;
+      const quantity = btn.dataset.quantity;
+      const itemIds = btn.dataset.itemIds ? btn.dataset.itemIds.split(',').filter(Boolean) : [];
+      shipOrder(orderId, quantity, itemIds);
+    }
+
+    async function shipOrder(orderId, quantity, itemIds) {
+      if (!itemIds || itemIds.length === 0) {
+        alert('出荷可能な製品が割り当てられていません');
+        return;
       }
 
-      document.getElementById('importForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const importId = formData.get('importId');
-        const data = {
-          quantity:       formData.get('quantity'),
-          scheduled_date: formData.get('scheduled_date'),
-          actual_date:    formData.get('actual_date') || null,
-          status:         formData.get('status')
-        };
-        try {
-          const url    = importId ? `/api/imports/${importId}` : '/api/imports';
-          const method = importId ? 'PUT' : 'POST';
-          const response = await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-          });
-          const result = await response.json();
-          if (result.success) {
-            location.reload();
-          } else {
-            alert('保存に失敗しました: ' + result.error);
-          }
-        } catch (error) {
-          alert('エラーが発生しました: ' + error.message);
+      const confirmed = confirm(
+        `この注文を出荷済にしますか？\n` +
+        `対象製品: ${itemIds.length} 個\n\n` +
+        `注文と製品は画面から非表示になりますが、\nAppwriteのデータは保持されます。`
+      );
+      if (!confirmed) return;
+
+      try {
+        const response = await fetch(`/api/orders/${orderId}/ship`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemIds })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+          alert(`出荷完了: ${result.shippedCount} 個の製品を出荷済に設定しました`);
+          location.reload();
+        } else {
+          alert('出荷処理に失敗しました: ' + result.error);
         }
+      } catch (error) {
+        alert('エラーが発生しました: ' + error.message);
+      }
+    }
+
+    // Initialize on page load — render server-side data into tables
+    // ── Chip helper: render lot number chips ascending ──────────────
+    function fileChips(items, minNum) {
+      const sorted = [...items]
+        .map(i => ({ num: parseInt((i.filename || '').replace('.txt', '')) || 0, id: i.$id, filename: i.filename }))
+        .filter(i => i.num >= (minNum || 0))
+        .sort((a, b) => a.num - b.num);
+      if (sorted.length === 0) return '<em style="color:#aaa;font-size:0.8rem;">なし</em>';
+      return sorted.map(i =>
+        `<span style="display:inline-block;background:#e9ecef;border-radius:4px;padding:1px 7px;font-size:0.78rem;margin:2px;">${i.num}</span>`
+      ).join('');
+    }
+
+    // Same but from raw string filenames (imports linked_files array)
+    function fileChipsFromNames(names) {
+      const nums = names
+        .map(n => parseInt(n.replace('.txt', '')) || 0)
+        .filter(n => n > 0)
+        .sort((a, b) => a - b);
+      if (nums.length === 0) return '';
+      return nums.map(n =>
+        `<span style="display:inline-block;background:#e2f0fb;border-radius:4px;padding:1px 7px;font-size:0.78rem;margin:2px;">${n}</span>`
+      ).join('');
+    }
+
+    // Group docs by lot number, return sorted array of { lot, nums[] }
+    function groupByLot(docs) {
+      const map = {};
+      docs.forEach(d => {
+        const lot = d.lot != null ? String(d.lot) : '—';
+        const num = parseInt((d.filename || '').replace('.txt', '')) || 0;
+        if (!map[lot]) map[lot] = { lot, nums: [], docs: [] };
+        map[lot].nums.push(num);
+        map[lot].docs.push(d);
+      });
+      // Sort lots ascending by lot number, then sort each group's nums ascending
+      return Object.values(map)
+        .sort((a, b) => (parseInt(a.lot) || 0) - (parseInt(b.lot) || 0))
+        .map(g => ({ ...g, nums: g.nums.sort((a, b) => a - b) }));
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      loadSettings();
+
+      // ── Settings: min file number to display (default 488) ──────
+      const settings = loadSettings();
+      const MIN_FILE_NUM = settings.minFileNum || 488;
+
+      // ── Orders: re-allocate using only inventory >= MIN_FILE_NUM ──
+      // This correctly ignores already-shipped products (< MIN_FILE_NUM)
+      const orders = <% - JSON.stringify(orders) %>;
+      const byStatus = <% - JSON.stringify(inspectionsByStatus) %>;
+
+      // Flatten all inventory items >= MIN_FILE_NUM, priority: finished → inspection → imported → upcoming
+      const INV_PRIORITY = ['finished_inspection', 'inspection', 'imported', 'upcoming_import'];
+      const flatInventory = [];
+      INV_PRIORITY.forEach((st, pri) => {
+        (byStatus[st] || []).forEach(d => {
+          const n = parseInt((d.filename || '').replace('.txt', '')) || 0;
+          if (n >= MIN_FILE_NUM) flatInventory.push({ ...d, _num: n, _pri: pri });
+        });
+      });
+      flatInventory.sort((a, b) => a._pri !== b._pri ? a._pri - b._pri : a._num - b._num);
+
+      // Allocate greedily by due-date order (earliest due first gets first pick)
+      const ordersByDue = [...orders].sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+      const takenIds = new Set();
+      const reAlloc = {}; // orderId → items[]
+      ordersByDue.forEach(o => {
+        const qty = parseInt(o.quantity) || 0;
+        const picked = [];
+        for (const item of flatInventory) {
+          if (!takenIds.has(item.$id) && picked.length < qty) {
+            picked.push(item);
+            takenIds.add(item.$id);
+          }
+        }
+        reAlloc[o.$id] = picked; // already sorted by priority then num
       });
 
-      // ======================
-      // VIEW ITEM
-      // ======================
+      const ordersList = document.getElementById('ordersList');
+      const ordersTable = document.getElementById('ordersTable');
+      const ordersEmpty = document.getElementById('ordersEmpty');
 
-      function viewItem(itemId) {
-        window.open(`/file-data/${itemId}`, '_blank');
-      }
-
-      // ======================
-      // SHIP ORDER
-      // ======================
-
-      function shipOrderFromBtn(btn) {
-        const orderId  = btn.dataset.orderId;
-        const quantity = btn.dataset.quantity;
-        const itemIds  = btn.dataset.itemIds ? btn.dataset.itemIds.split(',').filter(Boolean) : [];
-        shipOrder(orderId, quantity, itemIds);
-      }
-
-      async function shipOrder(orderId, quantity, itemIds) {
-        if (!itemIds || itemIds.length === 0) {
-          alert('出荷可能な製品が割り当てられていません');
-          return;
-        }
-
-        const confirmed = confirm(
-          `この注文を出荷済にしますか？\n` +
-          `対象製品: ${itemIds.length} 個\n\n` +
-          `注文と製品は画面から非表示になりますが、\nAppwriteのデータは保持されます。`
-        );
-        if (!confirmed) return;
-
-        try {
-          const response = await fetch(`/api/orders/${orderId}/ship`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ itemIds })
-          });
-          const result = await response.json();
-
-          if (result.success) {
-            alert(`出荷完了: ${result.shippedCount} 個の製品を出荷済に設定しました`);
-            location.reload();
-          } else {
-            alert('出荷処理に失敗しました: ' + result.error);
-          }
-        } catch (error) {
-          alert('エラーが発生しました: ' + error.message);
-        }
-      }
-
-      // Initialize on page load — render server-side data into tables
-      // ── Chip helper: render lot number chips ascending ──────────────
-      function fileChips(items, minNum) {
-        const sorted = [...items]
-          .map(i => ({ num: parseInt((i.filename||'').replace('.txt','')) || 0, id: i.$id, filename: i.filename }))
-          .filter(i => i.num >= (minNum || 0))
-          .sort((a, b) => a.num - b.num);
-        if (sorted.length === 0) return '<em style="color:#aaa;font-size:0.8rem;">なし</em>';
-        return sorted.map(i =>
-          `<span style="display:inline-block;background:#e9ecef;border-radius:4px;padding:1px 7px;font-size:0.78rem;margin:2px;">${i.num}</span>`
-        ).join('');
-      }
-
-      // Same but from raw string filenames (imports linked_files array)
-      function fileChipsFromNames(names) {
-        const nums = names
-          .map(n => parseInt(n.replace('.txt','')) || 0)
-          .filter(n => n > 0)
-          .sort((a, b) => a - b);
-        if (nums.length === 0) return '';
-        return nums.map(n =>
-          `<span style="display:inline-block;background:#e2f0fb;border-radius:4px;padding:1px 7px;font-size:0.78rem;margin:2px;">${n}</span>`
-        ).join('');
-      }
-
-      // Group docs by lot number, return sorted array of { lot, nums[] }
-      function groupByLot(docs) {
-        const map = {};
-        docs.forEach(d => {
-          const lot = d.lot != null ? String(d.lot) : '—';
-          const num = parseInt((d.filename||'').replace('.txt','')) || 0;
-          if (!map[lot]) map[lot] = { lot, nums: [], docs: [] };
-          map[lot].nums.push(num);
-          map[lot].docs.push(d);
-        });
-        // Sort lots ascending by lot number, then sort each group's nums ascending
-        return Object.values(map)
-          .sort((a, b) => (parseInt(a.lot)||0) - (parseInt(b.lot)||0))
-          .map(g => ({ ...g, nums: g.nums.sort((a,b) => a - b) }));
-      }
-
-      document.addEventListener('DOMContentLoaded', function() {
-        loadSettings();
-
-        // ── Settings: min file number to display (default 488) ──────
-        const settings = loadSettings();
-        const MIN_FILE_NUM = settings.minFileNum || 488;
-
-        // ── Orders: re-allocate using only inventory >= MIN_FILE_NUM ──
-        // This correctly ignores already-shipped products (< MIN_FILE_NUM)
-        const orders  = <%- JSON.stringify(orders) %>;
-        const byStatus = <%- JSON.stringify(inspectionsByStatus) %>;
-
-        // Flatten all inventory items >= MIN_FILE_NUM, priority: finished → inspection → imported → upcoming
-        const INV_PRIORITY = ['finished_inspection','inspection','imported','upcoming_import'];
-        const flatInventory = [];
-        INV_PRIORITY.forEach((st, pri) => {
-          (byStatus[st] || []).forEach(d => {
-            const n = parseInt((d.filename||'').replace('.txt','')) || 0;
-            if (n >= MIN_FILE_NUM) flatInventory.push({ ...d, _num: n, _pri: pri });
-          });
-        });
-        flatInventory.sort((a, b) => a._pri !== b._pri ? a._pri - b._pri : a._num - b._num);
-
-        // Allocate greedily by due-date order (earliest due first gets first pick)
-        const ordersByDue = [...orders].sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
-        const takenIds = new Set();
-        const reAlloc  = {}; // orderId → items[]
+      if (orders && orders.length > 0) {
+        ordersTable.style.display = '';
+        ordersEmpty.style.display = 'none';
+        // Display in due-date order (earliest first)
         ordersByDue.forEach(o => {
-          const qty = parseInt(o.quantity) || 0;
-          const picked = [];
-          for (const item of flatInventory) {
-            if (!takenIds.has(item.$id) && picked.length < qty) {
-              picked.push(item);
-              takenIds.add(item.$id);
+          const items = reAlloc[o.$id] || [];
+          const filled = items.length;
+          const needed = parseInt(o.quantity) || 0;
+          const dueDate = o.due_date ? new Date(o.due_date).toLocaleDateString('ja-JP') : '—';
+          const createdAt = o.$createdAt ? new Date(o.$createdAt).toLocaleDateString('ja-JP') : '—';
+
+          // Only count items that are truly ready to ship (finished_inspection)
+          const readyItems = items.filter(i => i.status === 'finished_inspection');
+          const readyCount = readyItems.length;
+          const itemIds = readyItems.map(i => i.$id).join(',');
+
+          let stockBg, stockLabel;
+          if (filled === 0) {
+            stockBg = '#6c757d'; stockLabel = '在庫なし';
+          } else if (filled < needed) {
+            // Allocated some but not enough
+            if (readyCount === 0) {
+              stockBg = '#dc3545'; stockLabel = `入荷待ち (0/${needed})`;
+            } else {
+              stockBg = '#fd7e14'; stockLabel = `不足 (${readyCount}/${needed})`;
+            }
+          } else {
+            // Allocated enough items, but are they all actually ready?
+            if (readyCount === needed) {
+              stockBg = '#198754'; stockLabel = `出荷可能 (${needed})`;
+            } else if (readyCount === 0) {
+              stockBg = '#dc3545'; stockLabel = `入荷待ち (0/${needed})`;
+            } else {
+              stockBg = '#fd7e14'; stockLabel = `一部未完了 (${readyCount}/${needed})`;
             }
           }
-          reAlloc[o.$id] = picked; // already sorted by priority then num
-        });
 
-        const ordersList  = document.getElementById('ordersList');
-        const ordersTable = document.getElementById('ordersTable');
-        const ordersEmpty = document.getElementById('ordersEmpty');
+          const canShip = readyCount > 0;
+          const statusColors = { pending: '#ffc107', processing: '#0d6efd', completed: '#198754', cancelled: '#dc3545' };
+          const statusColor = statusColors[o.status] || '#6c757d';
 
-        if (orders && orders.length > 0) {
-          ordersTable.style.display = '';
-          ordersEmpty.style.display = 'none';
-          // Display in due-date order (earliest first)
-          ordersByDue.forEach(o => {
-            const items   = reAlloc[o.$id] || [];
-            const itemIds = items.map(i => i.$id).join(',');
-            const filled  = items.length;
-            const needed  = parseInt(o.quantity) || 0;
-            const dueDate   = o.due_date   ? new Date(o.due_date).toLocaleDateString('ja-JP')   : '—';
-            const createdAt = o.$createdAt ? new Date(o.$createdAt).toLocaleDateString('ja-JP') : '—';
+          // Chip display: group consecutive numbers as ranges for compactness
+          const chips = items.map(i =>
+            `<span style="display:inline-block;background:#e9ecef;border-radius:4px;padding:1px 7px;font-size:0.78rem;margin:2px;">${i._num}</span>`
+          ).join('');
 
-            // Stock status badge based on re-allocation
-            let stockBg, stockLabel;
-            if (filled === 0)           { stockBg = '#6c757d'; stockLabel = '在庫なし'; }
-            else if (filled < needed)   { stockBg = '#fd7e14'; stockLabel = `不足 (${filled}/${needed})`; }
-            else                        { stockBg = '#198754'; stockLabel = `出荷可能 (${filled})`; }
-
-            const canShip = filled > 0;
-            const statusColors = { pending:'#ffc107', processing:'#0d6efd', completed:'#198754', cancelled:'#dc3545' };
-            const statusColor  = statusColors[o.status] || '#6c757d';
-
-            // Chip display: group consecutive numbers as ranges for compactness
-            const chips = items.map(i =>
-              `<span style="display:inline-block;background:#e9ecef;border-radius:4px;padding:1px 7px;font-size:0.78rem;margin:2px;">${i._num}</span>`
-            ).join('');
-
-            ordersList.insertAdjacentHTML('beforeend', `
+          ordersList.insertAdjacentHTML('beforeend', `
               <tr>
                 <td style="white-space:nowrap;">${createdAt}</td>
                 <td>${needed}</td>
@@ -958,87 +1049,87 @@
                     onclick="shipOrderFromBtn(this)">出荷</button>` : ''}
                 </td>
               </tr>`);
-          });
-        } else {
-          ordersTable.style.display  = 'none';
-          ordersEmpty.style.display  = '';
+        });
+      } else {
+        ordersTable.style.display = 'none';
+        ordersEmpty.style.display = '';
+      }
+
+      // ── Imports ───────────────────────────────────────────────────
+      // Build a flat map of lot → files[] from ALL inspections (regardless of status)
+      const allDocsByLot = {};
+      Object.values(byStatus).forEach(docs => {
+        docs.forEach(d => {
+          const lot = d.lot != null ? String(d.lot) : null;
+          if (!lot) return;
+          if (!allDocsByLot[lot]) allDocsByLot[lot] = [];
+          allDocsByLot[lot].push(parseInt((d.filename || '').replace('.txt', '')) || 0);
+        });
+      });
+      Object.values(allDocsByLot).forEach(arr => arr.sort((a, b) => a - b));
+
+      const imports = <% - JSON.stringify(imports) %>;
+      const importsList = document.getElementById('importsList');
+      const importsTable = document.getElementById('importsTable');
+      const importsEmpty = document.getElementById('importsEmpty');
+
+      // Also build lot → files from import_id-linked files (for newer imports)
+      const importLinkedLots = {}; // importId → lot numbers[]
+      imports.forEach(imp => {
+        const files = imp.linked_files || [];
+        if (files.length > 0) {
+          importLinkedLots[imp.$id] = files
+            .map(f => parseInt(f.replace('.txt', '')) || 0)
+            .filter(n => n > 0)
+            .sort((a, b) => a - b);
         }
+      });
 
-        // ── Imports ───────────────────────────────────────────────────
-        // Build a flat map of lot → files[] from ALL inspections (regardless of status)
-        const allDocsByLot = {};
-        Object.values(byStatus).forEach(docs => {
-          docs.forEach(d => {
-            const lot = d.lot != null ? String(d.lot) : null;
-            if (!lot) return;
-            if (!allDocsByLot[lot]) allDocsByLot[lot] = [];
-            allDocsByLot[lot].push(parseInt((d.filename||'').replace('.txt','')) || 0);
-          });
-        });
-        Object.values(allDocsByLot).forEach(arr => arr.sort((a,b) => a - b));
-
-        const imports = <%- JSON.stringify(imports) %>;
-        const importsList  = document.getElementById('importsList');
-        const importsTable = document.getElementById('importsTable');
-        const importsEmpty = document.getElementById('importsEmpty');
-
-        // Also build lot → files from import_id-linked files (for newer imports)
-        const importLinkedLots = {}; // importId → lot numbers[]
-        imports.forEach(imp => {
-          const files = imp.linked_files || [];
-          if (files.length > 0) {
-            importLinkedLots[imp.$id] = files
-              .map(f => parseInt(f.replace('.txt','')) || 0)
-              .filter(n => n > 0)
-              .sort((a,b) => a - b);
+      // For imports with no linked files, assign unmatched lots sequentially by createdAt
+      const usedLots = new Set(
+        Object.values(importLinkedLots).flat().map(n => {
+          // find which lot this number belongs to
+          for (const [lot, nums] of Object.entries(allDocsByLot)) {
+            if (nums.includes(n)) return lot;
           }
-        });
+          return null;
+        }).filter(Boolean)
+      );
+      const unlinkedLotsSorted = Object.keys(allDocsByLot)
+        .filter(lot => !usedLots.has(lot))
+        .sort((a, b) => (parseInt(a) || 0) - (parseInt(b) || 0));
 
-        // For imports with no linked files, assign unmatched lots sequentially by createdAt
-        const usedLots = new Set(
-          Object.values(importLinkedLots).flat().map(n => {
-            // find which lot this number belongs to
-            for (const [lot, nums] of Object.entries(allDocsByLot)) {
-              if (nums.includes(n)) return lot;
-            }
-            return null;
-          }).filter(Boolean)
+      const importsNoLink = [...imports]
+        .filter(imp => !importLinkedLots[imp.$id])
+        .sort((a, b) => new Date(a.$createdAt) - new Date(b.$createdAt));
+
+      const fallbackLotMap = {}; // importId → nums[]
+      importsNoLink.forEach((imp, i) => {
+        const lot = unlinkedLotsSorted[i];
+        if (lot) fallbackLotMap[imp.$id] = allDocsByLot[lot] || [];
+      });
+
+      if (imports && imports.length > 0) {
+        importsTable.style.display = '';
+        importsEmpty.style.display = 'none';
+
+        // Sort imports by scheduled_date ascending (oldest first = lowest lot)
+        const sortedImports = [...imports].sort((a, b) =>
+          new Date(a.scheduled_date || a.$createdAt) - new Date(b.scheduled_date || b.$createdAt)
         );
-        const unlinkedLotsSorted = Object.keys(allDocsByLot)
-          .filter(lot => !usedLots.has(lot))
-          .sort((a,b) => (parseInt(a)||0) - (parseInt(b)||0));
 
-        const importsNoLink = [...imports]
-          .filter(imp => !importLinkedLots[imp.$id])
-          .sort((a,b) => new Date(a.$createdAt) - new Date(b.$createdAt));
+        sortedImports.forEach(imp => {
+          const nums = importLinkedLots[imp.$id] || fallbackLotMap[imp.$id] || [];
+          const chips = nums.map(n =>
+            `<span style="display:inline-block;background:#e2f0fb;border:1px solid #9ec5fe;border-radius:4px;padding:1px 8px;font-size:0.8rem;margin:2px;color:#084298;">${n}</span>`
+          ).join('');
 
-        const fallbackLotMap = {}; // importId → nums[]
-        importsNoLink.forEach((imp, i) => {
-          const lot = unlinkedLotsSorted[i];
-          if (lot) fallbackLotMap[imp.$id] = allDocsByLot[lot] || [];
-        });
+          const scheduled = imp.scheduled_date ? new Date(imp.scheduled_date).toLocaleDateString('ja-JP') : '—';
+          const actual = imp.actual_date ? new Date(imp.actual_date).toLocaleDateString('ja-JP') : '—';
+          const statusColors = { scheduled: '#0dcaf0', arrived: '#198754', imported: '#6c757d' };
+          const stColor = statusColors[imp.status] || '#6c757d';
 
-        if (imports && imports.length > 0) {
-          importsTable.style.display = '';
-          importsEmpty.style.display = 'none';
-
-          // Sort imports by scheduled_date ascending (oldest first = lowest lot)
-          const sortedImports = [...imports].sort((a,b) =>
-            new Date(a.scheduled_date||a.$createdAt) - new Date(b.scheduled_date||b.$createdAt)
-          );
-
-          sortedImports.forEach(imp => {
-            const nums = importLinkedLots[imp.$id] || fallbackLotMap[imp.$id] || [];
-            const chips = nums.map(n =>
-              `<span style="display:inline-block;background:#e2f0fb;border:1px solid #9ec5fe;border-radius:4px;padding:1px 8px;font-size:0.8rem;margin:2px;color:#084298;">${n}</span>`
-            ).join('');
-
-            const scheduled = imp.scheduled_date ? new Date(imp.scheduled_date).toLocaleDateString('ja-JP') : '—';
-            const actual    = imp.actual_date    ? new Date(imp.actual_date).toLocaleDateString('ja-JP')    : '—';
-            const statusColors = { scheduled:'#0dcaf0', arrived:'#198754', imported:'#6c757d' };
-            const stColor = statusColors[imp.status] || '#6c757d';
-
-            importsList.insertAdjacentHTML('beforeend', `
+          importsList.insertAdjacentHTML('beforeend', `
               <tr>
                 <td style="white-space:nowrap;">${new Date(imp.$createdAt).toLocaleDateString('ja-JP')}</td>
                 <td>${imp.quantity}</td>
@@ -1054,50 +1145,50 @@
                   <div style="line-height:1.8;">${chips || '<em style="color:#aaa;font-size:0.8rem;">—</em>'}</div>
                 </td>
               </tr>`);
-          });
-        } else {
-          importsTable.style.display  = 'none';
-          importsEmpty.style.display  = '';
-        }
+        });
+      } else {
+        importsTable.style.display = 'none';
+        importsEmpty.style.display = '';
+      }
 
-        // ── Inventory: compact lot-grouped chip view ──────────────────
-        const statusConfig = <%- JSON.stringify(statusConfig) %>;
-        const invDiv = document.getElementById('inventoryContent');
-        invDiv.innerHTML = '';
+      // ── Inventory: compact lot-grouped chip view ──────────────────
+      const statusConfig = <% - JSON.stringify(statusConfig) %>;
+      const invDiv = document.getElementById('inventoryContent');
+      invDiv.innerHTML = '';
 
-        // Status display order: most ready first, then working backwards
-        const statusOrder = ['finished_inspection','inspection','imported','upcoming_import'];
-        // Status styles: bg=section bg, chipBg=chip background, chipBorder=chip border,
-        // chipBorderStyle=solid|dashed|dotted, text=text color, label=Japanese label
-        const statusStyles = {
-          finished_inspection: { bg:'#d1e7dd', chipBg:'#d1e7dd', chipBorder:'#198754', chipBorderStyle:'solid',  text:'#0f5132', label:'検査完了' },
-          inspection:          { bg:'#fff9e6', chipBg:'#fff3cd', chipBorder:'#e6a817', chipBorderStyle:'solid',  text:'#664d03', label:'検査中'   },
-          imported:            { bg:'#f0f6ff', chipBg:'white',   chipBorder:'#6ea8fe', chipBorderStyle:'solid',  text:'#084298', label:'入荷済'   },
-          upcoming_import:     { bg:'#fafafa', chipBg:'white',   chipBorder:'#adb5bd', chipBorderStyle:'dotted', text:'#495057', label:'入荷予定' }
-        };
+      // Status display order: most ready first, then working backwards
+      const statusOrder = ['finished_inspection', 'inspection', 'imported', 'upcoming_import'];
+      // Status styles: bg=section bg, chipBg=chip background, chipBorder=chip border,
+      // chipBorderStyle=solid|dashed|dotted, text=text color, label=Japanese label
+      const statusStyles = {
+        finished_inspection: { bg: '#d1e7dd', chipBg: '#d1e7dd', chipBorder: '#198754', chipBorderStyle: 'solid', text: '#0f5132', label: '検査完了' },
+        inspection: { bg: '#fff9e6', chipBg: '#fff3cd', chipBorder: '#e6a817', chipBorderStyle: 'solid', text: '#664d03', label: '検査中' },
+        imported: { bg: '#f0f6ff', chipBg: 'white', chipBorder: '#6ea8fe', chipBorderStyle: 'solid', text: '#084298', label: '入荷済' },
+        upcoming_import: { bg: '#fafafa', chipBg: 'white', chipBorder: '#adb5bd', chipBorderStyle: 'dotted', text: '#495057', label: '入荷予定' }
+      };
 
-        let hasAny = false;
-        statusOrder.forEach(key => {
-          const docs = byStatus[key] || [];
-          if (docs.length === 0) return;
-          hasAny = true;
-          const st = statusStyles[key] || { bg:'#f8f9fa', border:'#dee2e6', text:'#333', label: key };
-          const groups = groupByLot(docs);
+      let hasAny = false;
+      statusOrder.forEach(key => {
+        const docs = byStatus[key] || [];
+        if (docs.length === 0) return;
+        hasAny = true;
+        const st = statusStyles[key] || { bg: '#f8f9fa', border: '#dee2e6', text: '#333', label: key };
+        const groups = groupByLot(docs);
 
-          // Build lot rows
-          const lotRows = groups.map(g => {
-            const chips = g.nums.map(n =>
-              `<span style="display:inline-block;background:${st.chipBg};border:2px ${st.chipBorderStyle} ${st.chipBorder};border-radius:4px;padding:2px 9px;font-size:0.82rem;margin:2px;color:${st.text};font-weight:500;">${n}</span>`
-            ).join('');
-            return `
+        // Build lot rows
+        const lotRows = groups.map(g => {
+          const chips = g.nums.map(n =>
+            `<span style="display:inline-block;background:${st.chipBg};border:2px ${st.chipBorderStyle} ${st.chipBorder};border-radius:4px;padding:2px 9px;font-size:0.82rem;margin:2px;color:${st.text};font-weight:500;">${n}</span>`
+          ).join('');
+          return `
               <tr style="background:${st.bg}20;">
                 <td style="white-space:nowrap;font-weight:600;color:${st.text};font-size:0.88rem;">Lot ${g.lot}</td>
                 <td><span style="background:${st.chipBorder};color:white;padding:1px 8px;border-radius:10px;font-size:0.78rem;">${g.nums.length} 個</span></td>
                 <td style="line-height:2.0;">${chips}</td>
               </tr>`;
-          }).join('');
+        }).join('');
 
-          invDiv.insertAdjacentHTML('beforeend', `
+        invDiv.insertAdjacentHTML('beforeend', `
             <div style="margin-bottom:1.5rem;">
               <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.6rem;">
                 <span style="background:${st.bg};border:2px solid ${st.chipBorder};color:${st.text};padding:4px 14px;border-radius:20px;font-weight:700;font-size:0.95rem;">${st.label}</span>
@@ -1116,12 +1207,13 @@
                 </table>
               </div>
             </div>`);
-        });
-
-        if (!hasAny) {
-          invDiv.innerHTML = '<p style="color:#6c757d;text-align:center;padding:2rem;">在庫データがありません</p>';
-        }
       });
-    </script>
-  </body>
+
+      if (!hasAny) {
+        invDiv.innerHTML = '<p style="color:#6c757d;text-align:center;padding:2rem;">在庫データがありません</p>';
+      }
+    });
+  </script>
+</body>
+
 </html>
