@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>追加工程 - 水平ノズル検査</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+  <style>
+    body { background: #f5f5f5; font-family: sans-serif; }
+    .container { max-width: 1200px; margin-top: 2rem; }
+    .header { background: white; padding: 2rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+    /* Workflow steps */
+    .workflow { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .workflow-step {
+      background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-left: 4px solid #0d6efd; text-align: center; transition: all 0.2s;
+    }
+    .workflow-step:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .step-number { display: inline-block; width: 32px; height: 32px; line-height: 32px; background: #0d6efd; color: white; border-radius: 50%; font-weight: bold; margin-bottom: 0.5rem; }
+    .step-title { font-weight: 600; color: #212529; margin: 0.5rem 0; font-size: 0.95rem; }
+    .step-desc { font-size: 0.85rem; color: #6c757d; }
+
+    /* Form sections */
+    .form-section {
+      background: white; padding: 1.5rem; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1.5rem;
+    }
+    .form-section h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: #212529; }
+
+    /* Upload zone */
+    .upload-zone {
+      border: 2px dashed #b0c4de; border-radius: 8px;
+      background: white; cursor: pointer; padding: 2rem;
+      transition: border-color 0.2s, background 0.2s;
+      text-align: center;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: #0d6efd; background: #f0f6ff;
+    }
+    .upload-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .upload-text { font-size: 0.9rem; color: #6c757d; }
+
+    /* Form inputs */
+    .form-control { border-radius: 6px; border: 1px solid #dee2e6; }
+    .form-control:focus { border-color: #0d6efd; box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25); }
+    .form-label { font-weight: 600; font-size: 0.9rem; color: #212529; margin-bottom: 0.5rem; }
+
+    /* Stats grid */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+    .stat-card { background: #f8f9fa; padding: 1rem; border-radius: 6px; text-align: center; }
+    .stat-label { font-size: 0.8rem; color: #6c757d; text-transform: uppercase; font-weight: 600; margin-bottom: 0.5rem; }
+    .stat-value { font-size: 1.75rem; font-weight: 700; color: #0d6efd; }
+
+    /* Alert boxes */
+    .alert-box {
+      padding: 1rem; border-radius: 6px; margin-bottom: 1rem;
+      display: flex; align-items: flex-start; gap: 0.75rem;
+    }
+    .alert-info { background: #d1ecf1; border-left: 4px solid #0c5460; color: #0c5460; }
+    .alert-success { background: #d4edda; border-left: 4px solid #155724; color: #155724; }
+    .alert-warning { background: #fff3cd; border-left: 4px solid #856404; color: #856404; }
+    .alert-error { background: #f8d7da; border-left: 4px solid #721c24; color: #721c24; }
+    .alert-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 2px; }
+    .alert-content { font-size: 0.9rem; }
+
+    /* Buttons */
+    .btn { border-radius: 6px; font-weight: 600; transition: all 0.2s; }
+    .btn-primary { background: #0d6efd; border: none; }
+    .btn-primary:hover { background: #0b5ed7; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-outline-secondary { color: #6c757d; border-color: #dee2e6; }
+    .btn-outline-secondary:hover { background: #f8f9fa; }
+
+    /* Loading state */
+    .loading-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #f0f0f0; border-top: 2px solid #0d6efd; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 0.5rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Form row layout */
+    .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
+    .form-row .form-group { margin-bottom: 0; }
+
+    /* Help text */
+    .help-text { font-size: 0.85rem; color: #6c757d; margin-top: 0.3rem; }
+
+    /* Breadcrumb style */
+    .breadcrumb-custom { font-size: 0.9rem; color: #6c757d; margin-bottom: 1rem; }
+    .breadcrumb-custom a { color: #0d6efd; text-decoration: none; cursor: pointer; }
+    .breadcrumb-custom a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Breadcrumb -->
+  <div class="breadcrumb-custom">
+    <a href="/">← ホーム</a> / 追加工程
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <h1>追加工程</h1>
+    <p style="color: #6c757d; margin: 0;">測定データを自動的にExcelに転記します</p>
+  </div>
+
+  <!-- Workflow steps -->
+  <div class="workflow">
+    <div class="workflow-step">
+      <div class="step-number">1</div>
+      <div class="step-title">データ選択</div>
+      <div class="step-desc">.txtファイルから測定値を抽出</div>
+    </div>
+    <div class="workflow-step">
+      <div class="step-number">2</div>
+      <div class="step-title">LOT情報入力</div>
+      <div class="step-desc">番号と検査日を指定</div>
+    </div>
+    <div class="workflow-step">
+      <div class="step-number">3</div>
+      <div class="step-title">ダウンロード</div>
+      <div class="step-desc">Excel を取得</div>
+    </div>
+  </div>
+
+  <!-- Alert container -->
+  <div id="alertContainer"></div>
+
+  <!-- Template status -->
+  <div class="form-section">
+    <div class="alert-info alert-box">
+      <div class="alert-icon">✓</div>
+      <div class="alert-content">
+        <strong>テンプレート: LOT_template.xlsx</strong>
+        <div style="font-size: 0.85rem; margin-top: 0.3rem;">リポジトリに含まれています。アップロード不要です。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data file upload -->
+  <div class="form-section">
+    <h3>測定データファイル</h3>
+    <input type="file" id="dataFile" accept=".txt,.dat,.csv" style="display: none;">
+    <div id="dropZone" class="upload-zone">
+      <div class="upload-icon">📄</div>
+      <div class="upload-text">
+        <div style="margin-bottom: 0.5rem;">ファイルをドラッグ&ドロップまたは</div>
+        <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); document.getElementById('dataFile').click();">📁 選択</button>
+        <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #aaa;">対応形式: .txt, .dat, .csv</div>
+      </div>
+    </div>
+    <div id="dataName" style="display: none; margin-top: 1rem;">
+      <div class="alert-success alert-box">
+        <div class="alert-icon">✓</div>
+        <div class="alert-content" id="dataNameText"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div id="statsContainer" style="display: none;">
+    <div class="form-section">
+      <h3>抽出結果</h3>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">取得レコード</div>
+          <div class="stat-value" id="recordCount">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">DISTANCE値</div>
+          <div class="stat-value" id="distanceCount">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">INT-CIRCLE値</div>
+          <div class="stat-value" id="intCircleCount">0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOT information form -->
+  <div class="form-section">
+    <h3>LOT情報入力</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="lotNumber" class="form-label">LOT番号 *</label>
+        <input type="text" id="lotNumber" class="form-control" placeholder="例: LOT234(234-245)">
+        <div class="help-text">LOT番号を入力してください</div>
+      </div>
+      <div class="form-group">
+        <label for="inspectionDate" class="form-label">検査日 (YYYY/MM/DD) *</label>
+        <input type="text" id="inspectionDate" class="form-control" placeholder="例: 2025/03/23">
+        <div class="help-text">検査日をYYYY/MM/DD形式で入力</div>
+      </div>
+    </div>
+    <div class="alert-info alert-box">
+      <div class="alert-icon">💡</div>
+      <div class="alert-content">プレフィックス（LOT番号の英数字部分）は自動的に抽出されます。</div>
+    </div>
+  </div>
+
+  <!-- Action buttons -->
+  <div class="form-section">
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+      <button class="btn btn-primary" onclick="processData()" id="processBtn" style="flex: 1; min-width: 200px;">
+        📊 Excel を生成
+      </button>
+    </div>
+  </div>
+
+  <!-- Download section -->
+  <div id="downloadContainer" style="display: none;">
+    <div class="form-section">
+      <div class="alert-success alert-box">
+        <div class="alert-icon">✓</div>
+        <div class="alert-content">
+          <strong>処理完了!</strong>
+          <div style="font-size: 0.85rem; margin-top: 0.3rem;">下のボタンからExcelファイルをダウンロードしてください</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="downloadExcel()" style="width: 100%; margin-top: 1rem;">
+        💾 ダウンロード
+      </button>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script>
+  // Global state
+  let parsedData = null;
+  let processedWorkbook = null;
+  let distanceValues = [];
+  let intCircleValues = [];
+
+  // File input handler
+  const dataFile = document.getElementById('dataFile');
+  const dropZone = document.getElementById('dropZone');
+
+  dataFile.addEventListener('change', handleDataFile);
+
+  // Drag and drop
+  dropZone.addEventListener('click', () => dataFile.click());
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('drag-over');
+  });
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      dataFile.files = files;
+      dataFile.dispatchEvent(new Event('change'));
+    }
+  });
+
+  function handleDataFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target.result;
+        parsedData = parseData(content);
+        
+        if (parsedData && parsedData.length > 0) {
+          const { distanceVals, intCircleVals } = extractTargetValues(parsedData);
+          distanceValues = distanceVals;
+          intCircleValues = intCircleVals;
+
+          document.getElementById('dataNameText').textContent = file.name;
+          document.getElementById('dataName').style.display = 'block';
+          dropZone.style.display = 'none';
+
+          // Show stats
+          document.getElementById('statsContainer').style.display = 'block';
+          document.getElementById('recordCount').textContent = parsedData.length;
+          document.getElementById('distanceCount').textContent = distanceVals.length;
+          document.getElementById('intCircleCount').textContent = intCircleVals.length;
+
+          showAlert(`✓ ${parsedData.length}件のレコードを読み込みました`, 'success');
+        } else {
+          showAlert('データを読み込めませんでした', 'error');
+        }
+      } catch (err) {
+        showAlert(`エラー: ${err.message}`, 'error');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function parseData(content) {
+    const lines = content.split('\n');
+    const data = [];
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+
+      const parts = line.trim().split(';');
+      if (parts.length < 2) continue;
+
+      const objId = parts[0];
+      const objType = parts[1];
+      const row = { 'ID': objId, 'Type': objType };
+      const remainingValues = parts.slice(2).map(p => p.trim());
+
+      let cols = [];
+      if (objType === 'PLANE') {
+        cols = ['Method', 'X', 'Y', 'Z', 'A', 'B', 'C', '', 'D', 'Dev'];
+      } else if (objType === 'CIRCLE') {
+        cols = ['Method', 'X', 'Y', 'Z', 'I', 'J', 'K', '', 'Radius', 'Dev'];
+      } else if (objType === 'PT-COMP') {
+        cols = ['Method', 'X', 'Y', 'Z'];
+      } else if (objType === 'DISTANCE') {
+        cols = ['', 'X', 'Y', 'Z', '', '', '', '', 'Distance'];
+      } else if (objType === 'CONE') {
+        cols = ['Method', 'X', 'Y', 'Z', 'I', 'J', 'K', '', 'Half-Angle', 'Dev'];
+      } else if (objType === 'INT-CIRCLE') {
+        cols = ['', 'X', 'Y', 'Z', 'I', 'J', 'K', '', 'Radius'];
+      } else if (objType === 'SYM-POINT') {
+        cols = ['', 'X', 'Y', 'Z'];
+      }
+
+      for (let i = 0; i < remainingValues.length; i++) {
+        if (i < cols.length && cols[i] && remainingValues[i]) {
+          const numericPattern = /^-?\d+\.?\d*$/;
+          if (numericPattern.test(remainingValues[i])) {
+            row[cols[i]] = parseFloat(remainingValues[i]);
+          } else {
+            row[cols[i]] = remainingValues[i];
+          }
+        }
+      }
+
+      data.push(row);
+    }
+
+    return data;
+  }
+
+  function extractTargetValues(data) {
+    const distanceItems = [];
+    const intCircleValues = [];
+
+    for (const item of data) {
+      if (item['Type'] === 'DISTANCE' && item['X'] !== undefined) {
+        distanceItems.push({
+          id: item['ID'],
+          value: Math.round(Math.abs(item['X']) * 100) / 100
+        });
+      } else if (item['Type'] === 'INT-CIRCLE' && item['Radius'] !== undefined) {
+        intCircleValues.push(Math.round(item['Radius'] * 100) / 100);
+      }
+    }
+
+    const distanceOrder = ['3', '2', '1', '4'];
+    const distanceValues = [];
+
+    for (const targetId of distanceOrder) {
+      for (const item of distanceItems) {
+        if (String(item['id']) === targetId) {
+          distanceValues.push(item['value']);
+          break;
+        }
+      }
+    }
+
+    return { distanceVals: distanceValues, intCircleVals: intCircleValues };
+  }
+
+  function extractLotPrefix(lotNumber) {
+    if (!lotNumber) return null;
+    const match = lotNumber.match(/^([A-Za-z]+\d+)/);
+    return match ? match[1] : null;
+  }
+
+  function validateDateFormat(dateString) {
+    if (!dateString) return false;
+    return /^\d{4}\/\d{2}\/\d{2}$/.test(dateString);
+  }
+
+  function loadDefaultTemplate() {
+    const templatePath = '/templates/LOT_template.xlsx';
+    
+    return fetch(templatePath)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('テンプレートファイルが見つかりません');
+        }
+        return response.arrayBuffer();
+      })
+      .catch(err => {
+        showAlert(`テンプレート読み込みエラー: ${err.message}`, 'error');
+        return null;
+      });
+  }
+
+  function processData() {
+    const lotNumber = document.getElementById('lotNumber').value;
+    const inspectionDate = document.getElementById('inspectionDate').value;
+
+    if (!parsedData) {
+      showAlert('測定データファイルを読み込んでください', 'error');
+      return;
+    }
+    if (!lotNumber || !inspectionDate) {
+      showAlert('LOT番号と検査日を入力してください', 'error');
+      return;
+    }
+    if (!validateDateFormat(inspectionDate)) {
+      showAlert('検査日の形式が正しくありません (YYYY/MM/DD)', 'error');
+      return;
+    }
+
+    const processBtn = document.getElementById('processBtn');
+    processBtn.disabled = true;
+    processBtn.innerHTML = '<span class="loading-spinner"></span> 処理中...';
+
+    loadDefaultTemplate().then(arrayBuffer => {
+      if (!arrayBuffer) {
+        processBtn.disabled = false;
+        processBtn.innerHTML = '📊 Excel を生成';
+        return;
+      }
+
+      try {
+        const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+
+        const lotPrefix = extractLotPrefix(lotNumber);
+
+        worksheet['B1'] = { v: lotNumber };
+        worksheet['B2'] = { v: inspectionDate };
+        if (lotPrefix) {
+          worksheet['B3'] = { v: lotPrefix };
+        }
+
+        for (let i = 0; i < distanceValues.length; i++) {
+          const cellRef = `A${i + 1}`;
+          worksheet[cellRef] = { v: distanceValues[i] };
+        }
+
+        for (let i = 0; i < intCircleValues.length; i++) {
+          const cellRef = `A${distanceValues.length + i + 1}`;
+          worksheet[cellRef] = { v: intCircleValues[i] };
+        }
+
+        processedWorkbook = workbook;
+        
+        processBtn.disabled = false;
+        processBtn.innerHTML = '✅ Excel を生成';
+        
+        showAlert('処理が完了しました', 'success');
+        document.getElementById('downloadContainer').style.display = 'block';
+      } catch (err) {
+        showAlert(`処理エラー: ${err.message}`, 'error');
+        processBtn.disabled = false;
+        processBtn.innerHTML = '📊 Excel を生成';
+      }
+    });
+  }
+
+  function downloadExcel() {
+    if (!processedWorkbook) {
+      showAlert('Excelファイルを生成してください', 'error');
+      return;
+    }
+
+    const lotNumber = document.getElementById('lotNumber').value;
+    const inspectionDate = document.getElementById('inspectionDate').value;
+    const filename = `水平ノズル${lotNumber}全箇所測定${inspectionDate}.xlsx`;
+
+    XLSX.writeFile(processedWorkbook, filename);
+  }
+
+  function showAlert(message, type) {
+    const container = document.getElementById('alertContainer');
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert-box alert-${type}`;
+    
+    const icons = {
+      'success': '✓',
+      'error': '✕',
+      'info': 'ℹ',
+      'warning': '⚠'
+    };
+    
+    alertDiv.innerHTML = `
+      <div class="alert-icon">${icons[type] || 'ℹ'}</div>
+      <div class="alert-content">${message}</div>
+    `;
+    
+    container.innerHTML = '';
+    container.appendChild(alertDiv);
+
+    setTimeout(() => {
+      alertDiv.remove();
+    }, 5000);
+  }
+
+  // Initialize
+  showAlert('準備完了: 測定データファイルをアップロードして開始してください', 'info');
+</script>
+</body>
+</html>
