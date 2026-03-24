@@ -424,8 +424,8 @@
   }
 
   function processData() {
-    const lotNumber = document.getElementById('lotNumber').value;
-    const inspectionDate = document.getElementById('inspectionDate').value;
+    let lotNumber = document.getElementById('lotNumber').value.trim();
+    const inspectionDate = document.getElementById('inspectionDate').value.trim();
 
     if (!parsedData) {
       showAlert('測定データファイルを読み込んでください', 'error');
@@ -435,6 +435,14 @@
       showAlert('LOT番号と検査日を入力してください', 'error');
       return;
     }
+
+    // Ensure LOT prefix is present and uppercase
+    if (!/^LOT/i.test(lotNumber)) {
+      lotNumber = 'LOT' + lotNumber;
+    } else {
+      lotNumber = lotNumber.replace(/^LOT/i, 'LOT');
+    }
+
     if (!validateDateFormat(inspectionDate)) {
       showAlert('検査日の形式が正しくありません (YYYY/MM/DD)', 'error');
       return;
