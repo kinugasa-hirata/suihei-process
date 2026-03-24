@@ -214,87 +214,82 @@
   <!-- Action buttons -->
   <div class="form-section">
     <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-      <button class="btn btn-primary" onclick="processData()" id="processBtn" style="flex: 1; min-width: 200px;">
-        📊 Excel を生成
-      </button>
+      <button id="processBtn" class="btn btn-primary" onclick="processData()">📊 Excel を生成</button>
+      <button id="downloadBtn" class="btn btn-success" onclick="downloadExcel()" style="display: none;">⬇️ ダウンロード</button>
+      <button class="btn btn-outline-secondary" onclick="resetForm()">🔄 リセット</button>
     </div>
   </div>
 
-  <!-- Download section -->
+  <!-- Download container -->
   <div id="downloadContainer" style="display: none;">
     <div class="form-section">
       <div class="alert-success alert-box">
         <div class="alert-icon">✓</div>
         <div class="alert-content">
-          <strong>処理完了!</strong>
-          <div style="font-size: 0.85rem; margin-top: 0.3rem;">下のボタンからExcelファイルをダウンロードしてください</div>
+          <strong>ファイル準備完了</strong>
+          <div style="font-size: 0.85rem; margin-top: 0.3rem;">下のボタンからダウンロードしてください。再度生成する場合は、日付が異なるため重複は発生しません。</div>
+          <div id="fileInfo" style="font-size: 0.8rem; margin-top: 0.5rem; color: #333;"></div>
         </div>
       </div>
-      <button class="btn btn-primary" onclick="downloadExcel()" style="width: 100%; margin-top: 1rem;">
-        💾 ダウンロード
-      </button>
     </div>
   </div>
 
-</div><!-- /container -->
+</div>
 
+<!-- Load XLSX library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
 <script>
   let parsedData = null;
   let distanceValues = [];
   let intCircleValues = [];
   let processedWorkbook = null;
+  let exportFilename = null;
 
-  // File input and drag-drop handling
-  const dataFile = document.getElementById('dataFile');
+  // Drag and drop
   const dropZone = document.getElementById('dropZone');
-
-  dataFile.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) handleFileSelect(file);
-  });
-
-  dropZone.addEventListener('click', () => dataFile.click());
   dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
     dropZone.classList.add('drag-over');
   });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('drag-over');
+  });
   dropZone.addEventListener('drop', (e) => {
     e.preventDefault();
     dropZone.classList.remove('drag-over');
     const file = e.dataTransfer.files[0];
-    if (file) handleFileSelect(file);
+    if (file) loadFile(file);
   });
 
-  function handleFileSelect(file) {
-    if (!file) return;
-    
+  // File input change
+  document.getElementById('dataFile').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) loadFile(file);
+  });
+
+  function loadFile(file) {
     const reader = new FileReader();
     reader.onload = (e) => {
-      try {
-        const content = e.target.result;
-        parsedData = parseData(content);
+      const content = e.target.result;
+      parsedData = parseData(content);
+      
+      if (parsedData && parsedData.length > 0) {
+        const { distanceVals, intCircleVals } = extractTargetValues(parsedData);
+        distanceValues = distanceVals;
+        intCircleValues = intCircleVals;
 
-        if (parsedData && parsedData.length > 0) {
-          const { distanceVals, intCircleVals } = extractTargetValues(parsedData);
-          distanceValues = distanceVals;
-          intCircleValues = intCircleVals;
+        document.getElementById('dataNameText').textContent = `ファイル: ${file.name}`;
+        document.getElementById('dataName').style.display = 'block';
+        
+        document.getElementById('recordCount').textContent = parsedData.length;
+        document.getElementById('distanceCount').textContent = distanceValues.length;
+        document.getElementById('intCircleCount').textContent = intCircleValues.length;
+        document.getElementById('statsContainer').style.display = 'block';
 
-          document.getElementById('dataName').style.display = 'block';
-          document.getElementById('dataNameText').textContent = `✓ ${file.name} を読み込みました`;
-          document.getElementById('statsContainer').style.display = 'block';
-          document.getElementById('recordCount').textContent = parsedData.length;
-          document.getElementById('distanceCount').textContent = distanceVals.length;
-          document.getElementById('intCircleCount').textContent = intCircleVals.length;
-
-          showAlert(`✓ ${parsedData.length}件のレコードを読み込みました`, 'success');
-        } else {
-          showAlert('データを読み込めませんでした', 'error');
-        }
-      } catch (err) {
-        showAlert(`エラー: ${err.message}`, 'error');
+        showAlert(`${parsedData.length}件のレコードを抽出しました`, 'success');
+      } else {
+        showAlert('ファイルの形式が正しくないか、データが含まれていません', 'error');
       }
     };
     reader.readAsText(file);
@@ -390,6 +385,11 @@
     return /^\d{4}\/\d{2}\/\d{2}$/.test(dateString);
   }
 
+  function formatDateForFilename(dateString) {
+    // Convert YYYY/MM/DD to YYYYMMDD
+    return dateString.replace(/\//g, '');
+  }
+
   function loadDefaultTemplate() {
     const templatePath = '/templates/LOT_template.xlsx';
     
@@ -435,35 +435,47 @@
       }
 
       try {
+        // Read the template workbook
         const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
 
         const lotPrefix = extractLotPrefix(lotNumber);
 
-        worksheet['B1'] = { v: lotNumber };
-        worksheet['B2'] = { v: inspectionDate };
+        // Write LOT information to template
+        worksheet['B1'] = { v: lotNumber, t: 's' };
+        worksheet['B2'] = { v: inspectionDate, t: 's' };
         if (lotPrefix) {
-          worksheet['B3'] = { v: lotPrefix };
+          worksheet['B3'] = { v: lotPrefix, t: 's' };
         }
 
+        // Write distance values (starting at A1)
         for (let i = 0; i < distanceValues.length; i++) {
-          const cellRef = `A${i + 1}`;
-          worksheet[cellRef] = { v: distanceValues[i] };
+          const cellRef = XLSX.utils.encode_cell({ r: i, c: 0 });
+          worksheet[cellRef] = { v: distanceValues[i], t: 'n' };
         }
 
+        // Write INT-CIRCLE values (after distance values)
         for (let i = 0; i < intCircleValues.length; i++) {
-          const cellRef = `A${distanceValues.length + i + 1}`;
-          worksheet[cellRef] = { v: intCircleValues[i] };
+          const cellRef = XLSX.utils.encode_cell({ r: distanceValues.length + i, c: 0 });
+          worksheet[cellRef] = { v: intCircleValues[i], t: 'n' };
         }
 
         processedWorkbook = workbook;
+
+        // Generate filename with date suffix to prevent duplicates
+        const dateFormatted = formatDateForFilename(inspectionDate);
+        exportFilename = `水平ノズル${lotNumber}全箇所測定-${dateFormatted}.xlsx`;
+        
+        document.getElementById('fileInfo').textContent = `ファイル名: ${exportFilename}`;
         
         processBtn.disabled = false;
         processBtn.innerHTML = '✅ Excel を生成';
+        document.getElementById('downloadBtn').style.display = 'inline-block';
         
-        showAlert('処理が完了しました', 'success');
+        showAlert('処理が完了しました。ダウンロードボタンをクリックしてください。', 'success');
         document.getElementById('downloadContainer').style.display = 'block';
       } catch (err) {
+        console.error('Processing error:', err);
         showAlert(`処理エラー: ${err.message}`, 'error');
         processBtn.disabled = false;
         processBtn.innerHTML = '📊 Excel を生成';
@@ -472,16 +484,40 @@
   }
 
   function downloadExcel() {
-    if (!processedWorkbook) {
+    if (!processedWorkbook || !exportFilename) {
       showAlert('Excelファイルを生成してください', 'error');
       return;
     }
 
-    const lotNumber = document.getElementById('lotNumber').value;
-    const inspectionDate = document.getElementById('inspectionDate').value;
-    const filename = `水平ノズル${lotNumber}全箇所測定${inspectionDate}.xlsx`;
+    try {
+      XLSX.writeFile(processedWorkbook, exportFilename);
+      showAlert(`ファイルをダウンロードしました: ${exportFilename}`, 'success');
+    } catch (err) {
+      console.error('Download error:', err);
+      showAlert(`ダウンロードエラー: ${err.message}`, 'error');
+    }
+  }
 
-    XLSX.writeFile(processedWorkbook, filename);
+  function resetForm() {
+    parsedData = null;
+    distanceValues = [];
+    intCircleValues = [];
+    processedWorkbook = null;
+    exportFilename = null;
+
+    document.getElementById('dataFile').value = '';
+    document.getElementById('lotNumber').value = '';
+    document.getElementById('inspectionDate').value = '';
+    document.getElementById('dataName').style.display = 'none';
+    document.getElementById('statsContainer').style.display = 'none';
+    document.getElementById('downloadContainer').style.display = 'none';
+    document.getElementById('downloadBtn').style.display = 'none';
+
+    const processBtn = document.getElementById('processBtn');
+    processBtn.disabled = false;
+    processBtn.innerHTML = '📊 Excel を生成';
+
+    showAlert('フォームをリセットしました', 'info');
   }
 
   function showAlert(message, type) {
