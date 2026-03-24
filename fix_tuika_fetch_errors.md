@@ -20,5 +20,5 @@
 2. **Sheet Targeting Error**: The older script read the first sheet `workbook.Sheets[workbook.SheetNames[0]]`, which happened to be the `kensa` (format) sheet, and overwrote its visible cells directly with raw values instead of placing data into the hidden repository sheet as expected. 
 
 **Fixes Applied in `views/tuika-process.ejs`:**
-- **Swapped Library**: Replaced `xlsx` with `ExcelJS` via frontend CDN (`exceljs.min.js`), which is specifically designed to read Excel template layouts, mutate cell data, and re-export without touching existing graphics or borders.
+- **Swapped Library**: Replaced `xlsx` with `ExcelJS` via frontend CDN (`https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js`), which is specifically designed to read Excel template layouts, mutate cell data, and re-export without touching existing graphics or borders.
 - **Changed Sheet Access**: Pointed the logic to exclusively read `workbook.getWorksheet('sheet')`. All Lot numbers and distance values are now deposited directly into this blank data sheet column `A`, keeping the `kensa` presentation sheet untouched and perfectly formatted, so its formulas can just reference the raw data securely. 
