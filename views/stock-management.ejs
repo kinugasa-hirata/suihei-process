@@ -953,8 +953,8 @@
 
       // ── Orders: re-allocate using only inventory >= MIN_FILE_NUM ──
       // This correctly ignores already-shipped products (< MIN_FILE_NUM)
-      const orders = <% - JSON.stringify(orders) %>;
-      const byStatus = <% - JSON.stringify(inspectionsByStatus) %>;
+      const orders = <%- JSON.stringify(orders) %>;
+      const byStatus = <%- JSON.stringify(inspectionsByStatus) %>;
 
       // Flatten all inventory items >= MIN_FILE_NUM, priority: finished → inspection → imported → upcoming
       const INV_PRIORITY = ['finished_inspection', 'inspection', 'imported', 'upcoming_import'];
@@ -1068,7 +1068,7 @@
       });
       Object.values(allDocsByLot).forEach(arr => arr.sort((a, b) => a - b));
 
-      const imports = <% - JSON.stringify(imports) %>;
+      const imports = <%- JSON.stringify(imports) %>;
       const importsList = document.getElementById('importsList');
       const importsTable = document.getElementById('importsTable');
       const importsEmpty = document.getElementById('importsEmpty');
@@ -1152,7 +1152,7 @@
       }
 
       // ── Inventory: compact lot-grouped chip view ──────────────────
-      const statusConfig = <% - JSON.stringify(statusConfig) %>;
+      const statusConfig = <%- JSON.stringify(statusConfig) %>;
       const invDiv = document.getElementById('inventoryContent');
       invDiv.innerHTML = '';
 
