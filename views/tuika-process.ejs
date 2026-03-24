@@ -376,8 +376,16 @@
 
   function extractLotPrefix(lotNumber) {
     if (!lotNumber) return null;
-    const match = lotNumber.match(/^([A-Za-z]+\d+)/);
-    return match ? match[1] : null;
+    // Match optional letters followed by numbers at the start
+    const match = lotNumber.match(/^([A-Za-z]*)(\d+)/);
+    if (match) {
+        const letters = match[1].toUpperCase();
+        const numbers = match[2];
+        // If they already included LOT, use it. Otherwise, force LOT
+        const prefix = letters.includes('LOT') ? letters : 'LOT';
+        return prefix + numbers;
+    }
+    return null;
   }
 
   function validateDateFormat(dateString) {

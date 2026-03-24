@@ -22,3 +22,8 @@
 **Fixes Applied in `views/tuika-process.ejs`:**
 - **Swapped Library**: Replaced `xlsx` with `ExcelJS` via frontend CDN (`https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js`), which is specifically designed to read Excel template layouts, mutate cell data, and re-export without touching existing graphics or borders.
 - **Changed Sheet Access**: Pointed the logic to exclusively read `workbook.getWorksheet('sheet')`. All Lot numbers and distance values are now deposited directly into this blank data sheet column `A`, keeping the `kensa` presentation sheet untouched and perfectly formatted, so its formulas can just reference the raw data securely. 
+
+## 2026-03-24: Fixed extracted LOT prefix in data sheet (`B3`)
+
+**Fixes Applied in `views/tuika-process.ejs`:**
+- **LOT Number Extraction**: The `extractLotPrefix()` regex originally required manual input of letters (e.g. `LOT`) to correctly extract the prefix code and drop it into cell `B3`. We expanded the matching logic to gracefully handle inputs that start with digits (like `2026(266-268)`), automatically prepending the `LOT` text so it accurately generates `LOT2026` inside the exported `B3` cell, satisfying the `kensa` template's lookup references.
