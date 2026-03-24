@@ -391,18 +391,35 @@
   }
 
   function loadDefaultTemplate() {
-    const templatePath = '/templates/LOT_template.xlsx';
+    // Try multiple paths for Vercel compatibility
+    const templatePaths = [
+      '/public/templates/LOT_template.xlsx',  // Vercel public folder
+      '/templates/LOT_template.xlsx',         // Standard path
+      'LOT_template.xlsx'                     // Root path
+    ];
     
-    return fetch(templatePath)
+    return tryLoadTemplatePath(templatePaths, 0);
+  }
+
+  function tryLoadTemplatePath(paths, index) {
+    if (index >= paths.length) {
+      showAlert('テンプレートファイルが見つかりません。管理者に連絡してください。', 'error');
+      return Promise.resolve(null);
+    }
+
+    const path = paths[index];
+    return fetch(path)
       .then(response => {
         if (!response.ok) {
-          throw new Error('テンプレートファイルが見つかりません');
+          console.log(`Template not found at: ${path}, trying next...`);
+          return tryLoadTemplatePath(paths, index + 1);
         }
+        console.log(`Template loaded successfully from: ${path}`);
         return response.arrayBuffer();
       })
       .catch(err => {
-        showAlert(`テンプレート読み込みエラー: ${err.message}`, 'error');
-        return null;
+        console.log(`Error loading template from ${path}: ${err.message}`);
+        return tryLoadTemplatePath(paths, index + 1);
       });
   }
 
