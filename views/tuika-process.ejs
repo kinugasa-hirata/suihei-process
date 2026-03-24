@@ -236,8 +236,8 @@
 
 </div>
 
-<!-- Load XLSX library -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- Load ExcelJS library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 
 <script>
   let parsedData = null;
@@ -444,7 +444,7 @@
     processBtn.disabled = true;
     processBtn.innerHTML = '<span class="loading-spinner"></span> 処理中...';
 
-    loadDefaultTemplate().then(arrayBuffer => {
+    loadDefaultTemplate().then(async arrayBuffer => {
       if (!arrayBuffer) {
         processBtn.disabled = false;
         processBtn.innerHTML = '📊 Excel を生成';
@@ -452,29 +452,37 @@
       }
 
       try {
-        // Read the template workbook
-        const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        // Read the template workbook using ExcelJS to preserve formatting
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(arrayBuffer);
+        
+        // Target the 'sheet' sheet instead of 'kensa'
+        // If 'sheet' doesn't exist, fallback to the second or active sheet
+        let worksheet = workbook.getWorksheet('sheet');
+        if (!worksheet) {
+            worksheet = workbook.worksheets.length > 1 ? workbook.worksheets[1] : workbook.worksheets[0];
+        }
 
         const lotPrefix = extractLotPrefix(lotNumber);
 
         // Write LOT information to template
-        worksheet['B1'] = { v: lotNumber, t: 's' };
-        worksheet['B2'] = { v: inspectionDate, t: 's' };
+        // ExcelJS cells are 1-indexed for both row and column, but we can use A1 notation
+        worksheet.getCell('B1').value = lotNumber;
+        worksheet.getCell('B2').value = inspectionDate;
         if (lotPrefix) {
-          worksheet['B3'] = { v: lotPrefix, t: 's' };
+          worksheet.getCell('B3').value = lotPrefix;
         }
 
         // Write distance values (starting at A1)
         for (let i = 0; i < distanceValues.length; i++) {
-          const cellRef = XLSX.utils.encode_cell({ r: i, c: 0 });
-          worksheet[cellRef] = { v: distanceValues[i], t: 'n' };
+          const rowPos = i + 1;
+          worksheet.getCell(`A${rowPos}`).value = distanceValues[i];
         }
 
         // Write INT-CIRCLE values (after distance values)
         for (let i = 0; i < intCircleValues.length; i++) {
-          const cellRef = XLSX.utils.encode_cell({ r: distanceValues.length + i, c: 0 });
-          worksheet[cellRef] = { v: intCircleValues[i], t: 'n' };
+          const rowPos = distanceValues.length + i + 1;
+          worksheet.getCell(`A${rowPos}`).value = intCircleValues[i];
         }
 
         processedWorkbook = workbook;
@@ -500,14 +508,21 @@
     });
   }
 
-  function downloadExcel() {
+  async function downloadExcel() {
     if (!processedWorkbook || !exportFilename) {
       showAlert('Excelファイルを生成してください', 'error');
       return;
     }
 
     try {
-      XLSX.writeFile(processedWorkbook, exportFilename);
+      const buffer = await processedWorkbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = exportFilename;
+      a.click();
+      window.URL.revokeObjectURL(url);
       showAlert(`ファイルをダウンロードしました: ${exportFilename}`, 'success');
     } catch (err) {
       console.error('Download error:', err);
