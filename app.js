@@ -1,6 +1,5 @@
-// app.js - EFFICIENT SCHEMA VERSION WITH STOCK MANAGEMENT & TUIKA-PROCESS
-// Updated: Added stock management system, tuika-process route, and login fixes
-// Modified: Excel import/export, Status tracking, Order management, Authentication
+// app.js - EFFICIENT SCHEMA VERSION WITH STOCK MANAGEMENT, TUIKA-PROCESS & CLOUD STORAGE
+// Updated: Added Appwrite Storage for tuika Excel exports
 
 const express = require("express");
 const multer = require("multer");
@@ -11,7 +10,7 @@ const crypto = require("crypto");
 const XLSX = require("xlsx");
 require("dotenv").config();
 
-const { Client, Databases, Query, ID } = require("node-appwrite");
+const { Client, Databases, Storage, Query, ID, InputFile } = require("node-appwrite");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -72,7 +71,7 @@ const STATUS_CONFIG = {
     color: '#6c757d',
     opacity: 1,
     order: 5,
-    hidden: true // Don't show in main view
+    hidden: true
   }
 };
 
@@ -139,6 +138,7 @@ const client = new Client()
   .setKey(process.env.APPWRITE_API_KEY);
 
 const databases = new Databases(client);
+const appwriteStorage = new Storage(client);
 
 // Existing collections
 const DATABASE_ID = process.env.APPWRITE_DATABASE_ID;
@@ -146,9 +146,13 @@ const COLLECTION_INSPECTIONS = process.env.APPWRITE_COLLECTION_INSPECTIONS_ID;
 const COLLECTION_LOGIN_LOGS = process.env.APPWRITE_COLLECTION_LOGIN_LOGS_ID;
 const COLLECTION_SESSIONS = process.env.APPWRITE_COLLECTION_SESSIONS_ID;
 
-// New collections for stock management
+// Stock management collections
 const COLLECTION_ORDERS = process.env.APPWRITE_COLLECTION_ORDERS_ID;
 const COLLECTION_IMPORTS = process.env.APPWRITE_COLLECTION_IMPORTS_ID;
+
+// Tuika exports
+const COLLECTION_TUIKA_EXPORTS = process.env.APPWRITE_COLLECTION_TUIKA_EXPORTS_ID;
+const BUCKET_TUIKA_ID = process.env.APPWRITE_BUCKET_TUIKA_ID;
 
 // ======================
 // MIDDLEWARE
@@ -157,13 +161,14 @@ const COLLECTION_IMPORTS = process.env.APPWRITE_COLLECTION_IMPORTS_ID;
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(cookieParser(process.env.SESSION_SECRET || 'your-secret-key-change-in-production'));
 
-const storage = multer.memoryStorage();
+const multerStorage = multer.memoryStorage();
 const upload = multer({
-  storage: storage,
+  storage: multerStorage,
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     if (ext === ".txt" || ext === ".xlsx" || ext === ".xls") {
@@ -212,12 +217,8 @@ async function createSession(username) {
   const sessionId = generateSessionId();
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-  console.log(`[SESSION] Creating session for user: ${username}`);
-  console.log(`[SESSION] Session ID: ${sessionId.substring(0, 10)}...`);
-  console.log(`[SESSION] Can edit weights: ${canEditWeights(username)}`);
-
   try {
-    const doc = await databases.createDocument(
+    await databases.createDocument(
       DATABASE_ID,
       COLLECTION_SESSIONS,
       ID.unique(),
@@ -229,14 +230,9 @@ async function createSession(username) {
         expires_at: expiresAt.toISOString()
       }
     );
-    console.log(`[SESSION] Document created: ${doc.$id}`);
     return sessionId;
   } catch (error) {
-    console.error(`[SESSION] Error creating session document:`, {
-      message: error.message,
-      code: error.code,
-      type: error.type
-    });
+    console.error(`[SESSION] Error creating session:`, error.message);
     throw error;
   }
 }
@@ -314,15 +310,11 @@ app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
-    return res.render("login", {
-      error: "Username and password are required"
-    });
+    return res.render("login", { error: "Username and password are required" });
   }
 
   if (!isValidPassword(password)) {
-    return res.render("login", {
-      error: "Invalid username or password"
-    });
+    return res.render("login", { error: "Invalid username or password" });
   }
 
   try {
@@ -335,8 +327,6 @@ app.post("/login", async (req, res) => {
       sameSite: 'lax'
     });
 
-    // ✅ FIXED: Don't try to log can_edit_weights to LOGIN_LOGS
-    // Only log username and timestamp
     try {
       await databases.createDocument(
         DATABASE_ID,
@@ -345,20 +335,16 @@ app.post("/login", async (req, res) => {
         {
           username: username,
           logged_in_at: new Date().toISOString()
-          // REMOVED: can_edit_weights - this attribute doesn't exist in LOGIN_LOGS
         }
       );
     } catch (logError) {
       console.error('Error logging login:', logError);
-      // Don't fail login just because logging failed
     }
 
     res.redirect("/");
   } catch (error) {
     console.error('Login error:', error);
-    res.render("login", {
-      error: "Login failed. Please try again."
-    });
+    res.render("login", { error: "Login failed. Please try again." });
   }
 });
 
@@ -380,9 +366,6 @@ app.post("/logout", async (req, res) => {
 // INVENTORY & ALLOCATION FUNCTIONS
 // ======================
 
-/**
- * Categorize inspections by status
- */
 function categorizeInventory(inspections) {
   const inventory = {
     finished_inspection: [],
@@ -400,7 +383,6 @@ function categorizeInventory(inspections) {
     }
   });
 
-  // Sort each category by file number (ascending)
   Object.keys(inventory).forEach(key => {
     inventory[key].sort((a, b) => {
       const numA = parseInt(a.filename.replace('.txt', '')) || 0;
@@ -412,9 +394,6 @@ function categorizeInventory(inspections) {
   return inventory;
 }
 
-/**
- * Get total available products
- */
 function getTotalAvailableInventory(inventory) {
   let total = 0;
   Object.keys(inventory).forEach(status => {
@@ -423,9 +402,6 @@ function getTotalAvailableInventory(inventory) {
   return total;
 }
 
-/**
- * Get inventory by priority order (ready first)
- */
 function getInventoryByPriority(inventory) {
   const priority = [];
   priority.push(...inventory.finished_inspection.map(item => ({ ...item, priority: 1 })));
@@ -435,14 +411,10 @@ function getInventoryByPriority(inventory) {
   return priority;
 }
 
-/**
- * Allocate products to a single order
- */
 function allocateProductsToOrder(order, allOrders, currentInventory) {
   const quantity = parseInt(order.quantity);
   const inventoryByPriority = getInventoryByPriority(currentInventory);
 
-  // Mark products allocated to earlier orders
   const allocatedByEarlierOrders = new Set();
   const earlierOrders = allOrders
     .filter(o => o.$id !== order.$id && new Date(o.due_date) < new Date(order.due_date))
@@ -459,7 +431,6 @@ function allocateProductsToOrder(order, allOrders, currentInventory) {
     }
   }
 
-  // Allocate to this order
   const allocatedItems = [];
   for (const product of inventoryByPriority) {
     if (!allocatedByEarlierOrders.has(product.$id) && allocatedItems.length < quantity) {
@@ -467,7 +438,6 @@ function allocateProductsToOrder(order, allOrders, currentInventory) {
     }
   }
 
-  // Determine status
   const readyCount = allocatedItems.filter(item => item.status === 'finished_inspection').length;
   const inProgressCount = allocatedItems.filter(item =>
     item.status === 'inspection' || item.status === 'imported'
@@ -492,9 +462,6 @@ function allocateProductsToOrder(order, allOrders, currentInventory) {
   };
 }
 
-/**
- * Allocate to all orders
- */
 function allocateToAllOrders(orders, currentInventory) {
   const allocations = {};
   const sortedOrders = [...orders].sort((a, b) =>
@@ -507,9 +474,6 @@ function allocateToAllOrders(orders, currentInventory) {
   return allocations;
 }
 
-/**
- * Get inventory status overview
- */
 function getInventoryStatus(inventory) {
   const byStatus = {
     finished_inspection: inventory.finished_inspection.length,
@@ -532,8 +496,6 @@ function getInventoryStatus(inventory) {
 
 function parseTxtFile(fileContent) {
   const lines = fileContent.split("\n").map(line => line.trim()).filter(l => l.length > 0);
-  // Key structure: measurements[index][type] = {...}
-  // This handles duplicate indices with different types (e.g. idx=1 CIRCLE, idx=1 PT-COMP)
   const data = { measurements: {} };
 
   const safeFloat = s => { const v = parseFloat(s); return isNaN(v) ? null : v; };
@@ -555,7 +517,6 @@ function parseTxtFile(fileContent) {
     if (!data.measurements[index]) data.measurements[index] = {};
 
     if (type === "CIRCLE" && parts.length >= 12) {
-      // Format: index;CIRCLE;count;x;y;z;rx;ry;rz;;diameter;roundness
       data.measurements[index]["CIRCLE"] = {
         type: "CIRCLE",
         x: safeFloat(parts[3]),
@@ -565,7 +526,6 @@ function parseTxtFile(fileContent) {
         roundness: safeFloat(parts[11])
       };
     } else if (type === "PT-COMP" && parts.length >= 6) {
-      // Format: index;PT-COMP;count;x;y;z
       data.measurements[index]["PT-COMP"] = {
         type: "PT-COMP",
         x: Math.abs(safeFloat(parts[3])),
@@ -573,8 +533,6 @@ function parseTxtFile(fileContent) {
         z: safeFloat(parts[5])
       };
     } else if (type === "DISTANCE") {
-      // Format: index;DISTANCE;;x;y;z;;;;;distance_value
-      // parts[3] = x coordinate = the actual depth/distance measurement (use abs value)
       data.measurements[index]["DISTANCE"] = {
         type: "DISTANCE",
         y: safeFloat(parts[3]) !== null ? Math.abs(safeFloat(parts[3])) : null
@@ -592,7 +550,6 @@ function extractMeasurementValue(parsedData, measureKey) {
   if (config.type === 'AVERAGE') {
     const values = config.indices
       .map(indexConfig => {
-        // New structure: measurements[index][type]
         const byIndex = parsedData.measurements[indexConfig.index];
         const measurement = byIndex && byIndex[indexConfig.type];
         if (!measurement) return null;
@@ -605,7 +562,6 @@ function extractMeasurementValue(parsedData, measureKey) {
     return config.absolute ? Math.abs(avg) : avg;
   }
 
-  // New structure: measurements[index][type]
   const byIndex = parsedData.measurements[config.index];
   const measurement = byIndex && byIndex[config.type];
   if (!measurement) return null;
@@ -627,7 +583,6 @@ function isValidMeasurement(value, measureKey) {
 function processGValues(measurements) {
   const gKeys = ['G1', 'G2', 'G3', 'G4'];
 
-  // Parse numeric values safely - DB stores them as strings (e.g. "8.020")
   const validGValues = gKeys
     .map(key => {
       const m = measurements[key];
@@ -699,33 +654,23 @@ app.get("/", requireAuth, async (req, res) => {
 });
 
 // ======================
-// STOCK AVAILABILITY CALCULATION
-// ======================
-
-// Stock allocation now handled by inline functions above
-// See: categorizeInventory, allocateProductsToOrder, allocateToAllOrders
-
-// ======================
 // STOCK MANAGEMENT VIEW
 // ======================
 
 app.get("/stock-management", requireAuth, async (req, res) => {
   try {
-    // Fetch orders (exclude shipped)
     const ordersResult = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_ORDERS,
       [Query.notEqual('status', 'shipped'), Query.orderAsc('due_date'), Query.limit(100)]
     );
 
-    // Fetch imports (exclude imported)
     const importsResult = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_IMPORTS,
       [Query.notEqual('status', 'imported'), Query.orderAsc('scheduled_date'), Query.limit(100)]
     );
 
-    // Fetch all inspections (not shipped)
     const inspectionsResult = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_INSPECTIONS,
@@ -736,7 +681,6 @@ app.get("/stock-management", requireAuth, async (req, res) => {
       ]
     );
 
-    // Group inspections by status (filter shipped, treat NULL as finished_inspection)
     const inspectionsByStatus = {
       upcoming_import: [],
       imported: [],
@@ -744,17 +688,15 @@ app.get("/stock-management", requireAuth, async (req, res) => {
       finished_inspection: []
     };
 
-    // Helper: extract numeric file number for sorting DESC
     const fileNum = doc => {
       const m = doc.filename && doc.filename.match(/^(\d+)/);
       return m ? parseInt(m[1]) : 0;
     };
 
-    // Also build a map of import_id -> list of filenames for the imports table
     const importFileMap = {};
     inspectionsResult.documents.forEach(doc => {
       const status = doc.status || 'finished_inspection';
-      if (status === 'shipped') return;  // skip shipped
+      if (status === 'shipped') return;
       if (inspectionsByStatus[status] !== undefined) {
         inspectionsByStatus[status].push(doc);
       } else {
@@ -766,23 +708,18 @@ app.get("/stock-management", requireAuth, async (req, res) => {
       }
     });
 
-    // Sort each section ASC by file number (lowest first: 492, 493, 494...)
     Object.keys(inspectionsByStatus).forEach(key => {
       inspectionsByStatus[key].sort((a, b) => fileNum(a) - fileNum(b));
     });
 
-    // *** Use inline inventory and allocation system ***
-    // Step 1: Categorize current inventory by status
     const activeInspections = inspectionsResult.documents.filter(doc => doc.status !== 'shipped');
     const currentInventory = categorizeInventory(activeInspections);
 
-    // Step 2: Allocate products to orders by due date priority
     const allocations = allocateToAllOrders(
       ordersResult.documents,
       currentInventory
     );
 
-    // Step 3: Enhance order objects with allocation info
     const ordersWithStock = ordersResult.documents.map(order => {
       const allocation = allocations[order.$id];
       return {
@@ -797,7 +734,6 @@ app.get("/stock-management", requireAuth, async (req, res) => {
       };
     });
 
-    // Attach linked_files to each import
     const importsWithFiles = importsResult.documents.map(imp => ({
       ...imp,
       linked_files: importFileMap[imp.$id] || []
@@ -819,16 +755,14 @@ app.get("/stock-management", requireAuth, async (req, res) => {
 });
 
 // ======================
-// TUIKA-PROCESS ROUTE (追加工程)
+// TUIKA-PROCESS ROUTE
 // ======================
 
 app.get("/tuika-process", requireAuth, async (req, res) => {
   try {
-    const displayName = getDisplayName(req.session.username);
-    
     res.render("tuika-process", {
       username: req.session.username,
-      displayName: displayName,
+      displayName: getDisplayName(req.session.username),
       canEditWeights: req.session.canEditWeights || false
     });
   } catch (error) {
@@ -838,19 +772,124 @@ app.get("/tuika-process", requireAuth, async (req, res) => {
 });
 
 // ======================
+// TUIKA STORAGE API
+// ======================
+
+// Save generated Excel to Appwrite Storage
+app.post("/api/tuika/save", requireAuth, async (req, res) => {
+  try {
+    const { filename, lotNumber, inspectionDate, fileData } = req.body;
+
+    if (!filename || !lotNumber || !inspectionDate || !fileData) {
+      return res.status(400).json({ success: false, error: "Missing required fields" });
+    }
+
+    // fileData is base64-encoded Excel buffer from browser
+    const buffer = Buffer.from(fileData, "base64");
+
+    // Upload to Appwrite Storage
+    const inputFile = InputFile.fromBuffer(buffer, filename);
+    const storageFile = await appwriteStorage.createFile(
+      BUCKET_TUIKA_ID,
+      ID.unique(),
+      inputFile
+    );
+
+    // Save metadata to DB
+    const meta = await databases.createDocument(
+      DATABASE_ID,
+      COLLECTION_TUIKA_EXPORTS,
+      ID.unique(),
+      {
+        storage_file_id: storageFile.$id,
+        filename: filename,
+        lot_number: lotNumber,
+        inspection_date: inspectionDate,
+        created_by: getDisplayName(req.session.username),
+        created_at: new Date().toISOString()
+      }
+    );
+
+    res.json({ success: true, meta });
+  } catch (error) {
+    console.error("Error saving tuika export:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// List all saved tuika exports
+app.get("/api/tuika/list", requireAuth, async (req, res) => {
+  try {
+    const result = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_TUIKA_EXPORTS,
+      [Query.orderDesc("created_at"), Query.limit(100)]
+    );
+    res.json({ success: true, files: result.documents });
+  } catch (error) {
+    console.error("Error listing tuika exports:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Download a saved tuika export
+app.get("/api/tuika/download/:metaId", requireAuth, async (req, res) => {
+  try {
+    // Get metadata from DB
+    const meta = await databases.getDocument(
+      DATABASE_ID,
+      COLLECTION_TUIKA_EXPORTS,
+      req.params.metaId
+    );
+
+    // Download file bytes from Appwrite Storage
+    const fileBytes = await appwriteStorage.getFileDownload(
+      BUCKET_TUIKA_ID,
+      meta.storage_file_id
+    );
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(meta.filename)}"`);
+    res.setHeader("Cache-Control", "no-cache");
+    res.send(Buffer.from(fileBytes));
+  } catch (error) {
+    console.error("Error downloading tuika export:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete a saved tuika export
+app.delete("/api/tuika/:metaId", requireAuth, async (req, res) => {
+  try {
+    const meta = await databases.getDocument(
+      DATABASE_ID,
+      COLLECTION_TUIKA_EXPORTS,
+      req.params.metaId
+    );
+
+    // Delete from Storage
+    await appwriteStorage.deleteFile(BUCKET_TUIKA_ID, meta.storage_file_id);
+
+    // Delete metadata from DB
+    await databases.deleteDocument(DATABASE_ID, COLLECTION_TUIKA_EXPORTS, req.params.metaId);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting tuika export:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ======================
 // ORDER MANAGEMENT API
 // ======================
 
-// Create new order
 app.post("/api/orders", requireAuth, async (req, res) => {
   try {
     const { quantity, due_date } = req.body;
 
     if (!quantity || !due_date) {
-      return res.status(400).json({
-        success: false,
-        error: 'Quantity and due date are required'
-      });
+      return res.status(400).json({ success: false, error: 'Quantity and due date are required' });
     }
 
     const order = await databases.createDocument(
@@ -871,7 +910,6 @@ app.post("/api/orders", requireAuth, async (req, res) => {
   }
 });
 
-// Update order
 app.put("/api/orders/:orderId", requireAuth, async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -896,17 +934,9 @@ app.put("/api/orders/:orderId", requireAuth, async (req, res) => {
   }
 });
 
-// Delete order
 app.delete("/api/orders/:orderId", requireAuth, async (req, res) => {
   try {
-    const { orderId } = req.params;
-
-    await databases.deleteDocument(
-      DATABASE_ID,
-      COLLECTION_ORDERS,
-      orderId
-    );
-
+    await databases.deleteDocument(DATABASE_ID, COLLECTION_ORDERS, req.params.orderId);
     res.json({ success: true });
   } catch (error) {
     console.error("Error deleting order:", error);
@@ -914,7 +944,6 @@ app.delete("/api/orders/:orderId", requireAuth, async (req, res) => {
   }
 });
 
-// Get single order (for edit modal)
 app.get("/api/orders/:orderId", requireAuth, async (req, res) => {
   try {
     const doc = await databases.getDocument(DATABASE_ID, COLLECTION_ORDERS, req.params.orderId);
@@ -924,13 +953,11 @@ app.get("/api/orders/:orderId", requireAuth, async (req, res) => {
   }
 });
 
-// Ship order: mark order as shipped, mark allocated inspections as shipped
 app.put("/api/orders/:orderId/ship", requireAuth, async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { itemIds } = req.body; // array of inspection $ids to mark shipped
+    const { itemIds } = req.body;
 
-    // Mark each inspection as shipped
     let shippedCount = 0;
     if (itemIds && itemIds.length > 0) {
       for (const itemId of itemIds) {
@@ -939,7 +966,6 @@ app.put("/api/orders/:orderId/ship", requireAuth, async (req, res) => {
       }
     }
 
-    // Mark the order as shipped
     await databases.updateDocument(DATABASE_ID, COLLECTION_ORDERS, orderId, { status: 'shipped' });
 
     res.json({ success: true, shippedCount });
@@ -949,7 +975,6 @@ app.put("/api/orders/:orderId/ship", requireAuth, async (req, res) => {
   }
 });
 
-// Get single import (for edit modal)
 app.get("/api/imports/:importId", requireAuth, async (req, res) => {
   try {
     const doc = await databases.getDocument(DATABASE_ID, COLLECTION_IMPORTS, req.params.importId);
@@ -963,7 +988,6 @@ app.get("/api/imports/:importId", requireAuth, async (req, res) => {
 // IMPORT MANAGEMENT API
 // ======================
 
-// Helper: find the highest file number in inspections collection
 async function getLastFileNumber() {
   try {
     const result = await databases.listDocuments(
@@ -986,7 +1010,6 @@ async function getLastFileNumber() {
   }
 }
 
-// Helper: bulk update inspection status by import_id
 async function updateInspectionStatusByImport(importId, newStatus) {
   try {
     const result = await databases.listDocuments(
@@ -1009,21 +1032,16 @@ async function updateInspectionStatusByImport(importId, newStatus) {
   }
 }
 
-// Create new import + auto-generate placeholder file records
 app.post("/api/imports", requireAuth, async (req, res) => {
   try {
     const { quantity, scheduled_date } = req.body;
 
     if (!quantity || !scheduled_date) {
-      return res.status(400).json({
-        success: false,
-        error: 'Quantity and scheduled date are required'
-      });
+      return res.status(400).json({ success: false, error: 'Quantity and scheduled date are required' });
     }
 
     const qty = parseInt(quantity);
 
-    // Step 1: Create the import record
     const importDoc = await databases.createDocument(
       DATABASE_ID,
       COLLECTION_IMPORTS,
@@ -1035,9 +1053,8 @@ app.post("/api/imports", requireAuth, async (req, res) => {
       }
     );
 
-    // Step 2: Find the last file number and create sequential placeholders
     const lastNumber = await getLastFileNumber();
-    const lotNumber = lastNumber + 1;  // Lot = youngest (lowest) number in the batch
+    const lotNumber = lastNumber + 1;
     const createdFiles = [];
     const errors = [];
 
@@ -1046,7 +1063,6 @@ app.post("/api/imports", requireAuth, async (req, res) => {
       const filename = `${fileNumber}.txt`;
 
       try {
-        // Match exact same fields as real upload to satisfy Appwrite schema
         await databases.createDocument(
           DATABASE_ID,
           COLLECTION_INSPECTIONS,
@@ -1055,23 +1071,20 @@ app.post("/api/imports", requireAuth, async (req, res) => {
             filename: filename,
             uploaded_at: new Date().toISOString(),
             weight: null,
-            lot: lotNumber,  // All files in batch share the same lot (lowest number)
+            lot: lotNumber,
             is_archived: false,
             status: 'upcoming_import',
             import_id: importDoc.$id,
-            // Measurements - use '-' as placeholder (same as real upload)
             measurementA: '-', measurementB: '-', measurementC: '-',
             measurementD: '-', measurementE: '-', measurementF: '-',
             measurementG1: '-', measurementG2: '-', measurementG3: '-',
             measurementG4: '-', measurementH: '-', measurementI: '-',
             measurementJ: '-', measurementK: '-', measurementL: '-',
-            // Validity flags - null until real data arrives
             isValidA: null, isValidB: null, isValidC: null,
             isValidD: null, isValidE: null, isValidF: null,
             isValidG1: null, isValidG2: null, isValidG3: null,
             isValidG4: null, isValidH: null, isValidI: null,
             isValidJ: null, isValidK: null, isValidL: null,
-            // Status fields
             inspectionStatus: 'pending',
             failedMeasurements: ''
           }
@@ -1083,25 +1096,13 @@ app.post("/api/imports", requireAuth, async (req, res) => {
       }
     }
 
-    if (errors.length > 0) {
-      console.error('Some placeholders failed:', JSON.stringify(errors));
-      // Still return success for the import, but note errors
-      return res.json({
-        success: true,
-        import: importDoc,
-        createdFiles: createdFiles,
-        startNumber: lastNumber + 1,
-        endNumber: lastNumber + qty,
-        errors: errors
-      });
-    }
-
     res.json({
       success: true,
       import: importDoc,
       createdFiles: createdFiles,
       startNumber: lastNumber + 1,
-      endNumber: lastNumber + qty
+      endNumber: lastNumber + qty,
+      errors: errors.length > 0 ? errors : undefined
     });
   } catch (error) {
     console.error("Error creating import:", error);
@@ -1109,7 +1110,6 @@ app.post("/api/imports", requireAuth, async (req, res) => {
   }
 });
 
-// Update import + sync linked inspection statuses
 app.put("/api/imports/:importId", requireAuth, async (req, res) => {
   try {
     const { importId } = req.params;
@@ -1128,10 +1128,8 @@ app.put("/api/imports/:importId", requireAuth, async (req, res) => {
       updateData
     );
 
-    // Sync linked inspection statuses when import status changes
     let updatedCount = 0;
     if (status === 'arrived') {
-      // Import arrived → move linked inspections to 'imported'
       updatedCount = await updateInspectionStatusByImport(importId, 'imported');
     }
 
@@ -1142,17 +1140,9 @@ app.put("/api/imports/:importId", requireAuth, async (req, res) => {
   }
 });
 
-// Delete import
 app.delete("/api/imports/:importId", requireAuth, async (req, res) => {
   try {
-    const { importId } = req.params;
-
-    await databases.deleteDocument(
-      DATABASE_ID,
-      COLLECTION_IMPORTS,
-      importId
-    );
-
+    await databases.deleteDocument(DATABASE_ID, COLLECTION_IMPORTS, req.params.importId);
     res.json({ success: true });
   } catch (error) {
     console.error("Error deleting import:", error);
@@ -1170,10 +1160,7 @@ app.put("/api/inspections/:inspectionId/status", requireAuth, async (req, res) =
     const { status } = req.body;
 
     if (!status || !STATUS_CONFIG[status]) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid status'
-      });
+      return res.status(400).json({ success: false, error: 'Invalid status' });
     }
 
     const inspection = await databases.updateDocument(
@@ -1190,7 +1177,6 @@ app.put("/api/inspections/:inspectionId/status", requireAuth, async (req, res) =
   }
 });
 
-// Bulk advance all inspections from one status to another
 app.put("/api/inspections/advance-status", requireAuth, async (req, res) => {
   try {
     const { fromStatus, toStatus } = req.body;
@@ -1199,7 +1185,6 @@ app.put("/api/inspections/advance-status", requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid status values' });
     }
 
-    // Fetch all docs with fromStatus
     const result = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_INSPECTIONS,
@@ -1231,13 +1216,9 @@ app.put("/api/inspections/advance-status", requireAuth, async (req, res) => {
 app.post("/upload", requireAuth, upload.array("files"), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: "No file uploaded"
-      });
+      return res.status(400).json({ success: false, error: "No file uploaded" });
     }
 
-    // Process each uploaded file
     const allResults = { successful: [], failed: [], updated: [] };
 
     for (const file of req.files) {
@@ -1273,11 +1254,9 @@ async function processSingleUpload(file, req, results) {
   const measurements = {};
   const validations = {};
 
-  // Skip M and N — they are manual/visual fields not stored in Appwrite
   const dbKeys = Object.keys(measurementMapping).filter(k => k !== 'M' && k !== 'N');
   dbKeys.forEach(key => {
     const value = extractMeasurementValue(parsedData, key);
-    // Appwrite stores measurements as String — convert numeric values
     measurements[`measurement${key}`] = value !== null ? String(value) : '-';
     validations[`isValid${key}`] = isValidMeasurement(value, key);
   });
@@ -1287,7 +1266,6 @@ async function processSingleUpload(file, req, results) {
     const isPlaceholder = !existingDoc.measurementA || existingDoc.measurementA === '-';
 
     if (isPlaceholder) {
-      // Placeholder exists from import schedule — fill in the real measurement data
       await databases.updateDocument(
         DATABASE_ID,
         COLLECTION_INSPECTIONS,
@@ -1296,7 +1274,6 @@ async function processSingleUpload(file, req, results) {
           uploaded_at: new Date().toISOString(),
           is_archived: false,
           status: 'inspection',
-          // Keep existing lot and import_id from placeholder, only overwrite measurements
           ...measurements,
           ...validations
         }
@@ -1304,13 +1281,11 @@ async function processSingleUpload(file, req, results) {
       results.updated.push({ filename });
       return;
     } else {
-      // Real data already exists — skip with error
       results.failed.push({ filename, error: `${filename} already has measurement data` });
       return;
     }
   }
 
-  // No existing file — create fresh
   await databases.createDocument(
     DATABASE_ID,
     COLLECTION_INSPECTIONS,
@@ -1386,61 +1361,39 @@ app.post("/update-weight", requireWeightEditAuth, async (req, res) => {
     const { fileId, weight } = req.body;
 
     if (!fileId) {
-      return res.status(400).json({
-        success: false,
-        error: 'File ID is required'
-      });
+      return res.status(400).json({ success: false, error: 'File ID is required' });
     }
 
     const weightStr = weight !== null && weight !== undefined ? String(weight).trim() : '';
     const weightValue = weightStr !== '' ? parseFloat(weightStr) : null;
 
     if (weightValue !== null && (isNaN(weightValue) || weightValue < 0)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Weight must be a positive number or empty'
-      });
+      return res.status(400).json({ success: false, error: 'Weight must be a positive number or empty' });
     }
 
     const formattedWeight = weightValue !== null ? parseFloat(weightValue.toFixed(1)) : null;
 
-    // Fetch current status first — never downgrade a shipped item
     const currentDoc = await databases.getDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId);
     const updateData = { weight: formattedWeight };
     if (currentDoc.status === 'inspection' || currentDoc.status === 'imported') {
       updateData.status = 'finished_inspection';
     }
 
-    await databases.updateDocument(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      fileId,
-      updateData
-    );
+    await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId, updateData);
 
-    res.json({
-      success: true,
-      weight: formattedWeight
-    });
+    res.json({ success: true, weight: formattedWeight });
   } catch (error) {
     console.error("Error updating weight:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// Alias for frontend compatibility (some templates use /update-weights plural)
 app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
   try {
     const { weights } = req.body;
 
     if (!weights || !Array.isArray(weights) || weights.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Weights array is required'
-      });
+      return res.status(400).json({ success: false, error: 'Weights array is required' });
     }
 
     const results = [];
@@ -1449,10 +1402,7 @@ app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
     for (const item of weights) {
       const { fileId, weight } = item;
 
-      if (!fileId) {
-        errors.push({ error: 'File ID is required' });
-        continue;
-      }
+      if (!fileId) { errors.push({ error: 'File ID is required' }); continue; }
 
       const weightValue = weight && weight.toString().trim() !== '' ? parseFloat(weight) : null;
 
@@ -1469,12 +1419,7 @@ app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
         if (currentDoc2.status === 'inspection' || currentDoc2.status === 'imported') {
           bulkUpdateData.status = 'finished_inspection';
         }
-        await databases.updateDocument(
-          DATABASE_ID,
-          COLLECTION_INSPECTIONS,
-          fileId,
-          bulkUpdateData
-        );
+        await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId, bulkUpdateData);
         results.push({ fileId, weight: formattedWeight, success: true });
       } catch (err) {
         errors.push({ fileId, error: err.message });
@@ -1489,10 +1434,7 @@ app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating weights:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -1500,7 +1442,6 @@ app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
 // WEIGHT EXCEL IMPORT
 // ======================
 
-// Store import progress globally
 let importProgress = { current: 0, total: 0, status: 'idle' };
 
 app.get("/import-progress", requireWeightEditAuth, (req, res) => {
@@ -1528,15 +1469,11 @@ async function processImport(req, res) {
     }
 
     const file = req.files[0];
-    console.log("Processing file:", file.originalname);
-
     const buf = XLSX.read(file.buffer, { type: 'buffer' });
     const ws = buf.Sheets[buf.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-    console.log("Read", rows.length, "rows from Excel");
-
-    const totalRows = rows.length - 1; // Exclude header
+    const totalRows = rows.length - 1;
     importProgress = { current: 0, total: totalRows, status: 'processing' };
 
     let updated = 0;
@@ -1549,21 +1486,14 @@ async function processImport(req, res) {
         const row = rows[i];
         if (!row || !row[0] || !row[1]) continue;
 
-        // Get file number from column A (remove .txt if present)
         const fileNum = String(row[0]).trim().replace(/\.txt$/i, '');
-
-        // Get weight from column B
         const weight = parseFloat(String(row[1]).trim());
 
         if (!fileNum || isNaN(weight) || weight < 0) continue;
 
-        // Build filename with .txt extension
         const filename = fileNum + '.txt';
         const roundedWeight = Math.round(weight * 10) / 10;
 
-        console.log(`Row ${i}: ${fileNum} → ${roundedWeight}g`);
-
-        // Find document in Appwrite
         const result = await databases.listDocuments(
           DATABASE_ID,
           COLLECTION_INSPECTIONS,
@@ -1573,8 +1503,7 @@ async function processImport(req, res) {
         if (result.documents && result.documents.length > 0) {
           const docId = result.documents[0].$id;
 
-          // Update ONLY weight — never touch status (shipped items must stay shipped)
-          const updateResult = await databases.updateDocument(
+          await databases.updateDocument(
             DATABASE_ID,
             COLLECTION_INSPECTIONS,
             docId,
@@ -1582,87 +1511,60 @@ async function processImport(req, res) {
           );
 
           updated++;
-          console.log(`✓ Updated: ${filename} with weight ${roundedWeight}g`);
 
-          // VERIFY: Read it back to confirm it was saved
-          const verifyResult = await databases.getDocument(
-            DATABASE_ID,
-            COLLECTION_INSPECTIONS,
-            docId
-          );
-
+          const verifyResult = await databases.getDocument(DATABASE_ID, COLLECTION_INSPECTIONS, docId);
           if (verifyResult.weight === roundedWeight) {
             verified++;
-            console.log(`✓ VERIFIED: ${filename} - weight is ${verifyResult.weight}g in database`);
           } else {
             verifyFailed++;
-            console.log(`✗ VERIFY FAILED: ${filename} - expected ${roundedWeight}g, got ${verifyResult.weight}g`);
           }
         } else {
           notFound++;
-          console.log(`✗ Not found: ${filename}`);
         }
       } catch (rowErr) {
         console.error("Row error:", rowErr.message);
       }
 
-      // Update progress after each row
       importProgress.current = i;
     }
 
-    console.log(`\n========== IMPORT SUMMARY ==========`);
-    console.log(`File: ${file.originalname}`);
-    console.log(`Total rows read: ${rows.length - 1}`);
-    console.log(`Successfully updated: ${updated}`);
-    console.log(`Successfully verified: ${verified}`);
-    console.log(`Verification failed: ${verifyFailed}`);
-    console.log(`Not found in database: ${notFound}`);
-    console.log(`====================================\n`);
-
-    const responseData = {
-      ok: true,
-      success: true,
-      updated: updated,
-      verified: verified,
-      verifyFailed: verifyFailed,
-      notFound: notFound,
-      message: `Success: ${verified} confirmed in database`
-    };
-
     importProgress = { current: totalRows, total: totalRows, status: 'complete' };
 
-    res.status(200);
-    res.setHeader('Content-Type', 'application/json');
-    return res.json(responseData);
+    return res.json({
+      ok: true,
+      success: true,
+      updated,
+      verified,
+      verifyFailed,
+      notFound,
+      message: `Success: ${verified} confirmed in database`
+    });
 
   } catch (e) {
-    console.error("Import error:", e.message, e.stack);
+    console.error("Import error:", e.message);
     importProgress = { current: 0, total: 0, status: 'error' };
     return res.status(200).json({ ok: false, error: e.message });
   }
 }
 
 // ======================
-// WEIGHT EXCEL EXPORT (SIMPLIFIED)
+// WEIGHT EXCEL EXPORT
 // ======================
 
 app.get("/export-weights", requireWeightEditAuth, async (req, res) => {
   try {
-    // Fetch ALL inspections (not just those with weights)
     const result = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_INSPECTIONS,
-      [Query.limit(10000)]  // Increased limit to get all files
+      [Query.limit(10000)]
     );
 
-    // Create export data for ALL files
     const dataWithWeights = result.documents
       .map(doc => {
-        // Extract just the number from filename (e.g., "483.txt" → "483")
         const fileNumber = doc.filename.replace('.txt', '').replace(/[^0-9]/g, '');
         return {
-          'ファイル番号': fileNumber,  // Just the number, no .txt
-          '重量 (g)': doc.weight || ''  // Weight (empty if not filled)
+          'ファイル番号': fileNumber,
+          '重量 (g)': doc.weight || ''
         };
       })
       .sort((a, b) => {
@@ -1672,27 +1574,16 @@ app.get("/export-weights", requireWeightEditAuth, async (req, res) => {
       });
 
     if (dataWithWeights.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'No files in database to export'
-      });
+      return res.status(400).json({ success: false, error: 'No files in database to export' });
     }
 
-    // Create workbook
     const worksheet = XLSX.utils.json_to_sheet(dataWithWeights);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Weights');
+    worksheet['!cols'] = [{ wch: 15 }, { wch: 12 }];
 
-    // Set column widths
-    worksheet['!cols'] = [
-      { wch: 15 }, // ファイル番号
-      { wch: 12 }  // 重量 (g)
-    ];
-
-    // Generate Excel file
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
-    // Send file with proper headers
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="weights_${new Date().toISOString().split('T')[0]}.xlsx"`);
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -1700,10 +1591,7 @@ app.get("/export-weights", requireWeightEditAuth, async (req, res) => {
   } catch (error) {
     console.error("Error exporting weights:", error);
     res.setHeader('Content-Type', 'application/json');
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -1713,14 +1601,12 @@ app.get("/export-weights", requireWeightEditAuth, async (req, res) => {
 
 app.get("/export-measurements", requireAuth, async (req, res) => {
   try {
-    // Fetch all inspections with measurements
     const result = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_INSPECTIONS,
       [Query.limit(1000)]
     );
 
-    // Build data array with measurements
     const dataWithMeasurements = result.documents
       .map(doc => ({
         filename: doc.filename,
@@ -1765,24 +1651,16 @@ app.get("/export-measurements", requireAuth, async (req, res) => {
       });
 
     if (dataWithMeasurements.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'No measurement data to export'
-      });
+      return res.status(400).json({ success: false, error: 'No measurement data to export' });
     }
 
-    // Create workbook
     const worksheet = XLSX.utils.json_to_sheet(dataWithMeasurements);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Measurements');
-
-    // Set column widths
     worksheet['!cols'] = Array(35).fill({ wch: 12 });
 
-    // Generate Excel file
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
-    // Send file with proper headers
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="measurements_export_${new Date().toISOString().split('T')[0]}.xlsx"`);
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -1790,15 +1668,12 @@ app.get("/export-measurements", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("Error exporting measurements:", error);
     res.setHeader('Content-Type', 'application/json');
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // ======================
-// ARCHIVE FILES (Hide without deleting)
+// ARCHIVE / UNARCHIVE
 // ======================
 
 app.post("/archive-files", requireAuth, async (req, res) => {
@@ -1806,10 +1681,7 @@ app.post("/archive-files", requireAuth, async (req, res) => {
     const { fileIds } = req.body;
 
     if (!Array.isArray(fileIds) || fileIds.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'No file IDs provided'
-      });
+      return res.status(400).json({ success: false, error: 'No file IDs provided' });
     }
 
     let archived = 0;
@@ -1817,46 +1689,26 @@ app.post("/archive-files", requireAuth, async (req, res) => {
 
     for (const fileId of fileIds) {
       try {
-        await databases.updateDocument(
-          DATABASE_ID,
-          COLLECTION_INSPECTIONS,
-          fileId,
-          { is_archived: true }
-        );
+        await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId, { is_archived: true });
         archived++;
       } catch (err) {
-        console.error(`Failed to archive ${fileId}:`, err);
         errors.push(fileId);
       }
     }
 
-    res.json({
-      success: true,
-      archived: archived,
-      errors: errors.length > 0 ? errors : undefined
-    });
+    res.json({ success: true, archived, errors: errors.length > 0 ? errors : undefined });
   } catch (error) {
     console.error("Error archiving files:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
-
-// ======================
-// UNARCHIVE FILES (Restore visibility)
-// ======================
 
 app.post("/unarchive-files", requireAuth, async (req, res) => {
   try {
     const { fileIds } = req.body;
 
     if (!Array.isArray(fileIds) || fileIds.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'No file IDs provided'
-      });
+      return res.status(400).json({ success: false, error: 'No file IDs provided' });
     }
 
     let unarchived = 0;
@@ -1864,30 +1716,17 @@ app.post("/unarchive-files", requireAuth, async (req, res) => {
 
     for (const fileId of fileIds) {
       try {
-        await databases.updateDocument(
-          DATABASE_ID,
-          COLLECTION_INSPECTIONS,
-          fileId,
-          { is_archived: false }
-        );
+        await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId, { is_archived: false });
         unarchived++;
       } catch (err) {
-        console.error(`Failed to unarchive ${fileId}:`, err);
         errors.push(fileId);
       }
     }
 
-    res.json({
-      success: true,
-      unarchived: unarchived,
-      errors: errors.length > 0 ? errors : undefined
-    });
+    res.json({ success: true, unarchived, errors: errors.length > 0 ? errors : undefined });
   } catch (error) {
     console.error("Error unarchiving files:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -1898,26 +1737,16 @@ app.post("/unarchive-files", requireAuth, async (req, res) => {
 app.get("/summary", requireAuth, async (req, res) => {
   try {
     const selectedFilesParam = req.query.selectedFiles || "";
-    const fileIds = selectedFilesParam
-      .split(",")
-      .map((id) => id.trim())
-      .filter((id) => id.length > 0);
+    const fileIds = selectedFilesParam.split(",").map(id => id.trim()).filter(id => id.length > 0);
 
-    if (fileIds.length === 0) {
-      return res.redirect("/");
-    }
+    if (fileIds.length === 0) return res.redirect("/");
 
     const files = [];
     const fileData = {};
 
     for (const fileId of fileIds) {
       try {
-        const inspection = await databases.getDocument(
-          DATABASE_ID,
-          COLLECTION_INSPECTIONS,
-          fileId
-        );
-
+        const inspection = await databases.getDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId);
         files.push(inspection);
 
         const measurements = {
@@ -1939,21 +1768,16 @@ app.get("/summary", requireAuth, async (req, res) => {
         };
 
         const gValue = processGValues(measurements);
-
-        fileData[inspection.$id] = {
-          ...measurements,
-          G: gValue
-        };
-
+        fileData[inspection.$id] = { ...measurements, G: gValue };
       } catch (error) {
         console.error(`Error fetching inspection ${fileId}:`, error);
       }
     }
 
     res.render("summary", {
-      files: files,
-      fileData: fileData,
-      validationRanges: validationRanges,
+      files,
+      fileData,
+      validationRanges,
       username: req.session.username,
       displayName: getDisplayName(req.session.username),
       inspectorName: getDisplayName(req.session.username),
@@ -1972,7 +1796,7 @@ app.get("/health", (req, res) => {
   res.json({
     status: "OK",
     database: "Appwrite",
-    schema: "Efficient with Stock Management",
+    schema: "Efficient with Stock Management & Tuika Storage",
     timestamp: new Date().toISOString(),
   });
 });
@@ -2002,6 +1826,7 @@ app.listen(PORT, () => {
   console.log(`✨ Stock Management System Enabled`);
   console.log(`📊 Excel import/export enabled`);
   console.log(`🎯 Tuika-Process (追加工程) Enabled`);
+  console.log(`☁️  Tuika Cloud Storage Enabled`);
 });
 
 module.exports = app;
