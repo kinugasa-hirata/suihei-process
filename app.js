@@ -10,7 +10,8 @@ const crypto = require("crypto");
 const XLSX = require("xlsx");
 require("dotenv").config();
 
-const { Client, Databases, Storage, Query, ID, InputFile } = require("node-appwrite");
+const { Client, Databases, Storage, Query, ID } = require("node-appwrite");
+let InputFile; try { InputFile = require("node-appwrite/file").InputFile; } catch(e) { try { InputFile = require("node-appwrite").InputFile; } catch(e2) { InputFile = null; } }
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -151,8 +152,8 @@ const COLLECTION_ORDERS = process.env.APPWRITE_COLLECTION_ORDERS_ID;
 const COLLECTION_IMPORTS = process.env.APPWRITE_COLLECTION_IMPORTS_ID;
 
 // Tuika exports
-const COLLECTION_TUIKA_EXPORTS = process.env.APPWRITE_COLLECTION_TUIKA_EXPORTS_ID;
-const BUCKET_TUIKA_ID = process.env.APPWRITE_BUCKET_TUIKA_ID;
+const COLLECTION_TUIKA_EXPORTS = process.env.APPWRITE_COLLECTION_TUIKA_EXPORTS_ID || '';
+const BUCKET_TUIKA_ID = process.env.APPWRITE_BUCKET_TUIKA_ID || '';
 
 // ======================
 // MIDDLEWARE
@@ -788,7 +789,7 @@ app.post("/api/tuika/save", requireAuth, async (req, res) => {
     const buffer = Buffer.from(fileData, "base64");
 
     // Upload to Appwrite Storage
-    const inputFile = InputFile.fromBuffer(buffer, filename);
+    const inputFile = (InputFile && InputFile.fromBuffer) ? InputFile.fromBuffer(buffer, filename) : buffer;
     const storageFile = await appwriteStorage.createFile(
       BUCKET_TUIKA_ID,
       ID.unique(),
