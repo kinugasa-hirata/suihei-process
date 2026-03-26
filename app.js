@@ -777,6 +777,63 @@ app.get("/tuika-process", requireAuth, async (req, res) => {
 // ======================
 
 
+
+// Full inspection lookup for tuika-process
+// - weight + lot come from inspections (matched by filename e.g. 494.txt)
+// - pingauge + inspection_date come from tuika_exports (matched by lot number prefix)
+app.get("/api/inspection-lookup", requireAuth, async (req, res) => {
+  try {
+    const { filename } = req.query;
+    if (!filename) return res.status(400).json({ success: false, error: "filename required" });
+
+    // 1. Look up the inspection record for weight and lot
+    const inspResult = await databases.listDocuments(
+      DATABASE_ID, COLLECTION_INSPECTIONS,
+      [Query.equal("filename", filename), Query.limit(1)]
+    );
+
+    const inspDoc = inspResult.documents.length > 0 ? inspResult.documents[0] : null;
+
+    // 2. Look up tuika_exports for pingauge and created_at (inspection date)
+    // Match by lot_number containing the file number
+    let tuikaDoc = null;
+    const fileNum = filename.replace('.txt', '');
+    const tuikaResult = await databases.listDocuments(
+      DATABASE_ID, COLLECTION_TUIKA_EXPORTS,
+      [Query.orderDesc("$createdAt"), Query.limit(50)]
+    );
+    // Find the most recent tuika_export whose lot_number contains this file number
+    tuikaDoc = tuikaResult.documents.find(d =>
+      d.lot_number && d.lot_number.includes(fileNum)
+    ) || null;
+
+    res.json({
+      success: true,
+      doc: inspDoc,
+      tuikaDoc: tuikaDoc
+    });
+  } catch (error) {
+    console.error("Inspection lookup error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Save pingauge value back to an inspection record
+app.patch("/api/inspections/:inspectionId/pingauge", requireAuth, async (req, res) => {
+  try {
+    const { pingauge } = req.body;
+    await databases.updateDocument(
+      DATABASE_ID, COLLECTION_INSPECTIONS,
+      req.params.inspectionId,
+      { pingauge: pingauge || '' }
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Pingauge save error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Weight lookup for tuika-process
 app.get("/api/weight-lookup", requireAuth, async (req, res) => {
   try {
@@ -833,6 +890,34 @@ app.post("/api/tuika/save", requireAuth, async (req, res) => {
     res.json({ success: true, meta });
   } catch (error) {
     console.error("Error saving tuika export:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+
+// Get single tuika_exports record (for download with extras)
+app.get("/api/tuika/:metaId/meta", requireAuth, async (req, res) => {
+  try {
+    const doc = await databases.getDocument(DATABASE_ID, COLLECTION_TUIKA_EXPORTS, req.params.metaId);
+    res.json({ success: true, file: doc });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update pingauge value on a tuika_exports record
+app.patch("/api/tuika/:metaId/pingauge", requireAuth, async (req, res) => {
+  try {
+    const { pingauge } = req.body;
+    if (!pingauge) return res.status(400).json({ success: false, error: "pingauge required" });
+    await databases.updateDocument(
+      DATABASE_ID, COLLECTION_TUIKA_EXPORTS,
+      req.params.metaId,
+      { pingauge }
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Pingauge update error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
