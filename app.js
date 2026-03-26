@@ -776,10 +776,28 @@ app.get("/tuika-process", requireAuth, async (req, res) => {
 // TUIKA STORAGE API
 // ======================
 
+
+// Weight lookup for tuika-process
+app.get("/api/weight-lookup", requireAuth, async (req, res) => {
+  try {
+    const { filename } = req.query;
+    if (!filename) return res.status(400).json({ success: false, error: "filename required" });
+    const result = await databases.listDocuments(
+      DATABASE_ID, COLLECTION_INSPECTIONS,
+      [Query.equal("filename", filename), Query.limit(1)]
+    );
+    if (result.documents.length === 0) return res.json({ success: true, weight: null });
+    res.json({ success: true, weight: result.documents[0].weight ?? null });
+  } catch (error) {
+    console.error("Weight lookup error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Save generated Excel to Appwrite Storage
 app.post("/api/tuika/save", requireAuth, async (req, res) => {
   try {
-    const { filename, lotNumber, inspectionDate, fileData } = req.body;
+    const { filename, lotNumber, inspectionDate, fileData, pingauge } = req.body;
 
     if (!filename || !lotNumber || !inspectionDate || !fileData) {
       return res.status(400).json({ success: false, error: "Missing required fields" });
@@ -807,7 +825,8 @@ app.post("/api/tuika/save", requireAuth, async (req, res) => {
         lot_number: lotNumber,
         inspection_date: inspectionDate,
         created_by: getDisplayName(req.session.username),
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        pingauge: pingauge || ''
       }
     );
 
