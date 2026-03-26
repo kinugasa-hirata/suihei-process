@@ -10,7 +10,7 @@
     .container { max-width: 1200px; margin-top: 2rem; }
     .header { background: white; padding: 2rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     .workflow { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-    .workflow-step { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #0d6efd; text-align: center; transition: all 0.2s; }
+    .workflow-step { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #0d6efd; text-align: center; }
     .step-number { display: inline-block; width: 32px; height: 32px; line-height: 32px; background: #0d6efd; color: white; border-radius: 50%; font-weight: bold; margin-bottom: 0.5rem; }
     .step-title { font-weight: 600; color: #212529; margin: 0.5rem 0; font-size: 0.95rem; }
     .step-desc { font-size: 0.85rem; color: #6c757d; }
@@ -19,7 +19,6 @@
     .upload-zone { border: 2px dashed #b0c4de; border-radius: 8px; background: white; cursor: pointer; padding: 2rem; transition: border-color 0.2s, background 0.2s; text-align: center; }
     .upload-zone:hover, .upload-zone.drag-over { border-color: #0d6efd; background: #f0f6ff; }
     .upload-icon { font-size: 2rem; margin-bottom: 0.5rem; }
-    .upload-text { font-size: 0.9rem; color: #6c757d; }
     .form-control { border-radius: 6px; border: 1px solid #dee2e6; }
     .form-control:focus { border-color: #0d6efd; box-shadow: 0 0 0 0.2rem rgba(13,110,253,0.25); }
     .form-label { font-weight: 600; font-size: 0.9rem; color: #212529; margin-bottom: 0.5rem; }
@@ -37,6 +36,9 @@
     .btn { border-radius: 6px; font-weight: 600; transition: all 0.2s; }
     .btn-primary { background: #0d6efd; border: none; }
     .btn-primary:hover { background: #0b5ed7; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(13,110,253,0.3); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-outline-secondary { color: #6c757d; border-color: #dee2e6; }
+    .btn-outline-secondary:hover { background: #f8f9fa; }
     .loading-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #f0f0f0; border-top: 2px solid #0d6efd; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 0.5rem; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
@@ -45,25 +47,34 @@
     .breadcrumb-custom { font-size: 0.9rem; color: #6c757d; margin-bottom: 1rem; }
     .breadcrumb-custom a { color: #0d6efd; text-decoration: none; }
     .breadcrumb-custom a:hover { text-decoration: underline; }
-    .past-files-panel { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1.5rem; overflow: hidden; }
-    .past-files-header { background: #f8f9fa; padding: 1rem 1.5rem; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
-    .past-files-header:hover { background: #e9ecef; }
-    .past-files-header h3 { font-size: 1.1rem; font-weight: 600; margin: 0; color: #212529; }
-    .past-files-body { padding: 1.5rem; }
-    .file-list-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border: 1px solid #dee2e6; border-radius: 6px; margin-bottom: 0.5rem; transition: background 0.15s; }
-    .file-list-item:hover { background: #f8f9fa; }
-    .file-list-info { flex: 1; }
-    .file-list-name { font-weight: 600; font-size: 0.9rem; color: #212529; }
-    .file-list-meta { font-size: 0.8rem; color: #6c757d; margin-top: 0.2rem; }
-    .file-list-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
-    .empty-state { text-align: center; padding: 2rem; color: #6c757d; font-size: 0.9rem; }
+
+    /* ===== SAVED FILES LIST ===== */
+    .saved-files-panel { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1.5rem; overflow: hidden; }
+    .saved-files-header { background: #f8f9fa; padding: 1rem 1.5rem; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
+    .saved-files-header:hover { background: #e9ecef; }
+    .saved-files-header h3 { font-size: 1.1rem; font-weight: 600; margin: 0; color: #212529; }
+    .saved-files-body { padding: 1.5rem; }
     .toggle-icon { transition: transform 0.2s; }
     .toggle-icon.open { transform: rotate(180deg); }
-    .weight-status { font-size: 0.82rem; margin-top: 0.35rem; display: none; }
-    .weight-found { color: #155724; }
-    .weight-not-found { color: #856404; }
-    .cell-map { background: #f8f9fa; border-radius: 6px; padding: 0.75rem 1rem; font-size: 0.85rem; color: #495057; margin-top: 0.75rem; }
-    .cell-map span { font-weight: 700; color: #0d6efd; }
+    .empty-state { text-align: center; padding: 2rem; color: #6c757d; font-size: 0.9rem; }
+
+    /* File row */
+    .file-row { border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 0.75rem; overflow: hidden; transition: box-shadow 0.15s; }
+    .file-row:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .file-row-main { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: white; }
+    .file-row-info { flex: 1; }
+    .file-row-name { font-weight: 600; font-size: 0.9rem; color: #212529; }
+    .file-row-meta { font-size: 0.8rem; color: #6c757d; margin-top: 0.2rem; }
+    .file-row-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
+
+    /* Pingauge inline section — shown below each file row */
+    .pingauge-section { background: #f8f9fa; border-top: 1px solid #dee2e6; padding: 0.75rem 1rem; display: none; }
+    .pingauge-section.visible { display: block; }
+    .pingauge-inner { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .pingauge-label { font-size: 0.85rem; font-weight: 600; color: #212529; white-space: nowrap; }
+    .pingauge-input { width: 140px; font-size: 0.9rem; padding: 0.35rem 0.6rem; border: 2px solid #0d6efd; border-radius: 6px; }
+    .pingauge-hint { font-size: 0.78rem; color: #6c757d; }
+    .pingauge-saved-badge { font-size: 0.78rem; background: #d4edda; color: #155724; padding: 2px 8px; border-radius: 10px; display: none; }
   </style>
 </head>
 <body>
@@ -94,26 +105,29 @@
     </div>
     <div class="workflow-step">
       <div class="step-number">2</div>
-      <div class="step-title">LOT情報 + 追加値入力</div>
-      <div class="step-desc">番号・検査日・ピンゲージ値を指定</div>
+      <div class="step-title">LOT情報入力</div>
+      <div class="step-desc">番号と検査日を指定</div>
     </div>
     <div class="workflow-step">
       <div class="step-number">3</div>
-      <div class="step-title">保存 / ダウンロード</div>
-      <div class="step-desc">クラウドに保存またはローカルへ取得</div>
+      <div class="step-title">保存 → ピンゲージ入力 → DL</div>
+      <div class="step-desc">クラウド保存後、追加値を入力してDL</div>
     </div>
   </div>
 
   <div id="alertContainer"></div>
 
-  <!-- Past files panel -->
-  <div class="past-files-panel">
-    <div class="past-files-header" onclick="togglePastFiles()">
-      <h3>📁 過去に保存したファイル</h3>
+  <!-- ===== SAVED FILES LIST ===== -->
+  <div class="saved-files-panel">
+    <div class="saved-files-header" onclick="toggleSavedFiles()">
+      <h3>📁 保存済みLOT検査シート <span id="fileCount" style="font-size:0.85rem;color:#6c757d;font-weight:400;"></span></h3>
       <span class="toggle-icon" id="toggleIcon">▼</span>
     </div>
-    <div class="past-files-body" id="pastFilesBody" style="display:none;">
-      <div id="pastFilesList"><div class="empty-state">読み込み中...</div></div>
+    <div class="saved-files-body" id="savedFilesBody" style="display:none;">
+      <div style="font-size:0.82rem;color:#6c757d;margin-bottom:1rem;">
+        💡 ピンゲージ値を入力して <strong>保存</strong> してから <strong>⬇️ DL</strong> してください。保存済みの場合はそのままDL可能です。
+      </div>
+      <div id="savedFilesList"><div class="empty-state">読み込み中...</div></div>
     </div>
   </div>
 
@@ -128,13 +142,13 @@
     </div>
   </div>
 
-  <!-- File upload -->
+  <!-- Data file upload -->
   <div class="form-section">
     <h3>測定データファイル</h3>
     <input type="file" id="dataFile" accept=".txt,.dat,.csv" style="display:none;">
     <div id="dropZone" class="upload-zone">
       <div class="upload-icon">📄</div>
-      <div class="upload-text">
+      <div style="font-size:0.9rem;color:#6c757d;">
         <div style="margin-bottom:0.5rem;">ファイルをドラッグ&ドロップまたは</div>
         <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();document.getElementById('dataFile').click();">📁 選択</button>
         <div style="margin-top:0.5rem;font-size:0.8rem;color:#aaa;">対応形式: .txt, .dat, .csv</div>
@@ -160,9 +174,9 @@
     </div>
   </div>
 
-  <!-- LOT info + extra values -->
+  <!-- LOT info form -->
   <div class="form-section">
-    <h3>LOT情報 + 追加値入力</h3>
+    <h3>LOT情報入力</h3>
     <div class="form-row">
       <div class="form-group">
         <label for="lotNumber" class="form-label">LOT番号 *</label>
@@ -175,37 +189,16 @@
         <div class="help-text">検査日をYYYY/MM/DD形式で入力</div>
       </div>
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label for="pingaugeValue" class="form-label">ピンゲージ値 (B4) *</label>
-        <input type="text" id="pingaugeValue" class="form-control" placeholder="例: 8.00">
-        <div class="help-text">sheetシートの B4 セルに転記されます</div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">重量 (B5) — 自動取得</label>
-        <input type="text" id="weightDisplay" class="form-control" placeholder="ファイル名から自動取得..." readonly style="background:#f8f9fa;">
-        <div id="weightStatus" class="weight-status"></div>
-        <div class="help-text">sheetシートの B5 セルに転記されます</div>
-      </div>
-    </div>
-    <div class="cell-map">
-      📋 Excelへの転記先 (sheetシート) &nbsp;—&nbsp;
-      <span>B4</span> = ピンゲージ値 &nbsp;|&nbsp;
-      <span>B5</span> = 重量（inspectionsから自動取得）&nbsp;|&nbsp;
-      <span>B6</span> = "OK"（固定）
-    </div>
-    <div class="alert-info alert-box" style="margin-top:1rem;">
+    <div class="alert-info alert-box">
       <div class="alert-icon">💡</div>
-      <div class="alert-content">重量はファイル名の数値部分（例: <strong>494</strong>tuika → 494.txt）でinspectionsから自動検索されます。</div>
+      <div class="alert-content">ピンゲージ値・重量は保存後の一覧画面から入力してください。</div>
     </div>
   </div>
 
   <!-- Action buttons -->
   <div class="form-section">
     <div style="display:flex;gap:1rem;flex-wrap:wrap;">
-      <button id="processBtn" class="btn btn-primary" onclick="processData()">📊 Excel を生成</button>
-      <button id="downloadBtn" class="btn btn-success" onclick="downloadExcel()" style="display:none;">⬇️ ローカルへダウンロード</button>
-      <button id="saveBtn" class="btn btn-warning" onclick="saveToCloud()" style="display:none;">☁️ クラウドに保存</button>
+      <button id="processBtn" class="btn btn-primary" onclick="processData()">📊 Excel を生成 &amp; 保存</button>
       <button class="btn btn-outline-secondary" onclick="resetForm()">🔄 リセット</button>
     </div>
   </div>
@@ -215,8 +208,8 @@
       <div class="alert-success alert-box">
         <div class="alert-icon">✓</div>
         <div class="alert-content">
-          <strong>ファイル準備完了</strong>
-          <div style="font-size:0.85rem;margin-top:0.3rem;">ローカルへダウンロードするか、クラウドに保存して後から取得できます。</div>
+          <strong>クラウドへの保存完了</strong>
+          <div style="font-size:0.85rem;margin-top:0.3rem;">上の一覧からピンゲージ値を入力してDLしてください。</div>
           <div id="fileInfo" style="font-size:0.8rem;margin-top:0.5rem;color:#333;"></div>
         </div>
       </div>
@@ -232,86 +225,223 @@
   let intCircleValues = [];
   let processedWorkbook = null;
   let exportFilename = null;
-  let pastFilesLoaded = false;
-  let pastFilesOpen = false;
-  let lookedUpWeight = null;
+  let savedFilesOpen = false;
+  let savedFilesLoaded = false;
 
-  // Extract leading number from filename: "494tuika.txt" → "494"
-  function extractFileNumber(filename) {
-    const base = filename.replace(/\.(txt|dat|csv)$/i, '');
-    const match = base.match(/^(\d+)/);
-    return match ? match[1] : null;
+  // ===== SAVED FILES PANEL =====
+
+  function toggleSavedFiles() {
+    savedFilesOpen = !savedFilesOpen;
+    document.getElementById('savedFilesBody').style.display = savedFilesOpen ? 'block' : 'none';
+    document.getElementById('toggleIcon').classList.toggle('open', savedFilesOpen);
+    if (savedFilesOpen && !savedFilesLoaded) loadSavedFiles();
   }
 
-  async function lookupWeight(filename) {
-    const num = extractFileNumber(filename);
-    if (!num) { setWeightStatus('not-found', '⚠ ファイル名から番号を抽出できませんでした'); return; }
-    const lookupName = num + '.txt';
-    setWeightStatus('loading', `${lookupName} の重量を検索中...`);
-    try {
-      const res = await fetch(`/api/weight-lookup?filename=${encodeURIComponent(lookupName)}`);
-      const data = await res.json();
-      if (data.success && data.weight !== null && data.weight !== undefined) {
-        lookedUpWeight = data.weight;
-        document.getElementById('weightDisplay').value = data.weight + ' g';
-        setWeightStatus('found', `✓ ${lookupName} から取得: ${data.weight} g`);
-      } else {
-        lookedUpWeight = null;
-        document.getElementById('weightDisplay').value = '';
-        setWeightStatus('not-found', `⚠ ${lookupName} の重量データがありません（空白でExcelに出力されます）`);
-      }
-    } catch (err) {
-      lookedUpWeight = null;
-      setWeightStatus('not-found', `検索エラー: ${err.message}`);
-    }
-  }
-
-  function setWeightStatus(state, msg) {
-    const el = document.getElementById('weightStatus');
-    el.style.display = 'block';
-    el.className = 'weight-status ' + (state === 'found' ? 'weight-found' : state === 'loading' ? '' : 'weight-not-found');
-    el.textContent = msg;
-  }
-
-  // Past files panel
-  function togglePastFiles() {
-    pastFilesOpen = !pastFilesOpen;
-    document.getElementById('pastFilesBody').style.display = pastFilesOpen ? 'block' : 'none';
-    document.getElementById('toggleIcon').classList.toggle('open', pastFilesOpen);
-    if (pastFilesOpen && !pastFilesLoaded) loadPastFiles();
-  }
-
-  async function loadPastFiles() {
-    const listEl = document.getElementById('pastFilesList');
+  async function loadSavedFiles() {
+    const listEl = document.getElementById('savedFilesList');
     listEl.innerHTML = '<div class="empty-state">読み込み中...</div>';
     try {
       const res = await fetch('/api/tuika/list');
       const data = await res.json();
+
       if (!data.success || data.files.length === 0) {
         listEl.innerHTML = '<div class="empty-state">保存されたファイルはありません</div>';
-        pastFilesLoaded = true;
+        document.getElementById('fileCount').textContent = '';
+        savedFilesLoaded = true;
         return;
       }
-      listEl.innerHTML = data.files.map(f => `
-        <div class="file-list-item" id="file-item-${f.$id}">
-          <div class="file-list-info">
-            <div class="file-list-name">📄 ${f.filename}</div>
-            <div class="file-list-meta">
-              LOT: ${f.lot_number} &nbsp;|&nbsp; 検査日: ${f.inspection_date}
-              &nbsp;|&nbsp; 保存者: ${f.created_by}
-              &nbsp;|&nbsp; ${formatDate(f.created_at)}
-              ${f.pingauge ? `&nbsp;|&nbsp; ピンゲージ: <strong>${f.pingauge}</strong>` : ''}
+
+      document.getElementById('fileCount').textContent = `(${data.files.length}件)`;
+
+      listEl.innerHTML = data.files.map(f => {
+        const hasPingauge = f.pingauge && f.pingauge.trim() !== '';
+        return `
+        <div class="file-row" id="row-${f.$id}">
+          <div class="file-row-main">
+            <div class="file-row-info">
+              <div class="file-row-name">📄 ${f.filename}</div>
+              <div class="file-row-meta">
+                LOT: ${f.lot_number} &nbsp;|&nbsp; 検査日: ${f.inspection_date}
+                &nbsp;|&nbsp; 保存者: ${f.created_by}
+                &nbsp;|&nbsp; ${formatDate(f.created_at)}
+                ${hasPingauge ? `&nbsp;|&nbsp; ピンゲージ: <strong style="color:#155724;">${f.pingauge}</strong>` : '<span style="color:#856404;font-size:0.78rem;">&nbsp;|&nbsp; ⚠ ピンゲージ未入力</span>'}
+              </div>
+            </div>
+            <div class="file-row-actions">
+              <button class="btn btn-sm btn-outline-secondary"
+                onclick="togglePingaugeSection('${f.$id}', '${f.lot_number}')"
+                id="pg-toggle-${f.$id}"
+                title="ピンゲージ値を入力">
+                ✏️ ピンゲージ
+              </button>
+              <button class="btn btn-sm btn-primary"
+                onclick="downloadWithExtras('${f.$id}', '${f.filename}', '${f.lot_number}', '${f.inspection_date}')"
+                id="dl-btn-${f.$id}">
+                ⬇️ DL
+              </button>
+              <button class="btn btn-sm btn-outline-danger" onclick="deleteFile('${f.$id}')">🗑</button>
             </div>
           </div>
-          <div class="file-list-actions">
-            <button class="btn btn-sm btn-primary" onclick="downloadFromCloud('${f.$id}','${f.filename}')">⬇️ DL</button>
-            <button class="btn btn-sm btn-outline-danger" onclick="deleteFromCloud('${f.$id}')">🗑</button>
+          <!-- Inline pingauge input section -->
+          <div class="pingauge-section" id="pg-section-${f.$id}">
+            <div class="pingauge-inner">
+              <span class="pingauge-label">ピンゲージ値 (B4):</span>
+              <input type="text" class="pingauge-input form-control"
+                id="pg-input-${f.$id}"
+                value="${hasPingauge ? f.pingauge : ''}"
+                placeholder="例: 8.00"
+                onkeydown="if(event.key==='Enter') savePingauge('${f.$id}', '${f.lot_number}', '${f.inspection_date}')">
+              <button class="btn btn-sm btn-success"
+                onclick="savePingauge('${f.$id}', '${f.lot_number}', '${f.inspection_date}')"
+                id="pg-save-${f.$id}">
+                💾 保存
+              </button>
+              <span class="pingauge-saved-badge" id="pg-badge-${f.$id}">✓ 保存済み</span>
+              <span class="pingauge-hint">保存後に ⬇️ DL でExcelを取得できます (B4=ピンゲージ, B5=重量, B6=OK)</span>
+            </div>
           </div>
-        </div>`).join('');
-      pastFilesLoaded = true;
+        </div>`;
+      }).join('');
+
+      savedFilesLoaded = true;
     } catch (err) {
       listEl.innerHTML = `<div class="empty-state" style="color:#721c24;">読み込みエラー: ${err.message}</div>`;
     }
+  }
+
+  function togglePingaugeSection(metaId) {
+    const section = document.getElementById(`pg-section-${metaId}`);
+    const isVisible = section.classList.contains('visible');
+    section.classList.toggle('visible', !isVisible);
+    if (!isVisible) {
+      setTimeout(() => document.getElementById(`pg-input-${metaId}`)?.focus(), 50);
+    }
+  }
+
+  async function savePingauge(metaId, lotNumber, inspectionDate) {
+    const input = document.getElementById(`pg-input-${metaId}`);
+    const pingauge = input.value.trim();
+    if (!pingauge) { showAlert('ピンゲージ値を入力してください', 'error'); return; }
+
+    const saveBtn = document.getElementById(`pg-save-${metaId}`);
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="loading-spinner"></span>';
+
+    try {
+      const res = await fetch(`/api/tuika/${metaId}/pingauge`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pingauge })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const badge = document.getElementById(`pg-badge-${metaId}`);
+        badge.style.display = 'inline-block';
+        saveBtn.innerHTML = '💾 保存';
+        saveBtn.disabled = false;
+        showAlert(`ピンゲージ値 "${pingauge}" を保存しました`, 'success');
+        // Refresh the list so meta row shows updated value
+        savedFilesLoaded = false;
+        loadSavedFiles();
+      } else {
+        showAlert(`保存エラー: ${data.error}`, 'error');
+        saveBtn.innerHTML = '💾 保存';
+        saveBtn.disabled = false;
+      }
+    } catch (err) {
+      showAlert(`保存エラー: ${err.message}`, 'error');
+      saveBtn.innerHTML = '💾 保存';
+      saveBtn.disabled = false;
+    }
+  }
+
+  // Download the saved Excel, refilling with pingauge + weight + OK
+  async function downloadWithExtras(metaId, filename, lotNumber, inspectionDate) {
+    const dlBtn = document.getElementById(`dl-btn-${metaId}`);
+    dlBtn.disabled = true;
+    dlBtn.innerHTML = '<span class="loading-spinner"></span>';
+
+    try {
+      // 1. Get the current tuika record to read pingauge
+      const metaRes = await fetch(`/api/tuika/${metaId}/meta`);
+      const metaData = await metaRes.json();
+      if (!metaData.success) throw new Error(metaData.error);
+
+      const pingauge = metaData.file.pingauge || '';
+      if (!pingauge) {
+        showAlert('ピンゲージ値が未入力です。✏️ ピンゲージボタンから入力・保存してください。', 'warning');
+        dlBtn.disabled = false;
+        dlBtn.innerHTML = '⬇️ DL';
+        return;
+      }
+
+      // 2. Get weight from inspections via lot_number
+      const fileNum = extractLotFileNumber(lotNumber);
+      let weight = null;
+      if (fileNum) {
+        const wRes = await fetch(`/api/weight-lookup?filename=${encodeURIComponent(fileNum + '.txt')}`);
+        const wData = await wRes.json();
+        if (wData.success && wData.weight !== null) weight = wData.weight;
+      }
+
+      // 3. Download the stored Excel file
+      const excelRes = await fetch(`/api/tuika/download/${metaId}`);
+      if (!excelRes.ok) throw new Error('ファイルの取得に失敗しました');
+      const arrayBuffer = await excelRes.arrayBuffer();
+
+      // 4. Load workbook and inject B4/B5/B6
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(arrayBuffer);
+      let ws = workbook.getWorksheet('sheet');
+      if (!ws) ws = workbook.worksheets.length > 1 ? workbook.worksheets[1] : workbook.worksheets[0];
+
+      ws.getCell('B4').value = pingauge;
+      ws.getCell('B5').value = weight !== null ? weight : '';
+      ws.getCell('B6').value = 'OK';
+
+      // 5. Export
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      showAlert(`ダウンロード完了: ${filename} (ピンゲージ: ${pingauge}, 重量: ${weight !== null ? weight + 'g' : '未登録'})`, 'success');
+    } catch (err) {
+      showAlert(`ダウンロードエラー: ${err.message}`, 'error');
+    } finally {
+      dlBtn.disabled = false;
+      dlBtn.innerHTML = '⬇️ DL';
+    }
+  }
+
+  // Extract leading file number from lot_number e.g. "LOT498(498-516)" → "498"
+  function extractLotFileNumber(lotNumber) {
+    if (!lotNumber) return null;
+    const m = String(lotNumber).match(/\((\d+)/);
+    if (m) return m[1];
+    const m2 = String(lotNumber).match(/\d+/);
+    return m2 ? m2[0] : null;
+  }
+
+  async function deleteFile(metaId) {
+    if (!confirm('このファイルをクラウドから削除しますか？')) return;
+    try {
+      const res = await fetch(`/api/tuika/${metaId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById(`row-${metaId}`)?.remove();
+        showAlert('ファイルを削除しました', 'success');
+        const listEl = document.getElementById('savedFilesList');
+        if (!listEl.querySelector('.file-row')) {
+          listEl.innerHTML = '<div class="empty-state">保存されたファイルはありません</div>';
+          document.getElementById('fileCount').textContent = '';
+        }
+      } else { showAlert(`削除エラー: ${data.error}`, 'error'); }
+    } catch (err) { showAlert(`削除エラー: ${err.message}`, 'error'); }
   }
 
   function formatDate(s) {
@@ -320,56 +450,8 @@
     return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   }
 
-  async function downloadFromCloud(metaId, filename) {
-    showAlert(`${filename} をダウンロード中...`, 'info');
-    const a = document.createElement('a');
-    a.href = `/api/tuika/download/${metaId}`;
-    a.download = filename;
-    a.click();
-  }
+  // ===== UPLOAD & PROCESS (unchanged logic, now saves automatically) =====
 
-  async function deleteFromCloud(metaId) {
-    if (!confirm('このファイルをクラウドから削除しますか？')) return;
-    try {
-      const res = await fetch(`/api/tuika/${metaId}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) {
-        document.getElementById(`file-item-${metaId}`)?.remove();
-        showAlert('ファイルを削除しました', 'success');
-        const listEl = document.getElementById('pastFilesList');
-        if (!listEl.querySelector('.file-list-item')) listEl.innerHTML = '<div class="empty-state">保存されたファイルはありません</div>';
-      } else { showAlert(`削除エラー: ${data.error}`, 'error'); }
-    } catch (err) { showAlert(`削除エラー: ${err.message}`, 'error'); }
-  }
-
-  // Cloud save — now includes pingauge
-  async function saveToCloud() {
-    if (!processedWorkbook || !exportFilename) { showAlert('Excelファイルを先に生成してください', 'error'); return; }
-    const lotNumber = document.getElementById('lotNumber').value.trim();
-    const inspectionDate = document.getElementById('inspectionDate').value.trim();
-    const pingauge = document.getElementById('pingaugeValue').value.trim();
-    const saveBtn = document.getElementById('saveBtn');
-    saveBtn.disabled = true;
-    saveBtn.innerHTML = '<span class="loading-spinner"></span> 保存中...';
-    try {
-      const buffer = await processedWorkbook.xlsx.writeBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-      const res = await fetch('/api/tuika/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: exportFilename, lotNumber, inspectionDate, pingauge: pingauge || '', fileData: base64 })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showAlert(`☁️ クラウドへの保存完了: ${exportFilename}`, 'success');
-        pastFilesLoaded = false;
-        if (pastFilesOpen) loadPastFiles();
-      } else { showAlert(`保存エラー: ${data.error}`, 'error'); }
-    } catch (err) { showAlert(`保存エラー: ${err.message}`, 'error'); }
-    finally { saveBtn.disabled = false; saveBtn.innerHTML = '☁️ クラウドに保存'; }
-  }
-
-  // File loading
   const dropZone = document.getElementById('dropZone');
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
   dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
@@ -382,16 +464,15 @@
       parsedData = parseData(e.target.result);
       if (parsedData && parsedData.length > 0) {
         const { distanceVals, intCircleVals } = extractTargetValues(parsedData);
-        distanceValues = distanceVals;
+        distanceValues  = distanceVals;
         intCircleValues = intCircleVals;
         document.getElementById('dataNameText').textContent = `ファイル: ${file.name}`;
         document.getElementById('dataName').style.display = 'block';
-        document.getElementById('recordCount').textContent = parsedData.length;
-        document.getElementById('distanceCount').textContent = distanceValues.length;
+        document.getElementById('recordCount').textContent   = parsedData.length;
+        document.getElementById('distanceCount').textContent  = distanceValues.length;
         document.getElementById('intCircleCount').textContent = intCircleValues.length;
         document.getElementById('statsContainer').style.display = 'block';
         showAlert(`${parsedData.length}件のレコードを抽出しました`, 'success');
-        lookupWeight(file.name); // auto-lookup weight
       } else {
         showAlert('ファイルの形式が正しくないか、データが含まれていません', 'error');
       }
@@ -400,13 +481,12 @@
   }
 
   function parseData(content) {
-    const lines = content.split('\n');
     const data = [];
-    for (const line of lines) {
+    for (const line of content.split('\n')) {
       if (!line.trim()) continue;
       const parts = line.trim().split(';');
       if (parts.length < 2) continue;
-      const row = { 'ID': parts[0], 'Type': parts[1] };
+      const row = { ID: parts[0], Type: parts[1] };
       const vals = parts.slice(2).map(p => p.trim());
       let cols = [];
       if (parts[1]==='PLANE') cols=['Method','X','Y','Z','A','B','C','','D','Dev'];
@@ -416,11 +496,7 @@
       else if (parts[1]==='CONE') cols=['Method','X','Y','Z','I','J','K','','Half-Angle','Dev'];
       else if (parts[1]==='INT-CIRCLE') cols=['','X','Y','Z','I','J','K','','Radius'];
       else if (parts[1]==='SYM-POINT') cols=['','X','Y','Z'];
-      for (let i=0;i<vals.length;i++) {
-        if (i<cols.length&&cols[i]&&vals[i]) {
-          row[cols[i]] = /^-?\d+\.?\d*$/.test(vals[i]) ? parseFloat(vals[i]) : vals[i];
-        }
-      }
+      for (let i=0;i<vals.length;i++) if (i<cols.length&&cols[i]&&vals[i]) row[cols[i]]=/^-?\d+\.?\d*$/.test(vals[i])?parseFloat(vals[i]):vals[i];
       data.push(row);
     }
     return data;
@@ -429,25 +505,23 @@
   function extractTargetValues(data) {
     const distItems=[], intCircleVals=[];
     for (const item of data) {
-      if (item['Type']==='DISTANCE'&&item['X']!==undefined) distItems.push({id:item['ID'],value:Math.round(Math.abs(item['X'])*100)/100});
-      else if (item['Type']==='INT-CIRCLE'&&item['Radius']!==undefined) intCircleVals.push(Math.round(item['Radius']*100)/100);
+      if (item.Type==='DISTANCE'&&item.X!==undefined) distItems.push({id:item.ID,value:Math.round(Math.abs(item.X)*100)/100});
+      else if (item.Type==='INT-CIRCLE'&&item.Radius!==undefined) intCircleVals.push(Math.round(item.Radius*100)/100);
     }
-    const order=['3','2','1','4'];
     const distanceVals=[];
-    for (const t of order) for (const item of distItems) if (String(item.id)===t){distanceVals.push(item.value);break;}
+    for (const t of ['3','2','1','4']) for (const item of distItems) if (String(item.id)===t){distanceVals.push(item.value);break;}
     return {distanceVals,intCircleVals};
   }
 
   function extractLotPrefix(lot) {
     if (!lot) return null;
-    const m = lot.match(/^([A-Za-z]*)(\d+)/);
-    if (!m) return null;
-    const letters = m[1].toUpperCase();
-    return (letters.includes('LOT') ? letters : 'LOT') + m[2];
+    const m = String(lot).match(/^([A-Za-z]*)(\d+)/);
+    if (!m) return String(lot);
+    return ((m[1].toUpperCase().includes('LOT') ? m[1].toUpperCase() : 'LOT') + m[2]);
   }
 
   function validateDateFormat(d) { return d && /^\d{4}\/\d{2}\/\d{2}$/.test(d); }
-  function formatDateForFilename(d) { return d.replace(/\//g,''); }
+  function formatDateForFilename(d) { return String(d).replace(/\//g,'').replace(/-/g,'').substring(0,8); }
 
   function loadDefaultTemplate() {
     const paths=['/public/templates/LOT_template.xlsx','/templates/LOT_template.xlsx','LOT_template.xlsx'];
@@ -458,76 +532,82 @@
     return fetch(paths[i]).then(r=>r.ok?r.arrayBuffer():tryPath(paths,i+1)).catch(()=>tryPath(paths,i+1));
   }
 
+  // Process → generate Excel → save to cloud (no pingauge at this stage)
   function processData() {
-    const lotNumber = document.getElementById('lotNumber').value.trim();
+    const lotNumber      = document.getElementById('lotNumber').value.trim();
     const inspectionDate = document.getElementById('inspectionDate').value.trim();
-    const pingauge = document.getElementById('pingaugeValue').value.trim();
-    if (!parsedData) { showAlert('測定データファイルを読み込んでください','error'); return; }
-    if (!lotNumber||!inspectionDate) { showAlert('LOT番号と検査日を入力してください','error'); return; }
+
+    if (!parsedData)   { showAlert('測定データファイルを読み込んでください','error'); return; }
+    if (!lotNumber || !inspectionDate) { showAlert('LOT番号と検査日を入力してください','error'); return; }
     if (!validateDateFormat(inspectionDate)) { showAlert('検査日の形式が正しくありません (YYYY/MM/DD)','error'); return; }
-    if (!pingauge) { showAlert('ピンゲージ値を入力してください','error'); return; }
 
     const btn = document.getElementById('processBtn');
     btn.disabled=true; btn.innerHTML='<span class="loading-spinner"></span> 処理中...';
 
     loadDefaultTemplate().then(async ab => {
-      if (!ab){btn.disabled=false;btn.innerHTML='📊 Excel を生成';return;}
+      if (!ab){btn.disabled=false;btn.innerHTML='📊 Excel を生成 &amp; 保存';return;}
       try {
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(ab);
         let ws = workbook.getWorksheet('sheet');
         if (!ws) ws = workbook.worksheets.length>1?workbook.worksheets[1]:workbook.worksheets[0];
 
+        // Fill standard cells (B4/B5/B6 left empty — filled at download time)
         const lotPrefix = extractLotPrefix(lotNumber);
         ws.getCell('B1').value = lotNumber;
         ws.getCell('B2').value = inspectionDate;
         if (lotPrefix) ws.getCell('B3').value = lotPrefix;
+        // B4, B5, B6 intentionally blank here — filled when user downloads
 
-        // NEW: B4 = pingauge, B5 = weight, B6 = "OK"
-        ws.getCell('B4').value = pingauge;
-        ws.getCell('B5').value = (lookedUpWeight !== null && lookedUpWeight !== undefined) ? lookedUpWeight : '';
-        ws.getCell('B6').value = 'OK';
-
-        for (let i=0;i<distanceValues.length;i++) ws.getCell(`A${i+1}`).value=distanceValues[i];
+        for (let i=0;i<distanceValues.length;i++)  ws.getCell(`A${i+1}`).value=distanceValues[i];
         for (let i=0;i<intCircleValues.length;i++) ws.getCell(`A${distanceValues.length+i+1}`).value=intCircleValues[i];
 
         processedWorkbook = workbook;
         exportFilename = `水平ノズル${lotNumber}全箇所測定-${formatDateForFilename(inspectionDate)}.xlsx`;
 
-        document.getElementById('fileInfo').textContent =
-          `ファイル名: ${exportFilename} ／ ピンゲージ: ${pingauge} ／ 重量: ${lookedUpWeight!==null?lookedUpWeight+'g':'未取得'}`;
+        // Save to cloud
+        const buffer = await workbook.xlsx.writeBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
 
-        btn.disabled=false; btn.innerHTML='✅ Excel を生成';
-        document.getElementById('downloadBtn').style.display='inline-block';
-        document.getElementById('saveBtn').style.display='inline-block';
+        const res = await fetch('/api/tuika/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename: exportFilename,
+            lotNumber,
+            inspectionDate,
+            pingauge: '',   // empty at this stage
+            fileData: base64
+          })
+        });
+        const saveData = await res.json();
+        if (!saveData.success) throw new Error(saveData.error);
+
+        document.getElementById('fileInfo').textContent = `保存完了: ${exportFilename}`;
+        btn.disabled=false; btn.innerHTML='✅ 保存完了';
         document.getElementById('downloadContainer').style.display='block';
-        showAlert('処理が完了しました。ダウンロードまたはクラウドに保存してください。','success');
+        showAlert('クラウドへ保存しました。一覧からピンゲージ値を入力してDLしてください。','success');
+
+        // Auto-open saved files panel and refresh
+        savedFilesLoaded = false;
+        if (!savedFilesOpen) toggleSavedFiles();
+        else loadSavedFiles();
+
       } catch(err){
-        showAlert(`処理エラー: ${err.message}`,'error');
-        btn.disabled=false; btn.innerHTML='📊 Excel を生成';
+        showAlert(`エラー: ${err.message}`,'error');
+        btn.disabled=false; btn.innerHTML='📊 Excel を生成 &amp; 保存';
       }
     });
   }
 
-  async function downloadExcel() {
-    if (!processedWorkbook||!exportFilename){showAlert('Excelファイルを生成してください','error');return;}
-    const buffer = await processedWorkbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href=url; a.download=exportFilename; a.click();
-    window.URL.revokeObjectURL(url);
-    showAlert(`ローカルへダウンロードしました: ${exportFilename}`,'success');
-  }
-
   function resetForm() {
-    parsedData=null;distanceValues=[];intCircleValues=[];processedWorkbook=null;exportFilename=null;lookedUpWeight=null;
-    ['dataFile','lotNumber','inspectionDate','pingaugeValue'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('weightDisplay').value='';
-    document.getElementById('weightStatus').style.display='none';
-    ['dataName','statsContainer','downloadContainer','downloadBtn','saveBtn'].forEach(id=>document.getElementById(id).style.display='none');
+    parsedData=null; distanceValues=[]; intCircleValues=[]; processedWorkbook=null; exportFilename=null;
+    document.getElementById('dataFile').value='';
+    document.getElementById('lotNumber').value='';
+    document.getElementById('inspectionDate').value='';
+    ['dataName','statsContainer','downloadContainer'].forEach(id=>document.getElementById(id).style.display='none');
     const btn=document.getElementById('processBtn');
-    btn.disabled=false;btn.innerHTML='📊 Excel を生成';
+    btn.disabled=false; btn.innerHTML='📊 Excel を生成 &amp; 保存';
     showAlert('フォームをリセットしました','info');
   }
 
@@ -537,11 +617,14 @@
     d.className=`alert-box alert-${type}`;
     const icons={'success':'✓','error':'✕','info':'ℹ','warning':'⚠'};
     d.innerHTML=`<div class="alert-icon">${icons[type]||'ℹ'}</div><div class="alert-content">${message}</div>`;
-    c.innerHTML='';c.appendChild(d);
-    setTimeout(()=>d.remove(),5000);
+    c.innerHTML=''; c.appendChild(d);
+    setTimeout(()=>d.remove(),6000);
   }
 
-  showAlert('準備完了: 測定データファイルをアップロードして開始してください','info');
+  // Auto-open the saved files panel on page load
+  window.addEventListener('load', () => {
+    toggleSavedFiles();
+  });
 </script>
 </body>
 </html>
