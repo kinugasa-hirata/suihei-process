@@ -11,7 +11,6 @@
     .header { background: white; padding: 2rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     .workflow { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
     .workflow-step { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #0d6efd; text-align: center; transition: all 0.2s; }
-    .workflow-step:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
     .step-number { display: inline-block; width: 32px; height: 32px; line-height: 32px; background: #0d6efd; color: white; border-radius: 50%; font-weight: bold; margin-bottom: 0.5rem; }
     .step-title { font-weight: 600; color: #212529; margin: 0.5rem 0; font-size: 0.95rem; }
     .step-desc { font-size: 0.85rem; color: #6c757d; }
@@ -22,7 +21,7 @@
     .upload-icon { font-size: 2rem; margin-bottom: 0.5rem; }
     .upload-text { font-size: 0.9rem; color: #6c757d; }
     .form-control { border-radius: 6px; border: 1px solid #dee2e6; }
-    .form-control:focus { border-color: #0d6efd; box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25); }
+    .form-control:focus { border-color: #0d6efd; box-shadow: 0 0 0 0.2rem rgba(13,110,253,0.25); }
     .form-label { font-weight: 600; font-size: 0.9rem; color: #212529; margin-bottom: 0.5rem; }
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
     .stat-card { background: #f8f9fa; padding: 1rem; border-radius: 6px; text-align: center; }
@@ -37,20 +36,15 @@
     .alert-content { font-size: 0.9rem; }
     .btn { border-radius: 6px; font-weight: 600; transition: all 0.2s; }
     .btn-primary { background: #0d6efd; border: none; }
-    .btn-primary:hover { background: #0b5ed7; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3); }
-    .btn-primary:active { transform: translateY(0); }
-    .btn-outline-secondary { color: #6c757d; border-color: #dee2e6; }
-    .btn-outline-secondary:hover { background: #f8f9fa; }
+    .btn-primary:hover { background: #0b5ed7; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(13,110,253,0.3); }
     .loading-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #f0f0f0; border-top: 2px solid #0d6efd; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 0.5rem; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
     .form-row .form-group { margin-bottom: 0; }
     .help-text { font-size: 0.85rem; color: #6c757d; margin-top: 0.3rem; }
     .breadcrumb-custom { font-size: 0.9rem; color: #6c757d; margin-bottom: 1rem; }
-    .breadcrumb-custom a { color: #0d6efd; text-decoration: none; cursor: pointer; }
+    .breadcrumb-custom a { color: #0d6efd; text-decoration: none; }
     .breadcrumb-custom a:hover { text-decoration: underline; }
-
-    /* Past files panel */
     .past-files-panel { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1.5rem; overflow: hidden; }
     .past-files-header { background: #f8f9fa; padding: 1rem 1.5rem; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
     .past-files-header:hover { background: #e9ecef; }
@@ -65,31 +59,33 @@
     .empty-state { text-align: center; padding: 2rem; color: #6c757d; font-size: 0.9rem; }
     .toggle-icon { transition: transform 0.2s; }
     .toggle-icon.open { transform: rotate(180deg); }
+    .weight-status { font-size: 0.82rem; margin-top: 0.35rem; display: none; }
+    .weight-found { color: #155724; }
+    .weight-not-found { color: #856404; }
+    .cell-map { background: #f8f9fa; border-radius: 6px; padding: 0.75rem 1rem; font-size: 0.85rem; color: #495057; margin-top: 0.75rem; }
+    .cell-map span { font-weight: 700; color: #0d6efd; }
   </style>
 </head>
 <body>
 <div class="container">
 
-  <div class="breadcrumb-custom">
-    <a href="/">← ホーム</a> / 追加工程
-  </div>
+  <div class="breadcrumb-custom"><a href="/">← ホーム</a> / 追加工程</div>
 
   <div class="header">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
       <div>
         <h1>追加工程</h1>
-        <p style="color: #6c757d; margin: 0;">測定データを自動的にExcelに転記します</p>
+        <p style="color:#6c757d;margin:0;">測定データを自動的にExcelに転記します</p>
       </div>
-      <div style="text-align: right; font-size: 0.9rem;">
-        <div style="color: #6c757d;">ログイン中: <strong><%= displayName %></strong></div>
-        <form action="/logout" method="POST" style="display: inline; margin-top: 0.5rem;">
+      <div style="text-align:right;font-size:0.9rem;">
+        <div style="color:#6c757d;">ログイン中: <strong><%= displayName %></strong></div>
+        <form action="/logout" method="POST" style="display:inline;margin-top:0.5rem;">
           <button type="submit" class="btn btn-sm btn-outline-secondary">Logout</button>
         </form>
       </div>
     </div>
   </div>
 
-  <!-- Workflow steps -->
   <div class="workflow">
     <div class="workflow-step">
       <div class="step-number">1</div>
@@ -98,8 +94,8 @@
     </div>
     <div class="workflow-step">
       <div class="step-number">2</div>
-      <div class="step-title">LOT情報入力</div>
-      <div class="step-desc">番号と検査日を指定</div>
+      <div class="step-title">LOT情報 + 追加値入力</div>
+      <div class="step-desc">番号・検査日・ピンゲージ値を指定</div>
     </div>
     <div class="workflow-step">
       <div class="step-number">3</div>
@@ -108,19 +104,16 @@
     </div>
   </div>
 
-  <!-- Alert container -->
   <div id="alertContainer"></div>
 
-  <!-- ===== PAST FILES PANEL ===== -->
+  <!-- Past files panel -->
   <div class="past-files-panel">
     <div class="past-files-header" onclick="togglePastFiles()">
       <h3>📁 過去に保存したファイル</h3>
       <span class="toggle-icon" id="toggleIcon">▼</span>
     </div>
-    <div class="past-files-body" id="pastFilesBody" style="display: none;">
-      <div id="pastFilesList">
-        <div class="empty-state">読み込み中...</div>
-      </div>
+    <div class="past-files-body" id="pastFilesBody" style="display:none;">
+      <div id="pastFilesList"><div class="empty-state">読み込み中...</div></div>
     </div>
   </div>
 
@@ -130,24 +123,24 @@
       <div class="alert-icon">✓</div>
       <div class="alert-content">
         <strong>テンプレート: LOT_template.xlsx</strong>
-        <div style="font-size: 0.85rem; margin-top: 0.3rem;">リポジトリに含まれています。アップロード不要です。</div>
+        <div style="font-size:0.85rem;margin-top:0.3rem;">リポジトリに含まれています。アップロード不要です。</div>
       </div>
     </div>
   </div>
 
-  <!-- Data file upload -->
+  <!-- File upload -->
   <div class="form-section">
     <h3>測定データファイル</h3>
-    <input type="file" id="dataFile" accept=".txt,.dat,.csv" style="display: none;">
+    <input type="file" id="dataFile" accept=".txt,.dat,.csv" style="display:none;">
     <div id="dropZone" class="upload-zone">
       <div class="upload-icon">📄</div>
       <div class="upload-text">
-        <div style="margin-bottom: 0.5rem;">ファイルをドラッグ&ドロップまたは</div>
-        <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); document.getElementById('dataFile').click();">📁 選択</button>
-        <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #aaa;">対応形式: .txt, .dat, .csv</div>
+        <div style="margin-bottom:0.5rem;">ファイルをドラッグ&ドロップまたは</div>
+        <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();document.getElementById('dataFile').click();">📁 選択</button>
+        <div style="margin-top:0.5rem;font-size:0.8rem;color:#aaa;">対応形式: .txt, .dat, .csv</div>
       </div>
     </div>
-    <div id="dataName" style="display: none; margin-top: 1rem;">
+    <div id="dataName" style="display:none;margin-top:1rem;">
       <div class="alert-success alert-box">
         <div class="alert-icon">✓</div>
         <div class="alert-content" id="dataNameText"></div>
@@ -156,29 +149,20 @@
   </div>
 
   <!-- Stats -->
-  <div id="statsContainer" style="display: none;">
+  <div id="statsContainer" style="display:none;">
     <div class="form-section">
       <h3>抽出結果</h3>
       <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label">取得レコード</div>
-          <div class="stat-value" id="recordCount">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">DISTANCE値</div>
-          <div class="stat-value" id="distanceCount">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">INT-CIRCLE値</div>
-          <div class="stat-value" id="intCircleCount">0</div>
-        </div>
+        <div class="stat-card"><div class="stat-label">取得レコード</div><div class="stat-value" id="recordCount">0</div></div>
+        <div class="stat-card"><div class="stat-label">DISTANCE値</div><div class="stat-value" id="distanceCount">0</div></div>
+        <div class="stat-card"><div class="stat-label">INT-CIRCLE値</div><div class="stat-value" id="intCircleCount">0</div></div>
       </div>
     </div>
   </div>
 
-  <!-- LOT information form -->
+  <!-- LOT info + extra values -->
   <div class="form-section">
-    <h3>LOT情報入力</h3>
+    <h3>LOT情報 + 追加値入力</h3>
     <div class="form-row">
       <div class="form-group">
         <label for="lotNumber" class="form-label">LOT番号 *</label>
@@ -191,31 +175,49 @@
         <div class="help-text">検査日をYYYY/MM/DD形式で入力</div>
       </div>
     </div>
-    <div class="alert-info alert-box">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="pingaugeValue" class="form-label">ピンゲージ値 (B4) *</label>
+        <input type="text" id="pingaugeValue" class="form-control" placeholder="例: 8.00">
+        <div class="help-text">sheetシートの B4 セルに転記されます</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">重量 (B5) — 自動取得</label>
+        <input type="text" id="weightDisplay" class="form-control" placeholder="ファイル名から自動取得..." readonly style="background:#f8f9fa;">
+        <div id="weightStatus" class="weight-status"></div>
+        <div class="help-text">sheetシートの B5 セルに転記されます</div>
+      </div>
+    </div>
+    <div class="cell-map">
+      📋 Excelへの転記先 (sheetシート) &nbsp;—&nbsp;
+      <span>B4</span> = ピンゲージ値 &nbsp;|&nbsp;
+      <span>B5</span> = 重量（inspectionsから自動取得）&nbsp;|&nbsp;
+      <span>B6</span> = "OK"（固定）
+    </div>
+    <div class="alert-info alert-box" style="margin-top:1rem;">
       <div class="alert-icon">💡</div>
-      <div class="alert-content">プレフィックス（LOT番号の英数字部分）は自動的に抽出されます。</div>
+      <div class="alert-content">重量はファイル名の数値部分（例: <strong>494</strong>tuika → 494.txt）でinspectionsから自動検索されます。</div>
     </div>
   </div>
 
   <!-- Action buttons -->
   <div class="form-section">
-    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;">
       <button id="processBtn" class="btn btn-primary" onclick="processData()">📊 Excel を生成</button>
-      <button id="downloadBtn" class="btn btn-success" onclick="downloadExcel()" style="display: none;">⬇️ ローカルへダウンロード</button>
-      <button id="saveBtn" class="btn btn-warning" onclick="saveToCloud()" style="display: none;">☁️ クラウドに保存</button>
+      <button id="downloadBtn" class="btn btn-success" onclick="downloadExcel()" style="display:none;">⬇️ ローカルへダウンロード</button>
+      <button id="saveBtn" class="btn btn-warning" onclick="saveToCloud()" style="display:none;">☁️ クラウドに保存</button>
       <button class="btn btn-outline-secondary" onclick="resetForm()">🔄 リセット</button>
     </div>
   </div>
 
-  <!-- Download/Save status container -->
-  <div id="downloadContainer" style="display: none;">
+  <div id="downloadContainer" style="display:none;">
     <div class="form-section">
       <div class="alert-success alert-box">
         <div class="alert-icon">✓</div>
         <div class="alert-content">
           <strong>ファイル準備完了</strong>
-          <div style="font-size: 0.85rem; margin-top: 0.3rem;">ローカルへダウンロードするか、クラウドに保存して後から取得できます。</div>
-          <div id="fileInfo" style="font-size: 0.8rem; margin-top: 0.5rem; color: #333;"></div>
+          <div style="font-size:0.85rem;margin-top:0.3rem;">ローカルへダウンロードするか、クラウドに保存して後から取得できます。</div>
+          <div id="fileInfo" style="font-size:0.8rem;margin-top:0.5rem;color:#333;"></div>
         </div>
       </div>
     </div>
@@ -224,7 +226,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
-
 <script>
   let parsedData = null;
   let distanceValues = [];
@@ -233,35 +234,64 @@
   let exportFilename = null;
   let pastFilesLoaded = false;
   let pastFilesOpen = false;
+  let lookedUpWeight = null;
 
-  // ===== PAST FILES PANEL =====
+  // Extract leading number from filename: "494tuika.txt" → "494"
+  function extractFileNumber(filename) {
+    const base = filename.replace(/\.(txt|dat|csv)$/i, '');
+    const match = base.match(/^(\d+)/);
+    return match ? match[1] : null;
+  }
 
+  async function lookupWeight(filename) {
+    const num = extractFileNumber(filename);
+    if (!num) { setWeightStatus('not-found', '⚠ ファイル名から番号を抽出できませんでした'); return; }
+    const lookupName = num + '.txt';
+    setWeightStatus('loading', `${lookupName} の重量を検索中...`);
+    try {
+      const res = await fetch(`/api/weight-lookup?filename=${encodeURIComponent(lookupName)}`);
+      const data = await res.json();
+      if (data.success && data.weight !== null && data.weight !== undefined) {
+        lookedUpWeight = data.weight;
+        document.getElementById('weightDisplay').value = data.weight + ' g';
+        setWeightStatus('found', `✓ ${lookupName} から取得: ${data.weight} g`);
+      } else {
+        lookedUpWeight = null;
+        document.getElementById('weightDisplay').value = '';
+        setWeightStatus('not-found', `⚠ ${lookupName} の重量データがありません（空白でExcelに出力されます）`);
+      }
+    } catch (err) {
+      lookedUpWeight = null;
+      setWeightStatus('not-found', `検索エラー: ${err.message}`);
+    }
+  }
+
+  function setWeightStatus(state, msg) {
+    const el = document.getElementById('weightStatus');
+    el.style.display = 'block';
+    el.className = 'weight-status ' + (state === 'found' ? 'weight-found' : state === 'loading' ? '' : 'weight-not-found');
+    el.textContent = msg;
+  }
+
+  // Past files panel
   function togglePastFiles() {
     pastFilesOpen = !pastFilesOpen;
-    const body = document.getElementById('pastFilesBody');
-    const icon = document.getElementById('toggleIcon');
-    body.style.display = pastFilesOpen ? 'block' : 'none';
-    icon.classList.toggle('open', pastFilesOpen);
-
-    if (pastFilesOpen && !pastFilesLoaded) {
-      loadPastFiles();
-    }
+    document.getElementById('pastFilesBody').style.display = pastFilesOpen ? 'block' : 'none';
+    document.getElementById('toggleIcon').classList.toggle('open', pastFilesOpen);
+    if (pastFilesOpen && !pastFilesLoaded) loadPastFiles();
   }
 
   async function loadPastFiles() {
     const listEl = document.getElementById('pastFilesList');
     listEl.innerHTML = '<div class="empty-state">読み込み中...</div>';
-
     try {
       const res = await fetch('/api/tuika/list');
       const data = await res.json();
-
       if (!data.success || data.files.length === 0) {
         listEl.innerHTML = '<div class="empty-state">保存されたファイルはありません</div>';
         pastFilesLoaded = true;
         return;
       }
-
       listEl.innerHTML = data.files.map(f => `
         <div class="file-list-item" id="file-item-${f.$id}">
           <div class="file-list-info">
@@ -270,38 +300,32 @@
               LOT: ${f.lot_number} &nbsp;|&nbsp; 検査日: ${f.inspection_date}
               &nbsp;|&nbsp; 保存者: ${f.created_by}
               &nbsp;|&nbsp; ${formatDate(f.created_at)}
+              ${f.pingauge ? `&nbsp;|&nbsp; ピンゲージ: <strong>${f.pingauge}</strong>` : ''}
             </div>
           </div>
           <div class="file-list-actions">
-            <button class="btn btn-sm btn-primary" onclick="downloadFromCloud('${f.$id}', '${f.filename}')">⬇️ DL</button>
+            <button class="btn btn-sm btn-primary" onclick="downloadFromCloud('${f.$id}','${f.filename}')">⬇️ DL</button>
             <button class="btn btn-sm btn-outline-danger" onclick="deleteFromCloud('${f.$id}')">🗑</button>
           </div>
-        </div>
-      `).join('');
-
+        </div>`).join('');
       pastFilesLoaded = true;
     } catch (err) {
       listEl.innerHTML = `<div class="empty-state" style="color:#721c24;">読み込みエラー: ${err.message}</div>`;
     }
   }
 
-  function formatDate(isoString) {
-    if (!isoString) return '';
-    const d = new Date(isoString);
+  function formatDate(s) {
+    if (!s) return '';
+    const d = new Date(s);
     return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   }
 
   async function downloadFromCloud(metaId, filename) {
     showAlert(`${filename} をダウンロード中...`, 'info');
-    try {
-      const a = document.createElement('a');
-      a.href = `/api/tuika/download/${metaId}`;
-      a.download = filename;
-      a.click();
-      showAlert(`${filename} のダウンロードを開始しました`, 'success');
-    } catch (err) {
-      showAlert(`ダウンロードエラー: ${err.message}`, 'error');
-    }
+    const a = document.createElement('a');
+    a.href = `/api/tuika/download/${metaId}`;
+    a.download = filename;
+    a.click();
   }
 
   async function deleteFromCloud(metaId) {
@@ -313,79 +337,49 @@
         document.getElementById(`file-item-${metaId}`)?.remove();
         showAlert('ファイルを削除しました', 'success');
         const listEl = document.getElementById('pastFilesList');
-        if (!listEl.querySelector('.file-list-item')) {
-          listEl.innerHTML = '<div class="empty-state">保存されたファイルはありません</div>';
-        }
-      } else {
-        showAlert(`削除エラー: ${data.error}`, 'error');
-      }
-    } catch (err) {
-      showAlert(`削除エラー: ${err.message}`, 'error');
-    }
+        if (!listEl.querySelector('.file-list-item')) listEl.innerHTML = '<div class="empty-state">保存されたファイルはありません</div>';
+      } else { showAlert(`削除エラー: ${data.error}`, 'error'); }
+    } catch (err) { showAlert(`削除エラー: ${err.message}`, 'error'); }
   }
 
-  // ===== CLOUD SAVE =====
-
+  // Cloud save — now includes pingauge
   async function saveToCloud() {
-    if (!processedWorkbook || !exportFilename) {
-      showAlert('Excelファイルを先に生成してください', 'error');
-      return;
-    }
-
+    if (!processedWorkbook || !exportFilename) { showAlert('Excelファイルを先に生成してください', 'error'); return; }
     const lotNumber = document.getElementById('lotNumber').value.trim();
     const inspectionDate = document.getElementById('inspectionDate').value.trim();
+    const pingauge = document.getElementById('pingaugeValue').value.trim();
     const saveBtn = document.getElementById('saveBtn');
-
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<span class="loading-spinner"></span> 保存中...';
-
     try {
-      // Convert workbook to base64
       const buffer = await processedWorkbook.xlsx.writeBuffer();
       const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-
       const res = await fetch('/api/tuika/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filename: exportFilename,
-          lotNumber: lotNumber,
-          inspectionDate: inspectionDate,
-          fileData: base64
-        })
+        body: JSON.stringify({ filename: exportFilename, lotNumber, inspectionDate, pingauge: pingauge || '', fileData: base64 })
       });
-
       const data = await res.json();
-
       if (data.success) {
         showAlert(`☁️ クラウドへの保存完了: ${exportFilename}`, 'success');
-        // Refresh past files list if open
         pastFilesLoaded = false;
         if (pastFilesOpen) loadPastFiles();
-      } else {
-        showAlert(`保存エラー: ${data.error}`, 'error');
-      }
-    } catch (err) {
-      showAlert(`保存エラー: ${err.message}`, 'error');
-    } finally {
-      saveBtn.disabled = false;
-      saveBtn.innerHTML = '☁️ クラウドに保存';
-    }
+      } else { showAlert(`保存エラー: ${data.error}`, 'error'); }
+    } catch (err) { showAlert(`保存エラー: ${err.message}`, 'error'); }
+    finally { saveBtn.disabled = false; saveBtn.innerHTML = '☁️ クラウドに保存'; }
   }
 
-  // ===== EXISTING FUNCTIONS (unchanged) =====
-
+  // File loading
   const dropZone = document.getElementById('dropZone');
-  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-  dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('drag-over'); });
-  dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('drag-over'); const file = e.dataTransfer.files[0]; if (file) loadFile(file); });
-  document.getElementById('dataFile').addEventListener('change', (e) => { const file = e.target.files[0]; if (file) loadFile(file); });
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
+  document.getElementById('dataFile').addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
 
   function loadFile(file) {
     const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target.result;
-      parsedData = parseData(content);
+    reader.onload = e => {
+      parsedData = parseData(e.target.result);
       if (parsedData && parsedData.length > 0) {
         const { distanceVals, intCircleVals } = extractTargetValues(parsedData);
         distanceValues = distanceVals;
@@ -397,6 +391,7 @@
         document.getElementById('intCircleCount').textContent = intCircleValues.length;
         document.getElementById('statsContainer').style.display = 'block';
         showAlert(`${parsedData.length}件のレコードを抽出しました`, 'success');
+        lookupWeight(file.name); // auto-lookup weight
       } else {
         showAlert('ファイルの形式が正しくないか、データが含まれていません', 'error');
       }
@@ -411,23 +406,19 @@
       if (!line.trim()) continue;
       const parts = line.trim().split(';');
       if (parts.length < 2) continue;
-      const objId = parts[0];
-      const objType = parts[1];
-      const row = { 'ID': objId, 'Type': objType };
-      const remainingValues = parts.slice(2).map(p => p.trim());
+      const row = { 'ID': parts[0], 'Type': parts[1] };
+      const vals = parts.slice(2).map(p => p.trim());
       let cols = [];
-      if (objType === 'PLANE') cols = ['Method', 'X', 'Y', 'Z', 'A', 'B', 'C', '', 'D', 'Dev'];
-      else if (objType === 'CIRCLE') cols = ['Method', 'X', 'Y', 'Z', 'I', 'J', 'K', '', 'Radius', 'Dev'];
-      else if (objType === 'PT-COMP') cols = ['Method', 'X', 'Y', 'Z'];
-      else if (objType === 'DISTANCE') cols = ['', 'X', 'Y', 'Z', '', '', '', '', 'Distance'];
-      else if (objType === 'CONE') cols = ['Method', 'X', 'Y', 'Z', 'I', 'J', 'K', '', 'Half-Angle', 'Dev'];
-      else if (objType === 'INT-CIRCLE') cols = ['', 'X', 'Y', 'Z', 'I', 'J', 'K', '', 'Radius'];
-      else if (objType === 'SYM-POINT') cols = ['', 'X', 'Y', 'Z'];
-      for (let i = 0; i < remainingValues.length; i++) {
-        if (i < cols.length && cols[i] && remainingValues[i]) {
-          const numericPattern = /^-?\d+\.?\d*$/;
-          if (numericPattern.test(remainingValues[i])) row[cols[i]] = parseFloat(remainingValues[i]);
-          else row[cols[i]] = remainingValues[i];
+      if (parts[1]==='PLANE') cols=['Method','X','Y','Z','A','B','C','','D','Dev'];
+      else if (parts[1]==='CIRCLE') cols=['Method','X','Y','Z','I','J','K','','Radius','Dev'];
+      else if (parts[1]==='PT-COMP') cols=['Method','X','Y','Z'];
+      else if (parts[1]==='DISTANCE') cols=['','X','Y','Z','','','','','Distance'];
+      else if (parts[1]==='CONE') cols=['Method','X','Y','Z','I','J','K','','Half-Angle','Dev'];
+      else if (parts[1]==='INT-CIRCLE') cols=['','X','Y','Z','I','J','K','','Radius'];
+      else if (parts[1]==='SYM-POINT') cols=['','X','Y','Z'];
+      for (let i=0;i<vals.length;i++) {
+        if (i<cols.length&&cols[i]&&vals[i]) {
+          row[cols[i]] = /^-?\d+\.?\d*$/.test(vals[i]) ? parseFloat(vals[i]) : vals[i];
         }
       }
       data.push(row);
@@ -436,146 +427,121 @@
   }
 
   function extractTargetValues(data) {
-    const distanceItems = [];
-    const intCircleVals = [];
+    const distItems=[], intCircleVals=[];
     for (const item of data) {
-      if (item['Type'] === 'DISTANCE' && item['X'] !== undefined) {
-        distanceItems.push({ id: item['ID'], value: Math.round(Math.abs(item['X']) * 100) / 100 });
-      } else if (item['Type'] === 'INT-CIRCLE' && item['Radius'] !== undefined) {
-        intCircleVals.push(Math.round(item['Radius'] * 100) / 100);
-      }
+      if (item['Type']==='DISTANCE'&&item['X']!==undefined) distItems.push({id:item['ID'],value:Math.round(Math.abs(item['X'])*100)/100});
+      else if (item['Type']==='INT-CIRCLE'&&item['Radius']!==undefined) intCircleVals.push(Math.round(item['Radius']*100)/100);
     }
-    const distanceOrder = ['3', '2', '1', '4'];
-    const distanceVals = [];
-    for (const targetId of distanceOrder) {
-      for (const item of distanceItems) {
-        if (String(item['id']) === targetId) { distanceVals.push(item['value']); break; }
-      }
-    }
-    return { distanceVals, intCircleVals };
+    const order=['3','2','1','4'];
+    const distanceVals=[];
+    for (const t of order) for (const item of distItems) if (String(item.id)===t){distanceVals.push(item.value);break;}
+    return {distanceVals,intCircleVals};
   }
 
-  function extractLotPrefix(lotNumber) {
-    if (!lotNumber) return null;
-    const match = lotNumber.match(/^([A-Za-z]*)(\d+)/);
-    if (match) {
-      const letters = match[1].toUpperCase();
-      const numbers = match[2];
-      const prefix = letters.includes('LOT') ? letters : 'LOT';
-      return prefix + numbers;
-    }
-    return null;
+  function extractLotPrefix(lot) {
+    if (!lot) return null;
+    const m = lot.match(/^([A-Za-z]*)(\d+)/);
+    if (!m) return null;
+    const letters = m[1].toUpperCase();
+    return (letters.includes('LOT') ? letters : 'LOT') + m[2];
   }
 
-  function validateDateFormat(dateString) {
-    if (!dateString) return false;
-    return /^\d{4}\/\d{2}\/\d{2}$/.test(dateString);
-  }
-
-  function formatDateForFilename(dateString) {
-    return dateString.replace(/\//g, '');
-  }
+  function validateDateFormat(d) { return d && /^\d{4}\/\d{2}\/\d{2}$/.test(d); }
+  function formatDateForFilename(d) { return d.replace(/\//g,''); }
 
   function loadDefaultTemplate() {
-    const templatePaths = ['/public/templates/LOT_template.xlsx', '/templates/LOT_template.xlsx', 'LOT_template.xlsx'];
-    return tryLoadTemplatePath(templatePaths, 0);
+    const paths=['/public/templates/LOT_template.xlsx','/templates/LOT_template.xlsx','LOT_template.xlsx'];
+    return tryPath(paths,0);
   }
-
-  function tryLoadTemplatePath(paths, index) {
-    if (index >= paths.length) { showAlert('テンプレートファイルが見つかりません。管理者に連絡してください。', 'error'); return Promise.resolve(null); }
-    const path = paths[index];
-    return fetch(path).then(response => {
-      if (!response.ok) return tryLoadTemplatePath(paths, index + 1);
-      return response.arrayBuffer();
-    }).catch(() => tryLoadTemplatePath(paths, index + 1));
+  function tryPath(paths,i) {
+    if (i>=paths.length){showAlert('テンプレートが見つかりません','error');return Promise.resolve(null);}
+    return fetch(paths[i]).then(r=>r.ok?r.arrayBuffer():tryPath(paths,i+1)).catch(()=>tryPath(paths,i+1));
   }
 
   function processData() {
     const lotNumber = document.getElementById('lotNumber').value.trim();
     const inspectionDate = document.getElementById('inspectionDate').value.trim();
-    if (!parsedData) { showAlert('測定データファイルを読み込んでください', 'error'); return; }
-    if (!lotNumber || !inspectionDate) { showAlert('LOT番号と検査日を入力してください', 'error'); return; }
-    if (!validateDateFormat(inspectionDate)) { showAlert('検査日の形式が正しくありません (YYYY/MM/DD)', 'error'); return; }
-    const processBtn = document.getElementById('processBtn');
-    processBtn.disabled = true;
-    processBtn.innerHTML = '<span class="loading-spinner"></span> 処理中...';
+    const pingauge = document.getElementById('pingaugeValue').value.trim();
+    if (!parsedData) { showAlert('測定データファイルを読み込んでください','error'); return; }
+    if (!lotNumber||!inspectionDate) { showAlert('LOT番号と検査日を入力してください','error'); return; }
+    if (!validateDateFormat(inspectionDate)) { showAlert('検査日の形式が正しくありません (YYYY/MM/DD)','error'); return; }
+    if (!pingauge) { showAlert('ピンゲージ値を入力してください','error'); return; }
 
-    loadDefaultTemplate().then(async arrayBuffer => {
-      if (!arrayBuffer) { processBtn.disabled = false; processBtn.innerHTML = '📊 Excel を生成'; return; }
+    const btn = document.getElementById('processBtn');
+    btn.disabled=true; btn.innerHTML='<span class="loading-spinner"></span> 処理中...';
+
+    loadDefaultTemplate().then(async ab => {
+      if (!ab){btn.disabled=false;btn.innerHTML='📊 Excel を生成';return;}
       try {
         const workbook = new ExcelJS.Workbook();
-        await workbook.xlsx.load(arrayBuffer);
-        let worksheet = workbook.getWorksheet('sheet');
-        if (!worksheet) worksheet = workbook.worksheets.length > 1 ? workbook.worksheets[1] : workbook.worksheets[0];
+        await workbook.xlsx.load(ab);
+        let ws = workbook.getWorksheet('sheet');
+        if (!ws) ws = workbook.worksheets.length>1?workbook.worksheets[1]:workbook.worksheets[0];
+
         const lotPrefix = extractLotPrefix(lotNumber);
-        worksheet.getCell('B1').value = lotNumber;
-        worksheet.getCell('B2').value = inspectionDate;
-        if (lotPrefix) worksheet.getCell('B3').value = lotPrefix;
-        for (let i = 0; i < distanceValues.length; i++) worksheet.getCell(`A${i + 1}`).value = distanceValues[i];
-        for (let i = 0; i < intCircleValues.length; i++) worksheet.getCell(`A${distanceValues.length + i + 1}`).value = intCircleValues[i];
+        ws.getCell('B1').value = lotNumber;
+        ws.getCell('B2').value = inspectionDate;
+        if (lotPrefix) ws.getCell('B3').value = lotPrefix;
+
+        // NEW: B4 = pingauge, B5 = weight, B6 = "OK"
+        ws.getCell('B4').value = pingauge;
+        ws.getCell('B5').value = (lookedUpWeight !== null && lookedUpWeight !== undefined) ? lookedUpWeight : '';
+        ws.getCell('B6').value = 'OK';
+
+        for (let i=0;i<distanceValues.length;i++) ws.getCell(`A${i+1}`).value=distanceValues[i];
+        for (let i=0;i<intCircleValues.length;i++) ws.getCell(`A${distanceValues.length+i+1}`).value=intCircleValues[i];
+
         processedWorkbook = workbook;
-        const dateFormatted = formatDateForFilename(inspectionDate);
-        exportFilename = `水平ノズル${lotNumber}全箇所測定-${dateFormatted}.xlsx`;
-        document.getElementById('fileInfo').textContent = `ファイル名: ${exportFilename}`;
-        processBtn.disabled = false;
-        processBtn.innerHTML = '✅ Excel を生成';
-        document.getElementById('downloadBtn').style.display = 'inline-block';
-        document.getElementById('saveBtn').style.display = 'inline-block';
-        showAlert('処理が完了しました。ダウンロードまたはクラウドに保存してください。', 'success');
-        document.getElementById('downloadContainer').style.display = 'block';
-      } catch (err) {
-        showAlert(`処理エラー: ${err.message}`, 'error');
-        processBtn.disabled = false;
-        processBtn.innerHTML = '📊 Excel を生成';
+        exportFilename = `水平ノズル${lotNumber}全箇所測定-${formatDateForFilename(inspectionDate)}.xlsx`;
+
+        document.getElementById('fileInfo').textContent =
+          `ファイル名: ${exportFilename} ／ ピンゲージ: ${pingauge} ／ 重量: ${lookedUpWeight!==null?lookedUpWeight+'g':'未取得'}`;
+
+        btn.disabled=false; btn.innerHTML='✅ Excel を生成';
+        document.getElementById('downloadBtn').style.display='inline-block';
+        document.getElementById('saveBtn').style.display='inline-block';
+        document.getElementById('downloadContainer').style.display='block';
+        showAlert('処理が完了しました。ダウンロードまたはクラウドに保存してください。','success');
+      } catch(err){
+        showAlert(`処理エラー: ${err.message}`,'error');
+        btn.disabled=false; btn.innerHTML='📊 Excel を生成';
       }
     });
   }
 
   async function downloadExcel() {
-    if (!processedWorkbook || !exportFilename) { showAlert('Excelファイルを生成してください', 'error'); return; }
-    try {
-      const buffer = await processedWorkbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = exportFilename;
-      a.click();
-      window.URL.revokeObjectURL(url);
-      showAlert(`ローカルへダウンロードしました: ${exportFilename}`, 'success');
-    } catch (err) {
-      showAlert(`ダウンロードエラー: ${err.message}`, 'error');
-    }
+    if (!processedWorkbook||!exportFilename){showAlert('Excelファイルを生成してください','error');return;}
+    const buffer = await processedWorkbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download=exportFilename; a.click();
+    window.URL.revokeObjectURL(url);
+    showAlert(`ローカルへダウンロードしました: ${exportFilename}`,'success');
   }
 
   function resetForm() {
-    parsedData = null; distanceValues = []; intCircleValues = []; processedWorkbook = null; exportFilename = null;
-    document.getElementById('dataFile').value = '';
-    document.getElementById('lotNumber').value = '';
-    document.getElementById('inspectionDate').value = '';
-    document.getElementById('dataName').style.display = 'none';
-    document.getElementById('statsContainer').style.display = 'none';
-    document.getElementById('downloadContainer').style.display = 'none';
-    document.getElementById('downloadBtn').style.display = 'none';
-    document.getElementById('saveBtn').style.display = 'none';
-    const processBtn = document.getElementById('processBtn');
-    processBtn.disabled = false;
-    processBtn.innerHTML = '📊 Excel を生成';
-    showAlert('フォームをリセットしました', 'info');
+    parsedData=null;distanceValues=[];intCircleValues=[];processedWorkbook=null;exportFilename=null;lookedUpWeight=null;
+    ['dataFile','lotNumber','inspectionDate','pingaugeValue'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('weightDisplay').value='';
+    document.getElementById('weightStatus').style.display='none';
+    ['dataName','statsContainer','downloadContainer','downloadBtn','saveBtn'].forEach(id=>document.getElementById(id).style.display='none');
+    const btn=document.getElementById('processBtn');
+    btn.disabled=false;btn.innerHTML='📊 Excel を生成';
+    showAlert('フォームをリセットしました','info');
   }
 
-  function showAlert(message, type) {
-    const container = document.getElementById('alertContainer');
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert-box alert-${type}`;
-    const icons = { 'success': '✓', 'error': '✕', 'info': 'ℹ', 'warning': '⚠' };
-    alertDiv.innerHTML = `<div class="alert-icon">${icons[type] || 'ℹ'}</div><div class="alert-content">${message}</div>`;
-    container.innerHTML = '';
-    container.appendChild(alertDiv);
-    setTimeout(() => alertDiv.remove(), 5000);
+  function showAlert(message,type) {
+    const c=document.getElementById('alertContainer');
+    const d=document.createElement('div');
+    d.className=`alert-box alert-${type}`;
+    const icons={'success':'✓','error':'✕','info':'ℹ','warning':'⚠'};
+    d.innerHTML=`<div class="alert-icon">${icons[type]||'ℹ'}</div><div class="alert-content">${message}</div>`;
+    c.innerHTML='';c.appendChild(d);
+    setTimeout(()=>d.remove(),5000);
   }
 
-  showAlert('準備完了: 測定データファイルをアップロードして開始してください', 'info');
+  showAlert('準備完了: 測定データファイルをアップロードして開始してください','info');
 </script>
 </body>
 </html>
