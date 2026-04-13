@@ -156,6 +156,205 @@
     </div>
   </div>
 
+  <!--
+    ════════════════════════════════════════════════════════════
+    INDEX.EJS  — Help Panel Snippet
+    Paste this block immediately after the upload-results card
+    and before the "ファイル一覧" heading section in index.ejs.
+    ════════════════════════════════════════════════════════════
+  -->
+
+  <!-- ── Help Panel styles (add to <style> in index.ejs) ── -->
+  <!--
+    Copy the CSS below into the <style> tag of index.ejs.
+
+    .help-panel { ... }   etc.
+    (All CSS is inlined on the elements below so you can drop it
+    in without touching <style> if preferred.)
+  -->
+
+  <!-- ── Help Panel HTML ── -->
+  <div id="helpPanel" style="
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+  ">
+    <!-- Collapsible header -->
+    <div
+      onclick="toggleHelp()"
+      style="
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.75rem 1.25rem; cursor: pointer; user-select: none;
+        background: #f8f9fa; border-bottom: 1px solid transparent;
+        transition: background 0.15s;
+      "
+      onmouseenter="this.style.background='#eef2f7'"
+      onmouseleave="this.style.background='#f8f9fa'"
+      id="helpToggleRow"
+    >
+      <div style="display:flex; align-items:center; gap:0.6rem;">
+        <span style="font-size:1rem;">📖</span>
+        <span style="font-weight:600; font-size:0.9rem; color:#2c3e50;">
+          使い方ガイド — 水平ノズル検査システム
+        </span>
+        <span style="font-size:0.78rem; color:#6c757d; font-style:italic;">クリックで開閉</span>
+      </div>
+      <span id="helpChevron" style="font-size:0.85rem; color:#6c757d; transition: transform 0.2s;">▼</span>
+    </div>
+
+    <!-- Collapsible body -->
+    <div id="helpBody" style="display:none; padding: 1.5rem; border-top: 1px solid #e9ecef;">
+
+      <!-- ── Section 1: What this app does ── -->
+      <div style="margin-bottom:1.75rem;">
+        <h4 style="font-size:1rem; font-weight:700; color:#2c3e50; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.5rem;">
+          🏭 このアプリについて
+        </h4>
+        <p style="font-size:0.88rem; color:#444; line-height:1.7; margin:0;">
+          <strong>水平ノズル検査システム</strong>は、樹脂製水平ノズルの製品検査・在庫・出荷をひとつの画面で管理するためのウェブアプリです。<br>
+          3D測定機から出力される <code>.txt</code> ファイルを取り込み、寸法合否判定・重量記録・検査成績書生成・在庫割り当てまでを一貫して行います。
+        </p>
+      </div>
+
+      <!-- ── Section 2: Status lifecycle ── -->
+      <div style="margin-bottom:1.75rem;">
+        <h4 style="font-size:1rem; font-weight:700; color:#2c3e50; margin-bottom:0.75rem;">
+          🔄 製品ステータスの流れ
+        </h4>
+        <!-- Flow row -->
+        <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin-bottom:1rem;">
+
+          <div style="text-align:center; padding:0.6rem 0.9rem; background:#fafafa; border:2px dashed #adb5bd; border-radius:8px; font-size:0.78rem; min-width:100px;">
+            <div style="font-size:1.1rem;">📦</div>
+            <strong>入荷予定</strong>
+            <div style="color:#6c757d; font-size:0.72rem; margin-top:3px;">発注後・自動生成</div>
+          </div>
+          <div style="color:#adb5bd; font-size:1.2rem; padding:0 2px;">→</div>
+
+          <div style="text-align:center; padding:0.6rem 0.9rem; background:#e2f0fb; border:2px solid #6ea8fe; border-radius:8px; font-size:0.78rem; min-width:100px;">
+            <div style="font-size:1.1rem;">🚚</div>
+            <strong style="color:#084298;">入荷済</strong>
+            <div style="color:#6c757d; font-size:0.72rem; margin-top:3px;">入荷確認ボタン</div>
+          </div>
+          <div style="color:#adb5bd; font-size:1.2rem; padding:0 2px;">→</div>
+
+          <div style="text-align:center; padding:0.6rem 0.9rem; background:#fffdf0; border:2px dashed #e6a817; border-radius:8px; font-size:0.78rem; min-width:100px;">
+            <div style="font-size:1.1rem;">🔬</div>
+            <strong style="color:#664d03;">検査中</strong>
+            <div style="color:#6c757d; font-size:0.72rem; margin-top:3px;">TXTアップロード後</div>
+          </div>
+          <div style="color:#adb5bd; font-size:1.2rem; padding:0 2px;">→</div>
+
+          <div style="text-align:center; padding:0.6rem 0.9rem; background:#f6fff9; border:2px solid #198754; border-radius:8px; font-size:0.78rem; min-width:100px;">
+            <div style="font-size:1.1rem;">✅</div>
+            <strong style="color:#0f5132;">検査完了</strong>
+            <div style="color:#6c757d; font-size:0.72rem; margin-top:3px;">重量入力・保存後</div>
+          </div>
+          <div style="color:#adb5bd; font-size:1.2rem; padding:0 2px;">→</div>
+
+          <div style="text-align:center; padding:0.6rem 0.9rem; background:#f0f0f0; border:2px solid #6c757d; border-radius:8px; font-size:0.78rem; min-width:100px;">
+            <div style="font-size:1.1rem;">🚢</div>
+            <strong style="color:#343a40;">出荷済</strong>
+            <div style="color:#6c757d; font-size:0.72rem; margin-top:3px;">在庫管理→出荷後</div>
+          </div>
+
+        </div>
+        <p style="font-size:0.82rem; color:#6c757d; margin:0;">
+          ※ ステータスはすべて<strong>自動で変化</strong>します。Appwriteを直接操作する必要はありません。
+        </p>
+      </div>
+
+      <!-- ── Section 3: Feature breakdown ── -->
+      <div style="margin-bottom:1.75rem;">
+        <h4 style="font-size:1rem; font-weight:700; color:#2c3e50; margin-bottom:0.75rem;">
+          🛠 主な機能
+        </h4>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem;">
+
+          <!-- Card -->
+          <div style="border:1px solid #e9ecef; border-radius:8px; padding:1rem; background:#fdfdfd;">
+            <div style="font-weight:700; font-size:0.88rem; margin-bottom:0.4rem; color:#0d6efd;">📄 TXTアップロード</div>
+            <div style="font-size:0.82rem; color:#555; line-height:1.6;">
+              3D測定機出力の <code>.txt</code> を複数同時ドロップ可能。<br>
+              寸法 A〜L を自動抽出・合否判定し、既存プレースホルダーを更新します。
+            </div>
+          </div>
+
+          <div style="border:1px solid #e9ecef; border-radius:8px; padding:1rem; background:#fdfdfd;">
+            <div style="font-weight:700; font-size:0.88rem; margin-bottom:0.4rem; color:#198754;">⚖ 重量入力</div>
+            <div style="font-size:0.82rem; color:#555; line-height:1.6;">
+              各カードから直接入力・保存。保存すると自動的にステータスが<strong>検査完了</strong>に昇格します。<br>
+              Excelで一括インポートも可能（naemura / iwatsuki のみ）。
+            </div>
+          </div>
+
+          <div style="border:1px solid #e9ecef; border-radius:8px; padding:1rem; background:#fdfdfd;">
+            <div style="font-weight:700; font-size:0.88rem; margin-bottom:0.4rem; color:#6f42c1;">📋 検査成績書</div>
+            <div style="font-size:0.82rem; color:#555; line-height:1.6;">
+              カードを複数選択（範囲選択も可）して「検査成績書を表示」。<br>
+              寸法・重量・合否を一覧にまとめた印刷用サマリーを生成します。
+            </div>
+          </div>
+
+          <div style="border:1px solid #e9ecef; border-radius:8px; padding:1rem; background:#fdfdfd;">
+            <div style="font-weight:700; font-size:0.88rem; margin-bottom:0.4rem; color:#fd7e14;">➕ 追加工程</div>
+            <div style="font-size:0.82rem; color:#555; line-height:1.6;">
+              ピンゲージ測定値と検査完了日を記録し、客先提出用 Excel 帳票を生成・クラウド保存します。
+            </div>
+          </div>
+
+          <div style="border:1px solid #e9ecef; border-radius:8px; padding:1rem; background:#fdfdfd;">
+            <div style="font-weight:700; font-size:0.88rem; margin-bottom:0.4rem; color:#20c997;">📦 在庫管理</div>
+            <div style="font-size:0.82rem; color:#555; line-height:1.6;">
+              発注・入荷・在庫状況・出荷をまとめて管理。<br>
+              注文には検査完了品が自動割り当てされ、出荷後は画面から消えます。
+            </div>
+          </div>
+
+          <div style="border:1px solid #e9ecef; border-radius:8px; padding:1rem; background:#fdfdfd;">
+            <div style="font-weight:700; font-size:0.88rem; margin-bottom:0.4rem; color:#dc3545;">🔒 権限管理</div>
+            <div style="font-size:0.82rem; color:#555; line-height:1.6;">
+              重量の編集・Excel インポートは <strong>naemura</strong> / <strong>iwatsuki</strong> のみ可能。<br>
+              他ユーザーは「閲覧のみ」で在庫・成績書の確認ができます。
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Section 4: Quick how-to ── -->
+      <div>
+        <h4 style="font-size:1rem; font-weight:700; color:#2c3e50; margin-bottom:0.75rem;">
+          ⚡ よくある操作手順
+        </h4>
+        <div style="font-size:0.85rem; color:#444; line-height:1.9;">
+          <div><span style="display:inline-block;width:20px;text-align:center;">①</span> <strong>新ロット入荷前</strong>：在庫管理 → 入荷管理 → 「新規入荷」でロット数と予定日を登録 → プレースホルダーが自動生成される</div>
+          <div><span style="display:inline-block;width:20px;text-align:center;">②</span> <strong>荷物が届いたら</strong>：入荷管理の「入荷確認」を押す → ステータスが「入荷済」に変わる</div>
+          <div><span style="display:inline-block;width:20px;text-align:center;">③</span> <strong>3D測定後</strong>：TXTをここにドロップ → 自動抽出・合否判定 → ステータスが「検査中」に変わる</div>
+          <div><span style="display:inline-block;width:20px;text-align:center;">④</span> <strong>重量測定後</strong>：各カードの重量欄に入力して「保存」→「検査完了」に昇格</div>
+          <div><span style="display:inline-block;width:20px;text-align:center;">⑤</span> <strong>客先への提出書類</strong>：追加工程ページでピンゲージ値を記録 → Excel 帳票をダウンロード</div>
+          <div><span style="display:inline-block;width:20px;text-align:center;">⑥</span> <strong>出荷</strong>：在庫管理 → 注文の「出荷」ボタン → 対象製品が画面から消え、出荷済として記録される</div>
+        </div>
+      </div>
+
+    </div><!-- /helpBody -->
+  </div><!-- /helpPanel -->
+
+  <script>
+    function toggleHelp() {
+      const body    = document.getElementById('helpBody');
+      const chevron = document.getElementById('helpChevron');
+      const header  = document.getElementById('helpToggleRow');
+      const isOpen  = body.style.display !== 'none';
+      body.style.display    = isOpen ? 'none' : 'block';
+      chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+      header.style.borderBottomColor = isOpen ? 'transparent' : '#e9ecef';
+    }
+  </script>
+
   <!-- ── File list heading + toolbar ── -->
   <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
     <h2 class="mb-0">ファイル一覧</h2>

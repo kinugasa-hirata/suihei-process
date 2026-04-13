@@ -72,23 +72,7 @@
       margin: 2px; color: #084298; display: inline-block;
     }
 
-    /* ── Lifecycle flow diagram ── */
-    .lifecycle-flow {
-      display: flex; align-items: center; gap: 0; flex-wrap: nowrap;
-      overflow-x: auto; padding: 1rem 0;
-    }
-    .lf-step {
-      display: flex; flex-direction: column; align-items: center;
-      min-width: 130px; padding: 0.75rem 0.5rem;
-      border-radius: 8px; font-size: 0.82rem; text-align: center;
-    }
-    .lf-arrow {
-      font-size: 1.4rem; color: #adb5bd; flex-shrink: 0; margin: 0 4px;
-      align-self: center;
-    }
-    .lf-trigger {
-      font-size: 0.72rem; color: #6c757d; margin-top: 4px; font-style: italic;
-    }
+
   </style>
 </head>
 <body>
@@ -104,9 +88,10 @@
       <a href="/" class="btn btn-outline-secondary" style="display:flex;align-items:center;gap:6px;">
         <span class="material-icons" style="font-size:18px;">home</span> ホーム
       </a>
-      <button class="btn btn-outline-primary" style="display:flex;align-items:center;gap:6px;"
-              onclick="document.getElementById('lifecycleModal').classList.add('show'); document.getElementById('lifecycleModalBackdrop').classList.add('show');">
-        <span class="material-icons" style="font-size:18px;">info</span> ステータス説明
+      <button class="btn btn-outline-secondary" style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:1rem;border-radius:50%;width:40px;height:40px;padding:0;justify-content:center;border:2px solid #6c757d;color:#6c757d;"
+              title="使い方・ステータス説明"
+              onclick="document.getElementById('helpModal').classList.add('show'); document.getElementById('helpModalBackdrop').classList.add('show');">
+        ?
       </button>
     </div>
   </div>
@@ -226,106 +211,199 @@
   </div><!-- /tab-content -->
 </div><!-- /container -->
 
-<!-- ══════════ LIFECYCLE INFO MODAL ══════════ -->
-<div class="modal-backdrop-custom" id="lifecycleModalBackdrop"
-     onclick="document.getElementById('lifecycleModal').classList.remove('show'); this.classList.remove('show');"></div>
-<div class="modal-custom" id="lifecycleModal" style="max-width:700px;">
+<!-- ══════════ HELP / MANUAL MODAL ══════════ -->
+<div class="modal-backdrop-custom" id="helpModalBackdrop"
+     onclick="document.getElementById('helpModal').classList.remove('show'); this.classList.remove('show');"></div>
+<div class="modal-custom" id="helpModal" style="max-width:720px;">
   <div class="modal-header-custom" style="display:flex;justify-content:space-between;align-items:center;">
-    <h3 style="margin:0;">
-      <span class="material-icons" style="vertical-align:middle;margin-right:0.5rem;">info</span>
-      ステータスの自動変化フロー
+    <h3 style="margin:0; font-size:1.15rem;">
+      📖 在庫管理システム — 使い方マニュアル
     </h3>
-    <button onclick="document.getElementById('lifecycleModal').classList.remove('show'); document.getElementById('lifecycleModalBackdrop').classList.remove('show');"
-            style="background:none;border:none;color:white;font-size:1.5rem;cursor:pointer;line-height:1;">×</button>
+    <button onclick="document.getElementById('helpModal').classList.remove('show'); document.getElementById('helpModalBackdrop').classList.remove('show');"
+            style="background:none;border:none;color:white;font-size:1.5rem;cursor:pointer;line-height:1;padding:0 4px;">×</button>
   </div>
-  <div class="modal-body-custom">
+  <div class="modal-body-custom" style="padding:1.5rem;">
 
-    <!-- Flow diagram -->
-    <div class="lifecycle-flow">
-      <div class="lf-step" style="background:#f8f9fa;border:2px dashed #adb5bd;color:#495057;">
-        <span style="font-size:1.5rem;">📦</span>
-        <strong style="margin-top:4px;">入荷予定</strong>
-        <span class="lf-trigger">新規入荷登録時<br>自動作成</span>
+    <!-- Tab nav inside modal -->
+    <ul class="nav nav-tabs" id="helpTabs" style="margin-bottom:1.25rem;">
+      <li class="nav-item">
+        <button class="nav-link active" onclick="showHelpTab('tab-status', this)" style="font-size:0.85rem;">🔄 ステータス説明</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" onclick="showHelpTab('tab-orders', this)" style="font-size:0.85rem;">🛒 注文管理</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" onclick="showHelpTab('tab-imports', this)" style="font-size:0.85rem;">🚚 入荷管理</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" onclick="showHelpTab('tab-inventory', this)" style="font-size:0.85rem;">📦 在庫状況</button>
+      </li>
+    </ul>
+
+    <!-- ── TAB: Status ── -->
+    <div id="tab-status" class="help-tab-pane">
+      <!-- Flow diagram -->
+      <div style="display:flex;align-items:stretch;gap:3px;flex-wrap:nowrap;overflow-x:auto;margin-bottom:1.25rem;">
+        <div style="text-align:center;padding:0.75rem 0.6rem;background:#fafafa;border:2px dashed #adb5bd;border-radius:8px;font-size:0.78rem;min-width:105px;flex:1;">
+          <div style="font-size:1.3rem;">📦</div>
+          <strong>入荷予定</strong>
+          <div style="color:#6c757d;font-size:0.7rem;margin-top:4px;font-style:italic;">新規入荷登録時<br>自動生成</div>
+        </div>
+        <div style="align-self:center;color:#adb5bd;font-size:1.3rem;padding:0 2px;">→</div>
+        <div style="text-align:center;padding:0.75rem 0.6rem;background:#e2f0fb;border:2px solid #6ea8fe;border-radius:8px;font-size:0.78rem;min-width:105px;flex:1;">
+          <div style="font-size:1.3rem;">🚚</div>
+          <strong style="color:#084298;">入荷済</strong>
+          <div style="color:#6c757d;font-size:0.7rem;margin-top:4px;font-style:italic;">「入荷確認」<br>ボタン</div>
+        </div>
+        <div style="align-self:center;color:#adb5bd;font-size:1.3rem;padding:0 2px;">→</div>
+        <div style="text-align:center;padding:0.75rem 0.6rem;background:#fffdf0;border:2px dashed #e6a817;border-radius:8px;font-size:0.78rem;min-width:105px;flex:1;">
+          <div style="font-size:1.3rem;">🔬</div>
+          <strong style="color:#664d03;">検査中</strong>
+          <div style="color:#6c757d;font-size:0.7rem;margin-top:4px;font-style:italic;">TXTファイル<br>アップロード</div>
+        </div>
+        <div style="align-self:center;color:#adb5bd;font-size:1.3rem;padding:0 2px;">→</div>
+        <div style="text-align:center;padding:0.75rem 0.6rem;background:#f6fff9;border:2px solid #198754;border-radius:8px;font-size:0.78rem;min-width:105px;flex:1;">
+          <div style="font-size:1.3rem;">✅</div>
+          <strong style="color:#0f5132;">検査完了</strong>
+          <div style="color:#6c757d;font-size:0.7rem;margin-top:4px;font-style:italic;">重量入力・<br>保存ボタン</div>
+        </div>
+        <div style="align-self:center;color:#adb5bd;font-size:1.3rem;padding:0 2px;">→</div>
+        <div style="text-align:center;padding:0.75rem 0.6rem;background:#f0f0f0;border:2px solid #6c757d;border-radius:8px;font-size:0.78rem;min-width:105px;flex:1;">
+          <div style="font-size:1.3rem;">🚢</div>
+          <strong style="color:#343a40;">出荷済</strong>
+          <div style="color:#6c757d;font-size:0.7rem;margin-top:4px;font-style:italic;">注文の「出荷」<br>ボタン</div>
+        </div>
       </div>
-      <div class="lf-arrow">→</div>
-      <div class="lf-step" style="background:#e2f0fb;border:2px solid #6ea8fe;color:#084298;">
-        <span style="font-size:1.5rem;">🚚</span>
-        <strong style="margin-top:4px;">入荷済</strong>
-        <span class="lf-trigger">「入荷確認」ボタン<br>を押した時</span>
-      </div>
-      <div class="lf-arrow">→</div>
-      <div class="lf-step" style="background:#fffdf0;border:2px dashed #e6a817;color:#664d03;">
-        <span style="font-size:1.5rem;">🔬</span>
-        <strong style="margin-top:4px;">検査中</strong>
-        <span class="lf-trigger">TXTファイル<br>アップロード時</span>
-      </div>
-      <div class="lf-arrow">→</div>
-      <div class="lf-step" style="background:#f6fff9;border:2px solid #198754;color:#0f5132;">
-        <span style="font-size:1.5rem;">✅</span>
-        <strong style="margin-top:4px;">検査完了</strong>
-        <span class="lf-trigger">重量入力・保存時<br>（自動昇格）</span>
-      </div>
-      <div class="lf-arrow">→</div>
-      <div class="lf-step" style="background:#f0f0f0;border:2px solid #6c757d;color:#343a40;">
-        <span style="font-size:1.5rem;">🚢</span>
-        <strong style="margin-top:4px;">出荷済</strong>
-        <span class="lf-trigger">「出荷」ボタン<br>を押した時</span>
+
+      <table class="table table-sm" style="font-size:0.84rem;">
+        <thead style="background:#f8f9fa;">
+          <tr><th>ステータス</th><th>意味</th><th>変化トリガー（自動）</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span style="background:#fafafa;border:2px dashed #adb5bd;border-radius:4px;padding:1px 7px;">入荷予定</span></td>
+            <td>発注済・未着荷。製品番号がこの時点で確定</td>
+            <td>在庫管理「新規入荷」登録時</td>
+          </tr>
+          <tr>
+            <td><span style="background:#e2f0fb;border:1px solid #6ea8fe;border-radius:4px;padding:1px 7px;color:#084298;">入荷済</span></td>
+            <td>荷物が届いた。まだ3D検査待ち</td>
+            <td>入荷管理の「✓ 入荷確認」ボタン</td>
+          </tr>
+          <tr>
+            <td><span style="background:#fff3cd;border:1px solid #e6a817;border-radius:4px;padding:1px 7px;color:#664d03;">検査中</span></td>
+            <td>3D測定データ取り込み済。重量未記録</td>
+            <td>ホームでTXTファイルをアップロード</td>
+          </tr>
+          <tr>
+            <td><span style="background:#d1e7dd;border:1px solid #198754;border-radius:4px;padding:1px 7px;color:#0f5132;">検査完了</span></td>
+            <td>重量入力済。出荷可能な状態</td>
+            <td>ホームで重量を入力して「保存」</td>
+          </tr>
+          <tr>
+            <td><span style="background:#e9ecef;border:1px solid #6c757d;border-radius:4px;padding:1px 7px;color:#343a40;">出荷済</span></td>
+            <td>出荷完了。画面から消える（データは保持）</td>
+            <td>注文の「🚚 出荷」ボタン</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="alert alert-info py-2 px-3" style="font-size:0.82rem;">
+        <strong>⚠ 重要：</strong> ステータスはすべてシステムが自動で変えます。Appwrite を直接操作する必要はありません。
       </div>
     </div>
 
-    <hr style="margin:1.5rem 0;">
-
-    <!-- Status table -->
-    <table class="table table-sm" style="font-size:0.88rem;">
-      <thead style="background:#f8f9fa;">
-        <tr>
-          <th>ステータス</th>
-          <th>意味</th>
-          <th>自動変化トリガー</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><span style="background:#f8f9fa;border:2px dashed #adb5bd;border-radius:4px;padding:2px 8px;font-size:0.8rem;">入荷予定</span></td>
-          <td>発注済・未着荷。製品番号はこの時点で確定する</td>
-          <td>新規入荷登録時に自動生成される</td>
-        </tr>
-        <tr>
-          <td><span style="background:#e2f0fb;border:1px solid #6ea8fe;border-radius:4px;padding:2px 8px;font-size:0.8rem;color:#084298;">入荷済</span></td>
-          <td>物理的に届いた。まだ検査前</td>
-          <td>入荷管理の「入荷確認」ボタン</td>
-        </tr>
-        <tr>
-          <td><span style="background:#fff3cd;border:1px solid #e6a817;border-radius:4px;padding:2px 8px;font-size:0.8rem;color:#664d03;">検査中</span></td>
-          <td>3D測定データ取り込み済。重量未設定</td>
-          <td>TXTファイルのアップロード</td>
-        </tr>
-        <tr>
-          <td><span style="background:#d1e7dd;border:1px solid #198754;border-radius:4px;padding:2px 8px;font-size:0.8rem;color:#0f5132;">検査完了</span></td>
-          <td>重量入力済。出荷可能な状態</td>
-          <td>重量値を入力して保存ボタンを押す</td>
-        </tr>
-        <tr>
-          <td><span style="background:#e9ecef;border:1px solid #6c757d;border-radius:4px;padding:2px 8px;font-size:0.8rem;color:#343a40;">出荷済</span></td>
-          <td>注文に割り当てられ出荷完了。画面から消える</td>
-          <td>注文の「出荷」ボタン</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div class="alert alert-info py-2 px-3" style="font-size:0.83rem;margin-top:1rem;">
-      <strong>💡 注文ステータスは自動計算されます：</strong><br>
-      割り当て製品がすべて検査完了 → <strong style="color:#198754;">完了</strong> ／
-      一部検査中 → <strong style="color:#0d6efd;">処理中</strong> ／
-      在庫不足・入荷待ち → <strong style="color:#e6a817;">保留中</strong>
+    <!-- ── TAB: Orders ── -->
+    <div id="tab-orders" class="help-tab-pane" style="display:none;">
+      <h5 style="font-size:0.95rem;font-weight:700;margin-bottom:0.75rem;">注文管理とは？</h5>
+      <p style="font-size:0.85rem;color:#444;line-height:1.7;">
+        客先への出荷注文を管理するタブです。注文ごとに <strong>数量・納期</strong> を登録すると、
+        在庫から自動的に製品が割り当てられます。
+      </p>
+      <table class="table table-sm" style="font-size:0.83rem;margin-bottom:1rem;">
+        <thead style="background:#f8f9fa;"><tr><th>列</th><th>説明</th></tr></thead>
+        <tbody>
+          <tr><td><strong>注文日</strong></td><td>注文を登録した日</td></tr>
+          <tr><td><strong>数量</strong></td><td>必要な製品数</td></tr>
+          <tr><td><strong>納期</strong></td><td>出荷目標日。納期が早い注文が優先的に在庫を確保</td></tr>
+          <tr><td><strong>ステータス</strong></td><td>完了 / 処理中 / 保留中 / キャンセル（自動計算）</td></tr>
+          <tr><td><strong>在庫状況</strong></td><td>割り当て可能数を示すバッジ</td></tr>
+          <tr><td><strong>割当製品</strong></td><td>割り当てられた製品番号チップ（緑＝完了、黄＝検査中、青＝入荷済）</td></tr>
+        </tbody>
+      </table>
+      <div style="font-size:0.85rem;color:#444;line-height:1.9;">
+        <div>📌 <strong>自動ステータス計算ルール：</strong></div>
+        <div style="padding-left:1.2rem;">
+          ・割り当て製品がすべて検査完了 → <span style="background:#198754;color:white;border-radius:4px;padding:1px 7px;font-size:0.8rem;">完了</span><br>
+          ・一部が検査中または入荷済 → <span style="background:#0d6efd;color:white;border-radius:4px;padding:1px 7px;font-size:0.8rem;">処理中</span><br>
+          ・在庫なし・入荷待ち → <span style="background:#e6a817;color:white;border-radius:4px;padding:1px 7px;font-size:0.8rem;">保留中</span>
+        </div>
+        <div style="margin-top:0.5rem;">📌 <strong>出荷ボタン</strong>が表示されるのは、検査完了品が1個以上割り当てられている場合のみ。押すと対象製品が「出荷済」になり画面から消えます。</div>
+      </div>
     </div>
 
-    <button class="btn btn-secondary w-100" style="margin-top:0.5rem;"
-      onclick="document.getElementById('lifecycleModal').classList.remove('show'); document.getElementById('lifecycleModalBackdrop').classList.remove('show');">
+    <!-- ── TAB: Imports ── -->
+    <div id="tab-imports" class="help-tab-pane" style="display:none;">
+      <h5 style="font-size:0.95rem;font-weight:700;margin-bottom:0.75rem;">入荷管理とは？</h5>
+      <p style="font-size:0.85rem;color:#444;line-height:1.7;">
+        仕入先からの入荷予定を管理するタブです。<strong>入荷予定中のもののみ</strong>表示されます（入荷確認後は在庫タブに移行）。
+      </p>
+      <div style="font-size:0.85rem;color:#444;line-height:1.9;">
+        <div><strong>① 新規入荷登録</strong></div>
+        <div style="padding-left:1.2rem;margin-bottom:0.75rem;">
+          数量と予定日を入力して保存すると、製品番号がシーケンシャルに割り当てられ、
+          <strong>入荷予定</strong>ステータスのプレースホルダーレコードが自動生成されます。<br>
+          この時点で製品番号が確定するため、発注時に登録することを推奨します。
+        </div>
+        <div><strong>② 入荷確認</strong></div>
+        <div style="padding-left:1.2rem;margin-bottom:0.75rem;">
+          荷物が届いたら「✓ 入荷確認」を押します。対象プレースホルダーが<strong>入荷済</strong>に変わり、
+          このタブからは消えて在庫タブに表示されます。
+        </div>
+        <div><strong>③ 製品番号チップ</strong></div>
+        <div style="padding-left:1.2rem;">
+          「製品番号」列の青いチップは、この入荷登録に紐付いた製品番号です。
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: Inventory ── -->
+    <div id="tab-inventory" class="help-tab-pane" style="display:none;">
+      <h5 style="font-size:0.95rem;font-weight:700;margin-bottom:0.75rem;">在庫状況とは？</h5>
+      <p style="font-size:0.85rem;color:#444;line-height:1.7;">
+        現在手元にあるすべての製品を、ステータス別・ロット別に一覧表示するタブです。
+        出荷済のものは表示されません。
+      </p>
+      <table class="table table-sm" style="font-size:0.83rem;margin-bottom:1rem;">
+        <thead style="background:#f8f9fa;"><tr><th>グループ</th><th>意味</th></tr></thead>
+        <tbody>
+          <tr><td><span style="background:#d1e7dd;border:1px solid #198754;border-radius:4px;padding:1px 7px;color:#0f5132;">検査完了</span></td><td>重量登録済・出荷可能。注文への自動割り当て対象（最優先）</td></tr>
+          <tr><td><span style="background:#fff3cd;border:1px solid #e6a817;border-radius:4px;padding:1px 7px;color:#664d03;">検査中</span></td><td>TXTは取り込み済だが重量未設定</td></tr>
+          <tr><td><span style="background:#e2f0fb;border:1px solid #6ea8fe;border-radius:4px;padding:1px 7px;color:#084298;">入荷済</span></td><td>荷物は届いているが3D検査前</td></tr>
+          <tr><td><span style="background:#fafafa;border:2px dashed #adb5bd;border-radius:4px;padding:1px 7px;">入荷予定</span></td><td>発注済・未着荷。まだ手元にない</td></tr>
+        </tbody>
+      </table>
+      <div style="font-size:0.83rem;color:#6c757d;">
+        📌 注文への割り当ては「検査完了 → 検査中 → 入荷済 → 入荷予定」の優先順位で、
+        納期が早い注文から順番に行われます。同一優先度内では製品番号の小さいものが先に割り当てられます。
+      </div>
+    </div>
+
+    <hr style="margin:1.25rem 0 1rem;">
+    <button class="btn btn-secondary w-100" style="font-size:0.88rem;"
+      onclick="document.getElementById('helpModal').classList.remove('show'); document.getElementById('helpModalBackdrop').classList.remove('show');">
       閉じる
     </button>
   </div>
 </div>
+
+<script>
+  function showHelpTab(tabId, btn) {
+    document.querySelectorAll('.help-tab-pane').forEach(p => p.style.display = 'none');
+    document.getElementById(tabId).style.display = 'block';
+    document.querySelectorAll('#helpTabs .nav-link').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+</script>
 
 <!-- ══════════ ORDER MODAL ══════════ -->
 <div class="modal-backdrop-custom" id="orderModalBackdrop" onclick="closeOrderModal()"></div>
