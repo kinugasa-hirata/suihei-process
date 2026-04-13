@@ -666,10 +666,11 @@ app.get("/stock-management", requireAuth, async (req, res) => {
       [Query.notEqual('status', 'shipped'), Query.orderAsc('due_date'), Query.limit(100)]
     );
 
+    // Only fetch scheduled imports (arrived ones move to inventory, no longer shown in imports tab)
     const importsResult = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_IMPORTS,
-      [Query.notEqual('status', 'imported'), Query.orderAsc('scheduled_date'), Query.limit(100)]
+      [Query.equal('status', 'scheduled'), Query.orderAsc('scheduled_date'), Query.limit(100)]
     );
 
     const inspectionsResult = await databases.listDocuments(
@@ -1023,7 +1024,9 @@ app.put("/api/orders/:orderId", requireAuth, async (req, res) => {
     const updateData = {};
     if (quantity !== undefined) updateData.quantity = parseInt(quantity);
     if (due_date !== undefined) updateData.due_date = due_date;
+    // Status: only update if explicitly provided (auto-status is computed on the frontend)
     if (status !== undefined) updateData.status = status;
+    // If no status given and this is a new-style edit (quantity/due_date only), keep existing status
 
     const order = await databases.updateDocument(
       DATABASE_ID,
