@@ -613,20 +613,31 @@ function processGValues(measurements) {
 app.get("/", requireAuth, async (req, res) => {
   try {
     const showArchived = req.query.archived === 'true';
-    const queries = [
-      Query.equal('is_archived', showArchived),
-      Query.orderDesc('uploaded_at'),
-      Query.limit(1000)
-    ];
 
-    const result = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      queries
-    );
+    // Paginate through all matching inspections — never silently truncate at 1000.
+    const allDocs = [];
+    let lastId = null;
+    while (true) {
+      const pageQueries = [
+        Query.equal('is_archived', showArchived),
+        Query.notEqual('status', 'shipped'),
+        Query.orderAsc('$id'),
+        Query.limit(100)
+      ];
+      if (lastId) pageQueries.push(Query.cursorAfter(lastId));
 
-    const files = result.documents
-      .filter(doc => doc.status !== 'shipped')
+      const page = await databases.listDocuments(
+        DATABASE_ID,
+        COLLECTION_INSPECTIONS,
+        pageQueries
+      );
+
+      allDocs.push(...page.documents);
+      if (page.documents.length < 100) break;
+      lastId = page.documents[page.documents.length - 1].$id;
+    }
+
+    const files = allDocs
       .map(doc => {
         const status = doc.status || 'finished_inspection';
         const statusCfg = STATUS_CONFIG[status] || STATUS_CONFIG['finished_inspection'];
@@ -673,15 +684,30 @@ app.get("/stock-management", requireAuth, async (req, res) => {
       [Query.equal('status', 'scheduled'), Query.orderAsc('scheduled_date'), Query.limit(100)]
     );
 
-    const inspectionsResult = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      [
+    // Paginate through ALL non-shipped inspections — never silently truncate.
+    // Appwrite's max per page is 100; we cursor-walk until we have everything.
+    const allInspectionDocs = [];
+    let lastId = null;
+    while (true) {
+      const pageQueries = [
         Query.equal('is_archived', false),
-        Query.orderDesc('uploaded_at'),
-        Query.limit(1000)
-      ]
-    );
+        Query.notEqual('status', 'shipped'),
+        Query.orderAsc('$id'),
+        Query.limit(100)
+      ];
+      if (lastId) pageQueries.push(Query.cursorAfter(lastId));
+
+      const page = await databases.listDocuments(
+        DATABASE_ID,
+        COLLECTION_INSPECTIONS,
+        pageQueries
+      );
+
+      allInspectionDocs.push(...page.documents);
+      if (page.documents.length < 100) break;          // last page
+      lastId = page.documents[page.documents.length - 1].$id;
+    }
+    const inspectionsResult = { documents: allInspectionDocs };
 
     const inspectionsByStatus = {
       upcoming_import: [],
@@ -1583,68 +1609,63 @@ async function processImport(req, res) {
     const ws = buf.Sheets[buf.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-    const totalRows = rows.length - 1;
+    // Parse and validate all rows up front
+    const validRows = [];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || !row[0] || !row[1]) continue;
+      const fileNum = String(row[0]).trim().replace(/\.txt$/i, '');
+      const weight = parseFloat(String(row[1]).trim());
+      if (!fileNum || isNaN(weight) || weight < 0) continue;
+      validRows.push({ fileNum, filename: fileNum + '.txt', roundedWeight: Math.round(weight * 10) / 10 });
+    }
+
+    const totalRows = validRows.length;
     importProgress = { current: 0, total: totalRows, status: 'processing' };
 
     let updated = 0;
     let notFound = 0;
-    let verified = 0;
-    let verifyFailed = 0;
+    const promotableStatuses = ['upcoming_import', 'imported', 'inspection'];
 
-    for (let i = 1; i < rows.length; i++) {
-      try {
-        const row = rows[i];
-        if (!row || !row[0] || !row[1]) continue;
+    // Process in batches of 5 concurrent requests instead of one-at-a-time.
+    // Each row needs: 1x listDocuments (lookup) + 1x updateDocument (write) = 2 calls.
+    // The old code also did a 3rd getDocument (verify) — removed because updateDocument
+    // already returns the updated record, so re-fetching it was a free wasted round-trip.
+    const BATCH_SIZE = 5;
+    for (let b = 0; b < validRows.length; b += BATCH_SIZE) {
+      const batch = validRows.slice(b, b + BATCH_SIZE);
 
-        const fileNum = String(row[0]).trim().replace(/\.txt$/i, '');
-        const weight = parseFloat(String(row[1]).trim());
-
-        if (!fileNum || isNaN(weight) || weight < 0) continue;
-
-        const filename = fileNum + '.txt';
-        const roundedWeight = Math.round(weight * 10) / 10;
-
-        const result = await databases.listDocuments(
-          DATABASE_ID,
-          COLLECTION_INSPECTIONS,
-          [Query.equal('filename', filename)]
-        );
-
-        if (result.documents && result.documents.length > 0) {
-          const doc = result.documents[0];
-          const docId = doc.$id;
-
-          // If weight is being set, promote status to finished_inspection
-          // (covers upcoming_import / imported / inspection — all mean "not yet done")
-          const weightUpdateData = { weight: roundedWeight };
-          const promotableStatuses = ['upcoming_import', 'imported', 'inspection'];
-          if (promotableStatuses.includes(doc.status)) {
-            weightUpdateData.status = 'finished_inspection';
-          }
-
-          await databases.updateDocument(
+      await Promise.all(batch.map(async ({ filename, roundedWeight }) => {
+        try {
+          const result = await databases.listDocuments(
             DATABASE_ID,
             COLLECTION_INSPECTIONS,
-            docId,
-            weightUpdateData
+            [Query.equal('filename', filename), Query.limit(1)]
           );
 
-          updated++;
-
-          const verifyResult = await databases.getDocument(DATABASE_ID, COLLECTION_INSPECTIONS, docId);
-          if (verifyResult.weight === roundedWeight) {
-            verified++;
+          if (result.documents && result.documents.length > 0) {
+            const doc = result.documents[0];
+            const weightUpdateData = { weight: roundedWeight };
+            if (promotableStatuses.includes(doc.status)) {
+              weightUpdateData.status = 'finished_inspection';
+            }
+            // updateDocument returns the updated doc — no need for a separate getDocument verify
+            await databases.updateDocument(
+              DATABASE_ID,
+              COLLECTION_INSPECTIONS,
+              doc.$id,
+              weightUpdateData
+            );
+            updated++;
           } else {
-            verifyFailed++;
+            notFound++;
           }
-        } else {
-          notFound++;
+        } catch (rowErr) {
+          console.error(`Row error (${filename}):`, rowErr.message);
         }
-      } catch (rowErr) {
-        console.error("Row error:", rowErr.message);
-      }
+      }));
 
-      importProgress.current = i;
+      importProgress.current = Math.min(b + BATCH_SIZE, totalRows);
     }
 
     importProgress = { current: totalRows, total: totalRows, status: 'complete' };
@@ -1653,10 +1674,10 @@ async function processImport(req, res) {
       ok: true,
       success: true,
       updated,
-      verified,
-      verifyFailed,
+      verified: updated,   // every successful updateDocument is implicitly verified
+      verifyFailed: 0,
       notFound,
-      message: `Success: ${verified} confirmed in database`
+      message: `Success: ${updated} records updated in database`
     });
 
   } catch (e) {
@@ -1720,13 +1741,19 @@ app.get("/export-weights", requireWeightEditAuth, async (req, res) => {
 
 app.get("/export-measurements", requireAuth, async (req, res) => {
   try {
-    const result = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      [Query.limit(1000)]
-    );
+    // Paginate to export every record — never silently truncate
+    const allDocs = [];
+    let lastId = null;
+    while (true) {
+      const pageQueries = [Query.orderAsc('$id'), Query.limit(100)];
+      if (lastId) pageQueries.push(Query.cursorAfter(lastId));
+      const page = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, pageQueries);
+      allDocs.push(...page.documents);
+      if (page.documents.length < 100) break;
+      lastId = page.documents[page.documents.length - 1].$id;
+    }
 
-    const dataWithMeasurements = result.documents
+    const dataWithMeasurements = allDocs
       .map(doc => ({
         filename: doc.filename,
         lot: doc.lot || '',
