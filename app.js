@@ -1483,7 +1483,8 @@ app.post("/update-weight", requireWeightEditAuth, async (req, res) => {
 
     const currentDoc = await databases.getDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId);
     const updateData = { weight: formattedWeight };
-    if (currentDoc.status === 'inspection' || currentDoc.status === 'imported') {
+    const promotableStatuses = ['upcoming_import', 'imported', 'inspection'];
+    if (weightValue !== null && promotableStatuses.includes(currentDoc.status)) {
       updateData.status = 'finished_inspection';
     }
 
@@ -1524,7 +1525,8 @@ app.post("/update-weights", requireWeightEditAuth, async (req, res) => {
       try {
         const currentDoc2 = await databases.getDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId);
         const bulkUpdateData = { weight: formattedWeight };
-        if (currentDoc2.status === 'inspection' || currentDoc2.status === 'imported') {
+        const promotableStatuses = ['upcoming_import', 'imported', 'inspection'];
+        if (formattedWeight !== null && promotableStatuses.includes(currentDoc2.status)) {
           bulkUpdateData.status = 'finished_inspection';
         }
         await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, fileId, bulkUpdateData);
@@ -1609,13 +1611,22 @@ async function processImport(req, res) {
         );
 
         if (result.documents && result.documents.length > 0) {
-          const docId = result.documents[0].$id;
+          const doc = result.documents[0];
+          const docId = doc.$id;
+
+          // If weight is being set, promote status to finished_inspection
+          // (covers upcoming_import / imported / inspection — all mean "not yet done")
+          const weightUpdateData = { weight: roundedWeight };
+          const promotableStatuses = ['upcoming_import', 'imported', 'inspection'];
+          if (promotableStatuses.includes(doc.status)) {
+            weightUpdateData.status = 'finished_inspection';
+          }
 
           await databases.updateDocument(
             DATABASE_ID,
             COLLECTION_INSPECTIONS,
             docId,
-            { weight: roundedWeight }
+            weightUpdateData
           );
 
           updated++;
@@ -1893,6 +1904,65 @@ app.get("/summary", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("Error generating summary:", error);
     res.status(500).send("Error generating summary");
+  }
+});
+
+// ======================
+// ONE-TIME STATUS REPAIR
+// ======================
+// Call GET /api/repair-status once to fix any records that have a weight
+// but are still stuck in upcoming_import / imported / inspection status.
+// Safe to call multiple times (idempotent). Remove after use if desired.
+
+app.get("/api/repair-status", requireWeightEditAuth, async (req, res) => {
+  try {
+    const promotableStatuses = ['upcoming_import', 'imported', 'inspection'];
+    let fixed = 0;
+    let skipped = 0;
+    let pages = 0;
+    const PAGE_SIZE = 100;
+    let offset = 0;
+    let keepGoing = true;
+
+    while (keepGoing) {
+      const result = await databases.listDocuments(
+        DATABASE_ID,
+        COLLECTION_INSPECTIONS,
+        [Query.limit(PAGE_SIZE), Query.offset(offset)]
+      );
+      pages++;
+
+      for (const doc of result.documents) {
+        const hasWeight = doc.weight !== null && doc.weight !== undefined;
+        const needsPromotion = promotableStatuses.includes(doc.status);
+        if (hasWeight && needsPromotion) {
+          await databases.updateDocument(
+            DATABASE_ID, COLLECTION_INSPECTIONS, doc.$id,
+            { status: 'finished_inspection' }
+          );
+          fixed++;
+        } else {
+          skipped++;
+        }
+      }
+
+      if (result.documents.length < PAGE_SIZE) {
+        keepGoing = false;
+      } else {
+        offset += PAGE_SIZE;
+      }
+    }
+
+    res.json({
+      success: true,
+      fixed,
+      skipped,
+      pages,
+      message: `Repaired ${fixed} records across ${pages} page(s). ${skipped} records unchanged.`
+    });
+  } catch (error) {
+    console.error("Repair error:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
