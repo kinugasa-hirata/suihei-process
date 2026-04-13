@@ -16,12 +16,6 @@
     }
     .header-title { font-size: 2rem; font-weight: 700; color: #2c3e50; margin-bottom: 0.5rem; }
     .header-subtitle { color: #7f8c8d; font-size: 1.1rem; }
-    .settings-btn {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white; border: none; padding: 0.75rem 1.5rem;
-      border-radius: 8px; cursor: pointer; transition: transform 0.2s;
-    }
-    .settings-btn:hover { transform: scale(1.05); color: white; }
     .nav-tabs-custom { border-bottom: 3px solid #e9ecef; margin-bottom: 2rem; }
     .nav-tabs-custom .nav-link {
       color: #6c757d; font-weight: 600; border: none; padding: 1rem 2rem; transition: all 0.3s;
@@ -55,7 +49,7 @@
       display: none; position: fixed; top: 50%; left: 50%;
       transform: translate(-50%, -50%); background: white; border-radius: 12px;
       box-shadow: 0 10px 40px rgba(0,0,0,0.3); z-index: 9999;
-      max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;
+      max-width: 640px; width: 90%; max-height: 90vh; overflow-y: auto;
     }
     .modal-custom.show { display: block; }
     .modal-header-custom {
@@ -77,6 +71,24 @@
       border-radius: 4px; padding: 1px 8px; font-size: 0.8rem;
       margin: 2px; color: #084298; display: inline-block;
     }
+
+    /* ── Lifecycle flow diagram ── */
+    .lifecycle-flow {
+      display: flex; align-items: center; gap: 0; flex-wrap: nowrap;
+      overflow-x: auto; padding: 1rem 0;
+    }
+    .lf-step {
+      display: flex; flex-direction: column; align-items: center;
+      min-width: 130px; padding: 0.75rem 0.5rem;
+      border-radius: 8px; font-size: 0.82rem; text-align: center;
+    }
+    .lf-arrow {
+      font-size: 1.4rem; color: #adb5bd; flex-shrink: 0; margin: 0 4px;
+      align-self: center;
+    }
+    .lf-trigger {
+      font-size: 0.72rem; color: #6c757d; margin-top: 4px; font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -86,15 +98,15 @@
   <div class="header-section">
     <div>
       <div class="header-title">在庫管理システム</div>
-      <div class="header-subtitle">Stock Management System - Orders, Imports &amp; Inventory</div>
+      <div class="header-subtitle">Stock Management System — Orders, Imports &amp; Inventory</div>
     </div>
     <div style="display:flex;gap:0.75rem;align-items:center;">
       <a href="/" class="btn btn-outline-secondary" style="display:flex;align-items:center;gap:6px;">
         <span class="material-icons" style="font-size:18px;">home</span> ホーム
       </a>
-      <button class="settings-btn" onclick="openSettingsModal()">
-        <span class="material-icons" style="vertical-align:middle;margin-right:0.5rem;font-size:20px;">settings</span>
-        設定
+      <button class="btn btn-outline-primary" style="display:flex;align-items:center;gap:6px;"
+              onclick="document.getElementById('lifecycleModal').classList.add('show'); document.getElementById('lifecycleModalBackdrop').classList.add('show');">
+        <span class="material-icons" style="font-size:18px;">info</span> ステータス説明
       </button>
     </div>
   </div>
@@ -103,21 +115,21 @@
   <ul class="nav nav-tabs-custom" role="tablist">
     <li class="nav-item" role="presentation">
       <button class="nav-link active" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders"
-        type="button" role="tab" aria-selected="true">
+        type="button" role="tab">
         <span class="material-icons" style="vertical-align:middle;margin-right:0.5rem;">shopping_cart</span>
         注文管理 (Orders)
       </button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="imports-tab" data-bs-toggle="tab" data-bs-target="#imports"
-        type="button" role="tab" aria-selected="false">
+        type="button" role="tab">
         <span class="material-icons" style="vertical-align:middle;margin-right:0.5rem;">local_shipping</span>
         入荷管理 (Imports)
       </button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory"
-        type="button" role="tab" aria-selected="false">
+        type="button" role="tab">
         <span class="material-icons" style="vertical-align:middle;margin-right:0.5rem;">inventory_2</span>
         在庫状況 (Inventory)
       </button>
@@ -163,12 +175,15 @@
     </div>
 
     <!-- ══════════════════════════════════════════
-         IMPORTS TAB  (scheduled only, arrived hidden)
+         IMPORTS TAB  (scheduled only)
          ══════════════════════════════════════════ -->
     <div class="tab-pane fade" id="imports" role="tabpanel">
       <div class="section-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
-          <h2 class="section-title" style="margin-bottom:0;">入荷管理 <small style="font-size:0.8rem;color:#6c757d;font-weight:400;">（予定のみ表示）</small></h2>
+          <h2 class="section-title" style="margin-bottom:0;">
+            入荷管理
+            <small style="font-size:0.8rem;color:#6c757d;font-weight:400;">（入荷予定のみ表示）</small>
+          </h2>
           <button class="btn btn-primary" onclick="openImportModal()"
             style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border:none;">
             <span class="material-icons" style="vertical-align:middle;">add</span> 新規入荷
@@ -211,27 +226,104 @@
   </div><!-- /tab-content -->
 </div><!-- /container -->
 
-<!-- ══════════ SETTINGS MODAL ══════════ -->
-<div class="modal-backdrop-custom" id="settingsModalBackdrop" onclick="closeSettingsModal()"></div>
-<div class="modal-custom" id="settingsModal">
-  <div class="modal-header-custom">
+<!-- ══════════ LIFECYCLE INFO MODAL ══════════ -->
+<div class="modal-backdrop-custom" id="lifecycleModalBackdrop"
+     onclick="document.getElementById('lifecycleModal').classList.remove('show'); this.classList.remove('show');"></div>
+<div class="modal-custom" id="lifecycleModal" style="max-width:700px;">
+  <div class="modal-header-custom" style="display:flex;justify-content:space-between;align-items:center;">
     <h3 style="margin:0;">
-      <span class="material-icons" style="vertical-align:middle;margin-right:0.5rem;">settings</span>
-      設定
+      <span class="material-icons" style="vertical-align:middle;margin-right:0.5rem;">info</span>
+      ステータスの自動変化フロー
     </h3>
+    <button onclick="document.getElementById('lifecycleModal').classList.remove('show'); document.getElementById('lifecycleModalBackdrop').classList.remove('show');"
+            style="background:none;border:none;color:white;font-size:1.5rem;cursor:pointer;line-height:1;">×</button>
   </div>
   <div class="modal-body-custom">
-    <form id="settingsForm">
-      <div class="mb-3">
-        <label for="minFileNum" class="form-label-custom">注文表示の最小製品番号</label>
-        <input type="number" class="form-control" id="minFileNum" name="minFileNum" min="1" placeholder="例: 517">
-        <small class="text-muted">この番号以上の製品番号のみ注文に割り当てます（出荷済の古い製品を除外）。</small>
+
+    <!-- Flow diagram -->
+    <div class="lifecycle-flow">
+      <div class="lf-step" style="background:#f8f9fa;border:2px dashed #adb5bd;color:#495057;">
+        <span style="font-size:1.5rem;">📦</span>
+        <strong style="margin-top:4px;">入荷予定</strong>
+        <span class="lf-trigger">新規入荷登録時<br>自動作成</span>
       </div>
-      <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-success flex-grow-1">保存</button>
-        <button type="button" class="btn btn-secondary" onclick="closeSettingsModal()">キャンセル</button>
+      <div class="lf-arrow">→</div>
+      <div class="lf-step" style="background:#e2f0fb;border:2px solid #6ea8fe;color:#084298;">
+        <span style="font-size:1.5rem;">🚚</span>
+        <strong style="margin-top:4px;">入荷済</strong>
+        <span class="lf-trigger">「入荷確認」ボタン<br>を押した時</span>
       </div>
-    </form>
+      <div class="lf-arrow">→</div>
+      <div class="lf-step" style="background:#fffdf0;border:2px dashed #e6a817;color:#664d03;">
+        <span style="font-size:1.5rem;">🔬</span>
+        <strong style="margin-top:4px;">検査中</strong>
+        <span class="lf-trigger">TXTファイル<br>アップロード時</span>
+      </div>
+      <div class="lf-arrow">→</div>
+      <div class="lf-step" style="background:#f6fff9;border:2px solid #198754;color:#0f5132;">
+        <span style="font-size:1.5rem;">✅</span>
+        <strong style="margin-top:4px;">検査完了</strong>
+        <span class="lf-trigger">重量入力・保存時<br>（自動昇格）</span>
+      </div>
+      <div class="lf-arrow">→</div>
+      <div class="lf-step" style="background:#f0f0f0;border:2px solid #6c757d;color:#343a40;">
+        <span style="font-size:1.5rem;">🚢</span>
+        <strong style="margin-top:4px;">出荷済</strong>
+        <span class="lf-trigger">「出荷」ボタン<br>を押した時</span>
+      </div>
+    </div>
+
+    <hr style="margin:1.5rem 0;">
+
+    <!-- Status table -->
+    <table class="table table-sm" style="font-size:0.88rem;">
+      <thead style="background:#f8f9fa;">
+        <tr>
+          <th>ステータス</th>
+          <th>意味</th>
+          <th>自動変化トリガー</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span style="background:#f8f9fa;border:2px dashed #adb5bd;border-radius:4px;padding:2px 8px;font-size:0.8rem;">入荷予定</span></td>
+          <td>発注済・未着荷。製品番号はこの時点で確定する</td>
+          <td>新規入荷登録時に自動生成される</td>
+        </tr>
+        <tr>
+          <td><span style="background:#e2f0fb;border:1px solid #6ea8fe;border-radius:4px;padding:2px 8px;font-size:0.8rem;color:#084298;">入荷済</span></td>
+          <td>物理的に届いた。まだ検査前</td>
+          <td>入荷管理の「入荷確認」ボタン</td>
+        </tr>
+        <tr>
+          <td><span style="background:#fff3cd;border:1px solid #e6a817;border-radius:4px;padding:2px 8px;font-size:0.8rem;color:#664d03;">検査中</span></td>
+          <td>3D測定データ取り込み済。重量未設定</td>
+          <td>TXTファイルのアップロード</td>
+        </tr>
+        <tr>
+          <td><span style="background:#d1e7dd;border:1px solid #198754;border-radius:4px;padding:2px 8px;font-size:0.8rem;color:#0f5132;">検査完了</span></td>
+          <td>重量入力済。出荷可能な状態</td>
+          <td>重量値を入力して保存ボタンを押す</td>
+        </tr>
+        <tr>
+          <td><span style="background:#e9ecef;border:1px solid #6c757d;border-radius:4px;padding:2px 8px;font-size:0.8rem;color:#343a40;">出荷済</span></td>
+          <td>注文に割り当てられ出荷完了。画面から消える</td>
+          <td>注文の「出荷」ボタン</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="alert alert-info py-2 px-3" style="font-size:0.83rem;margin-top:1rem;">
+      <strong>💡 注文ステータスは自動計算されます：</strong><br>
+      割り当て製品がすべて検査完了 → <strong style="color:#198754;">完了</strong> ／
+      一部検査中 → <strong style="color:#0d6efd;">処理中</strong> ／
+      在庫不足・入荷待ち → <strong style="color:#e6a817;">保留中</strong>
+    </div>
+
+    <button class="btn btn-secondary w-100" style="margin-top:0.5rem;"
+      onclick="document.getElementById('lifecycleModal').classList.remove('show'); document.getElementById('lifecycleModalBackdrop').classList.remove('show');">
+      閉じる
+    </button>
   </div>
 </div>
 
@@ -253,10 +345,10 @@
         <input type="date" class="form-control" id="dueDate" name="due_date" required>
       </div>
       <div class="alert alert-info py-2 px-3" style="font-size:0.85rem;">
-        <strong>ステータスは自動計算されます:</strong><br>
-        ・出荷可能数 = 注文数 → <span style="color:#198754;font-weight:600;">完了</span><br>
-        ・一部準備中 → <span style="color:#0d6efd;font-weight:600;">処理中</span><br>
-        ・在庫待ち → <span style="color:#ffc107;font-weight:600;">保留中</span>
+        <strong>ステータスは自動計算：</strong>
+        在庫充足 → <span style="color:#198754;font-weight:600;">完了</span> ／
+        一部準備中 → <span style="color:#0d6efd;font-weight:600;">処理中</span> ／
+        在庫待ち → <span style="color:#e6a817;font-weight:600;">保留中</span>
       </div>
       <div class="d-flex gap-2">
         <button type="submit" class="btn btn-success flex-grow-1">保存</button>
@@ -306,35 +398,6 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 // ══════════════════════════════════════════════════════════════
-// SETTINGS (localStorage only for minFileNum)
-// ══════════════════════════════════════════════════════════════
-const STORAGE_KEY = 'stockMgmtSettings';
-
-function loadSettings() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { minFileNum: 517 }; }
-  catch(e) { return { minFileNum: 517 }; }
-}
-function saveSettings(s) { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
-
-function openSettingsModal() {
-  const s = loadSettings();
-  document.getElementById('minFileNum').value = s.minFileNum || 517;
-  document.getElementById('settingsModalBackdrop').classList.add('show');
-  document.getElementById('settingsModal').classList.add('show');
-}
-function closeSettingsModal() {
-  document.getElementById('settingsModalBackdrop').classList.remove('show');
-  document.getElementById('settingsModal').classList.remove('show');
-}
-document.getElementById('settingsForm').addEventListener('submit', e => {
-  e.preventDefault();
-  saveSettings({ minFileNum: parseInt(document.getElementById('minFileNum').value) || 517 });
-  alert('設定を保存しました');
-  closeSettingsModal();
-  location.reload();
-});
-
-// ══════════════════════════════════════════════════════════════
 // ORDER MODAL
 // ══════════════════════════════════════════════════════════════
 let _editingOrderId = null;
@@ -348,7 +411,6 @@ function openOrderModal(orderId = null) {
       .then(data => {
         document.getElementById('orderId').value = data.$id;
         document.getElementById('quantity').value = data.quantity;
-        // Format date: Appwrite stores as ISO, input[type=date] needs YYYY-MM-DD
         document.getElementById('dueDate').value = data.due_date
           ? data.due_date.substring(0, 10) : '';
       });
@@ -369,7 +431,7 @@ function editOrder(orderId) { openOrderModal(orderId); }
 
 async function cancelCurrentOrder() {
   if (!_editingOrderId) return;
-  if (!confirm('この注文をキャンセルしますか？\n在庫の再割り当てが行われます。')) return;
+  if (!confirm('この注文をキャンセルしますか？')) return;
   try {
     const r = await fetch(`/api/orders/${_editingOrderId}`, {
       method: 'PUT',
@@ -396,8 +458,8 @@ document.getElementById('orderForm').addEventListener('submit', async e => {
   e.preventDefault();
   const fd = new FormData(e.target);
   const orderId = fd.get('orderId');
+  // Status intentionally NOT sent — computed automatically on the frontend
   const data = { quantity: fd.get('quantity'), due_date: fd.get('due_date') };
-  // Status intentionally NOT sent — backend/frontend auto-computes it
   try {
     const url    = orderId ? `/api/orders/${orderId}` : '/api/orders';
     const method = orderId ? 'PUT' : 'POST';
@@ -412,9 +474,9 @@ document.getElementById('orderForm').addEventListener('submit', async e => {
 
 // Ship order
 function shipOrderFromBtn(btn) {
-  const orderId = btn.dataset.orderId;
+  const orderId  = btn.dataset.orderId;
   const quantity = btn.dataset.quantity;
-  const itemIds = btn.dataset.itemIds ? btn.dataset.itemIds.split(',').filter(Boolean) : [];
+  const itemIds  = btn.dataset.itemIds ? btn.dataset.itemIds.split(',').filter(Boolean) : [];
   shipOrder(orderId, quantity, itemIds);
 }
 async function shipOrder(orderId, quantity, itemIds) {
@@ -491,10 +553,10 @@ document.getElementById('importForm').addEventListener('submit', async e => {
   const fd = new FormData(e.target);
   const importId = fd.get('importId');
   const data = {
-    quantity: fd.get('quantity'),
+    quantity:       fd.get('quantity'),
     scheduled_date: fd.get('scheduled_date'),
-    actual_date: fd.get('actual_date') || null,
-    status: fd.get('status')
+    actual_date:    fd.get('actual_date') || null,
+    status:         fd.get('status')
   };
   try {
     const url    = importId ? `/api/imports/${importId}` : '/api/imports';
@@ -526,39 +588,42 @@ function groupByLot(docs) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// MAIN RENDER — runs on DOMContentLoaded
+// MAIN RENDER
 // ══════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function () {
-  const settings    = loadSettings();
-  const MIN_FILE_NUM = settings.minFileNum || 517;
 
   // Server-injected data
-  const orders  = <%- JSON.stringify(orders) %>;
-  const imports = <%- JSON.stringify(imports) %>;
+  const orders   = <%- JSON.stringify(orders) %>;
+  const imports  = <%- JSON.stringify(imports) %>;
   const byStatus = <%- JSON.stringify(inspectionsByStatus) %>;
 
-  // ─────────────────────────────────────────────────
-  // ORDERS: allocate inventory client-side
-  // Priority: finished_inspection > inspection > imported > upcoming_import
-  // ─────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────
+  // BUILD FLAT INVENTORY
+  // Priority: finished_inspection(0) > inspection(1) > imported(2) > upcoming_import(3)
+  // NO minFileNum filter — shipped records are already excluded by the server query.
+  // Products that have been shipped are status='shipped' and never appear in byStatus.
+  // ─────────────────────────────────────────────────────────────
   const INV_PRIORITY = ['finished_inspection', 'inspection', 'imported', 'upcoming_import'];
   const flatInventory = [];
   INV_PRIORITY.forEach((st, pri) => {
     (byStatus[st] || []).forEach(d => {
       const n = parseInt((d.filename || '').replace('.txt', '')) || 0;
-      if (n >= MIN_FILE_NUM) flatInventory.push({ ...d, _num: n, _pri: pri });
+      flatInventory.push({ ...d, _num: n, _pri: pri });
     });
   });
+  // Sort: highest-priority first, then lowest number first (FIFO within same priority)
   flatInventory.sort((a, b) => a._pri !== b._pri ? a._pri - b._pri : a._num - b._num);
 
-  // Filter: skip cancelled orders from allocation competition
+  // ─────────────────────────────────────────────────────────────
+  // ALLOCATE INVENTORY TO ORDERS  (earliest due date wins)
+  // ─────────────────────────────────────────────────────────────
   const activeOrders = orders.filter(o => o.status !== 'cancelled' && o.status !== 'shipped');
   const ordersByDue  = [...activeOrders].sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
 
   const takenIds = new Set();
   const reAlloc  = {}; // orderId → items[]
   ordersByDue.forEach(o => {
-    const qty = parseInt(o.quantity) || 0;
+    const qty    = parseInt(o.quantity) || 0;
     const picked = [];
     for (const item of flatInventory) {
       if (!takenIds.has(item.$id) && picked.length < qty) {
@@ -569,30 +634,33 @@ document.addEventListener('DOMContentLoaded', function () {
     reAlloc[o.$id] = picked;
   });
 
-  // ── Compute auto-status ──────────────────────────────────────
-  // 完了 = all needed are finished_inspection
-  // 処理中 = have some stock but not all finished
-  // 保留中 = waiting for stock (upcoming_import or insufficient)
-  // cancelled stays cancelled
+  // ─────────────────────────────────────────────────────────────
+  // COMPUTE AUTO-STATUS FOR EACH ORDER
+  //   完了   = all needed slots are finished_inspection
+  //   処理中  = some items allocated but not all finished yet
+  //   保留中  = not enough stock at all
+  //   cancelled / shipped handled separately
+  // ─────────────────────────────────────────────────────────────
   function computeAutoStatus(order, items) {
     const needed     = parseInt(order.quantity) || 0;
-    const filled     = items.length;
     const readyCount = items.filter(i => i.status === 'finished_inspection').length;
 
-    if (readyCount >= needed)                            return { key: 'completed',   label: '完了',   bg: '#198754' };
-    if (readyCount > 0 || items.some(i =>
-      i.status === 'inspection' || i.status === 'imported')) return { key: 'processing', label: '処理中', bg: '#0d6efd' };
-    return                                                    { key: 'pending',    label: '保留中', bg: '#ffc107' };
+    if (readyCount >= needed)
+      return { key: 'completed',  label: '完了',   bg: '#198754' };
+    if (items.some(i => i.status === 'inspection' || i.status === 'imported') || readyCount > 0)
+      return { key: 'processing', label: '処理中', bg: '#0d6efd' };
+    return { key: 'pending',    label: '保留中', bg: '#e6a817' };
   }
 
-  // ── Render Orders table ──────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────
+  // RENDER ORDERS TABLE
+  // ─────────────────────────────────────────────────────────────
   const ordersList  = document.getElementById('ordersList');
   const ordersTable = document.getElementById('ordersTable');
   const ordersEmpty = document.getElementById('ordersEmpty');
 
-  // Show all non-shipped orders (including cancelled — greyed out)
+  // Display: all non-shipped orders. Cancelled at bottom, active sorted by due date.
   const allDisplayOrders = orders.filter(o => o.status !== 'shipped');
-  // Sort: cancelled to bottom, active by due date
   allDisplayOrders.sort((a, b) => {
     if (a.status === 'cancelled' && b.status !== 'cancelled') return 1;
     if (b.status === 'cancelled' && a.status !== 'cancelled') return -1;
@@ -611,7 +679,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const readyCount  = readyItems.length;
       const itemIds     = readyItems.map(i => i.$id).join(',');
 
-      const autoStatus  = isCancelled
+      const autoStatus = isCancelled
         ? { key: 'cancelled', label: 'キャンセル', bg: '#dc3545' }
         : computeAutoStatus(o, items);
 
@@ -620,7 +688,7 @@ document.addEventListener('DOMContentLoaded', function () {
       if (isCancelled) {
         stockBg = '#6c757d'; stockLabel = '—';
       } else if (items.length === 0) {
-        stockBg = '#6c757d'; stockLabel = '在庫なし';
+        stockBg = '#dc3545'; stockLabel = '在庫なし';
       } else if (readyCount >= needed) {
         stockBg = '#198754'; stockLabel = `出荷可能 (${needed})`;
       } else if (readyCount > 0) {
@@ -628,18 +696,22 @@ document.addEventListener('DOMContentLoaded', function () {
       } else if (items.some(i => i.status === 'inspection' || i.status === 'imported')) {
         stockBg = '#0d6efd'; stockLabel = `検査中 (0/${needed})`;
       } else {
-        stockBg = '#dc3545'; stockLabel = `入荷待ち (0/${needed})`;
+        stockBg = '#e6a817'; stockLabel = `入荷待ち (0/${needed})`;
       }
 
       const dueDate   = o.due_date   ? new Date(o.due_date).toLocaleDateString('ja-JP')   : '—';
       const createdAt = o.$createdAt ? new Date(o.$createdAt).toLocaleDateString('ja-JP') : '—';
 
-      const chips = items
-        .filter(i => i._num >= MIN_FILE_NUM)
-        .map(i => `<span class="chip">${i._num}</span>`)
-        .join('');
+      // Show all allocated items (not just ready ones) as chips
+      const chips = items.map(i => {
+        const chipColor = i.status === 'finished_inspection' ? '#198754'
+                        : i.status === 'inspection'          ? '#e6a817'
+                        : i.status === 'imported'            ? '#0d6efd'
+                        : '#adb5bd';
+        return `<span class="chip" style="border:1px solid ${chipColor};color:${chipColor};">${i._num}</span>`;
+      }).join('');
 
-      const canShip = !isCancelled && readyCount > 0;
+      const canShip  = !isCancelled && readyCount > 0;
       const rowStyle = isCancelled ? 'opacity:0.55;' : '';
 
       ordersList.insertAdjacentHTML('beforeend', `
@@ -678,14 +750,14 @@ document.addEventListener('DOMContentLoaded', function () {
     ordersEmpty.style.display = '';
   }
 
-  // ─────────────────────────────────────────────────
-  // IMPORTS: show only "scheduled" (not arrived/imported)
-  // ─────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────
+  // RENDER IMPORTS TABLE (scheduled only)
+  // ─────────────────────────────────────────────────────────────
   const importsList  = document.getElementById('importsList');
   const importsTable = document.getElementById('importsTable');
   const importsEmpty = document.getElementById('importsEmpty');
 
-  // Build importId → linked file numbers (from inspection records)
+  // Build importId → linked file numbers from inspection records
   const importLinkedNums = {};
   Object.values(byStatus).forEach(docs => {
     docs.forEach(d => {
@@ -697,7 +769,7 @@ document.addEventListener('DOMContentLoaded', function () {
   });
   Object.values(importLinkedNums).forEach(arr => arr.sort((a, b) => a - b));
 
-  // Also fall back to import's linked_files field
+  // Fallback to import's own linked_files field
   imports.forEach(imp => {
     if (!importLinkedNums[imp.$id] && imp.linked_files && imp.linked_files.length > 0) {
       importLinkedNums[imp.$id] = imp.linked_files
@@ -707,10 +779,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
-  // Only show scheduled (not yet arrived)
-  const scheduledImports = imports
-    .filter(imp => imp.status === 'scheduled')
-    .sort((a, b) => new Date(a.scheduled_date || a.$createdAt) - new Date(b.scheduled_date || b.$createdAt));
+  // imports array already contains only scheduled (filtered server-side)
+  const scheduledImports = [...imports].sort((a, b) =>
+    new Date(a.scheduled_date || a.$createdAt) - new Date(b.scheduled_date || b.$createdAt)
+  );
 
   if (scheduledImports.length > 0) {
     importsTable.style.display = '';
@@ -747,14 +819,10 @@ document.addEventListener('DOMContentLoaded', function () {
     importsEmpty.style.display = '';
   }
 
-  // ─────────────────────────────────────────────────
-  // INVENTORY: group by status, exclude shipped
-  // Categories:
-  //   finished_inspection → 出荷準備完了 (green)
-  //   inspection          → 検査中       (yellow)
-  //   imported            → 入荷済       (blue)
-  //   upcoming_import     → 入荷予定     (grey dotted)
-  // ─────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────
+  // RENDER INVENTORY TAB
+  // Groups: finished_inspection → inspection → imported → upcoming_import
+  // ─────────────────────────────────────────────────────────────
   const invDiv = document.getElementById('inventoryContent');
   invDiv.innerHTML = '';
 
@@ -762,7 +830,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const statusStyles = {
     finished_inspection: {
       bg: '#d1e7dd', chipBg: '#d1e7dd', chipBorder: '#198754',
-      borderStyle: 'solid', text: '#0f5132', label: '出荷準備完了'
+      borderStyle: 'solid', text: '#0f5132', label: '検査完了 (出荷準備完了)'
     },
     inspection: {
       bg: '#fff9e6', chipBg: '#fff3cd', chipBorder: '#e6a817',
@@ -770,7 +838,7 @@ document.addEventListener('DOMContentLoaded', function () {
     },
     imported: {
       bg: '#f0f6ff', chipBg: 'white', chipBorder: '#6ea8fe',
-      borderStyle: 'solid', text: '#084298', label: '入荷済'
+      borderStyle: 'solid', text: '#084298', label: '入荷済 (検査待ち)'
     },
     upcoming_import: {
       bg: '#fafafa', chipBg: 'white', chipBorder: '#adb5bd',
