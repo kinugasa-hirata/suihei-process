@@ -9,11 +9,7 @@
     body { background: #f5f5f5; font-family: sans-serif; }
     .container { max-width: 1200px; margin-top: 2rem; }
     .header { background: white; padding: 2rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .workflow { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-    .workflow-step { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #0d6efd; text-align: center; }
-    .step-number { display: inline-block; width: 32px; height: 32px; line-height: 32px; background: #0d6efd; color: white; border-radius: 50%; font-weight: bold; margin-bottom: 0.5rem; }
-    .step-title { font-weight: 600; color: #212529; margin: 0.5rem 0; font-size: 0.95rem; }
-    .step-desc { font-size: 0.85rem; color: #6c757d; }
+
     .form-section { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
     .form-section h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: #212529; }
     .upload-zone { border: 2px dashed #b0c4de; border-radius: 8px; background: white; cursor: pointer; padding: 2rem; transition: border-color 0.2s, background 0.2s; text-align: center; }
@@ -80,197 +76,7 @@
 <body>
 <div class="container">
 
-<div class="breadcrumb-custom"><a href="/">← ホーム</a> / 追加工程</div>
-
-<div id="tuikaHelpPanel" style="
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  margin-bottom: 1.25rem;
-  overflow: hidden;
-  border: 1px solid #e9ecef;
-">
-  <!-- Collapsible header -->
-  <div
-    onclick="toggleTuikaHelp()"
-    id="tuikaHelpToggle"
-    style="
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 0.7rem 1.25rem; cursor: pointer; user-select: none;
-      background: #f8f9fa;
-      transition: background 0.15s;
-    "
-    onmouseenter="this.style.background='#eef2f7'"
-    onmouseleave="this.style.background='#f8f9fa'"
-  >
-    <div style="display:flex; align-items:center; gap:0.6rem;">
-      <span style="font-size:0.95rem;">📖</span>
-      <span style="font-weight:600; font-size:0.88rem; color:#2c3e50;">
-        使い方ガイド — 追加工程（LOT検査シート生成）
-      </span>
-      <span style="font-size:0.75rem; color:#6c757d; font-style:italic;">クリックで開閉</span>
-    </div>
-    <span id="tuikaHelpChevron" style="font-size:0.85rem; color:#6c757d; transition:transform 0.2s;">▼</span>
-  </div>
-
-  <!-- Collapsible body -->
-  <div id="tuikaHelpBody" style="display:none; padding:1.4rem 1.5rem; border-top:1px solid #e9ecef;">
-
-    <!-- ── What is this page ── -->
-    <div style="margin-bottom:1.5rem;">
-      <h4 style="font-size:0.95rem; font-weight:700; color:#2c3e50; margin-bottom:0.6rem;">
-        ➕ このページの目的
-      </h4>
-      <p style="font-size:0.85rem; color:#444; line-height:1.7; margin:0;">
-        3D測定機の <code>.txt</code> ファイルから寸法値（DISTANCE・INT-CIRCLE）を自動抽出し、
-        客先提出用の <strong>LOT検査シート（Excel）</strong> を生成・クラウド保存するページです。<br>
-        ピンゲージ測定値・重量・判定（OK）は<strong>保存後</strong>に入力し、最終的なExcelをダウンロードします。
-      </p>
-    </div>
-
-    <!-- ── Step-by-step flow ── -->
-    <div style="margin-bottom:1.5rem;">
-      <h4 style="font-size:0.95rem; font-weight:700; color:#2c3e50; margin-bottom:0.75rem;">
-        🔢 操作手順
-      </h4>
-
-      <div style="display:flex; flex-direction:column; gap:0.6rem;">
-
-        <div style="display:flex; gap:0.75rem; align-items:flex-start;">
-          <div style="min-width:26px; height:26px; background:#0d6efd; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.82rem; flex-shrink:0;">1</div>
-          <div style="font-size:0.85rem; color:#333; line-height:1.65;">
-            <strong>TXTファイルをドロップ</strong>（または「選択」ボタン）<br>
-            <span style="color:#6c757d;">3D測定機出力の <code>.txt</code> を1本ずつ読み込みます。DISTANCE値（4点）と INT-CIRCLE値が自動抽出されます。</span>
-          </div>
-        </div>
-
-        <div style="display:flex; gap:0.75rem; align-items:flex-start;">
-          <div style="min-width:26px; height:26px; background:#0d6efd; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.82rem; flex-shrink:0;">2</div>
-          <div style="font-size:0.85rem; color:#333; line-height:1.65;">
-            <strong>LOT番号・検査日を入力</strong><br>
-            <span style="color:#6c757d;">
-              LOT番号は <code>LOT234(234-245)</code> のような形式で入力。<br>
-              検査日は <code>YYYY/MM/DD</code> 形式（例: <code>2025/03/23</code>）。
-            </span>
-          </div>
-        </div>
-
-        <div style="display:flex; gap:0.75rem; align-items:flex-start;">
-          <div style="min-width:26px; height:26px; background:#0d6efd; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.82rem; flex-shrink:0;">3</div>
-          <div style="font-size:0.85rem; color:#333; line-height:1.65;">
-            <strong>「📊 Excel を生成 &amp; 保存」ボタン</strong><br>
-            <span style="color:#6c757d;">
-              テンプレート <code>LOT_template.xlsx</code> に測定値を書き込み、クラウド（Appwrite）へ自動保存します。<br>
-              ピンゲージ・重量・判定はこの時点では空欄のまま保存されます。
-            </span>
-          </div>
-        </div>
-
-        <div style="display:flex; gap:0.75rem; align-items:flex-start;">
-          <div style="min-width:26px; height:26px; background:#fd7e14; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.82rem; flex-shrink:0;">4</div>
-          <div style="font-size:0.85rem; color:#333; line-height:1.65;">
-            <strong>一覧の「✏️ ピンゲージ」ボタンから値を入力 → 「💾 保存」</strong><br>
-            <span style="color:#6c757d;">
-              保存済みLOT一覧が自動で開きます。対象行の「✏️ ピンゲージ」を押すと入力欄が展開されます。<br>
-              値を入力してEnterまたは「💾 保存」を押してください。<br>
-              ⚠ ピンゲージ値が未保存の場合、ダウンロードはブロックされます。
-            </span>
-          </div>
-        </div>
-
-        <div style="display:flex; gap:0.75rem; align-items:flex-start;">
-          <div style="min-width:26px; height:26px; background:#198754; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.82rem; flex-shrink:0;">5</div>
-          <div style="font-size:0.85rem; color:#333; line-height:1.65;">
-            <strong>「⬇️ DL」ボタンでExcelをダウンロード</strong><br>
-            <span style="color:#6c757d;">
-              ダウンロード時にExcelへ自動記入される項目：<br>
-              <span style="display:inline-block; margin-top:3px;">
-                <span style="background:#e9ecef; border-radius:3px; padding:1px 6px; font-size:0.8rem; font-family:monospace;">B4</span> ピンゲージ値 &nbsp;
-                <span style="background:#e9ecef; border-radius:3px; padding:1px 6px; font-size:0.8rem; font-family:monospace;">B5</span> 重量（ホームで入力済みの値を自動取得） &nbsp;
-                <span style="background:#e9ecef; border-radius:3px; padding:1px 6px; font-size:0.8rem; font-family:monospace;">B6</span> OK（固定）
-              </span>
-            </span>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- ── Cell mapping reference ── -->
-    <div style="margin-bottom:1.5rem;">
-      <h4 style="font-size:0.95rem; font-weight:700; color:#2c3e50; margin-bottom:0.6rem;">
-        📋 Excelセルへの書き込み対応表
-      </h4>
-      <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
-        <thead>
-          <tr style="background:#f8f9fa;">
-            <th style="padding:6px 10px; border:1px solid #dee2e6; text-align:left; width:60px;">セル</th>
-            <th style="padding:6px 10px; border:1px solid #dee2e6; text-align:left;">内容</th>
-            <th style="padding:6px 10px; border:1px solid #dee2e6; text-align:left; width:160px;">タイミング</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style="padding:6px 10px; border:1px solid #dee2e6; font-family:monospace; font-weight:700;">B1</td>
-            <td style="padding:6px 10px; border:1px solid #dee2e6;">LOT番号</td>
-            <td style="padding:6px 10px; border:1px solid #dee2e6;">生成時</td>
-          </tr>
-          <tr style="background:#fafafa;">
-            <td style="padding:6px 10px; border:1px solid #dee2e6; font-family:monospace; font-weight:700;">B2</td>
-            <td style="padding:6px 10px; border:1px solid #dee2e6;">検査日</td>
-            <td style="padding:6px 10px; border:1px solid #dee2e6;">生成時</td>
-          </tr>
-          <tr>
-            <td style="padding:6px 10px; border:1px solid #dee2e6; font-family:monospace; font-weight:700;">B3</td>
-            <td style="padding:6px 10px; border:1px solid #dee2e6;">LOTプレフィックス（例: LOT234）</td>
-            <td style="padding:6px 10px; border:1px solid #dee2e6;">生成時</td>
-          </tr>
-          <tr style="background:#fff8e1;">
-            <td style="padding:6px 10px; border:1px solid #dee2e6; font-family:monospace; font-weight:700;">B4</td>
-            <td style="padding:6px 10px; border:1px solid #dee2e6;"><strong>ピンゲージ値</strong>（✏️ ピンゲージ欄で入力）</td>
-            <td style="padding:6px 10px; border:1px solid #dee2e6;">⬇️ DL時</td>
-          </tr>
-          <tr style="background:#fff8e1;">
-            <td style="padding:6px 10px; border:1px solid #dee2e6; font-family:monospace; font-weight:700;">B5</td>
-            <td style="padding:6px 10px; border:1px solid #dee2e6;"><strong>重量</strong>（ホームの重量入力から自動取得）</td>
-            <td style="padding:6px 10px; border:1px solid #dee2e6;">⬇️ DL時</td>
-          </tr>
-          <tr style="background:#fff8e1;">
-            <td style="padding:6px 10px; border:1px solid #dee2e6; font-family:monospace; font-weight:700;">B6</td>
-            <td style="padding:6px 10px; border:1px solid #dee2e6;"><strong>判定: OK</strong>（固定）</td>
-            <td style="padding:6px 10px; border:1px solid #dee2e6;">⬇️ DL時</td>
-          </tr>
-          <tr>
-            <td style="padding:6px 10px; border:1px solid #dee2e6; font-family:monospace; font-weight:700;">A列</td>
-            <td style="padding:6px 10px; border:1px solid #dee2e6;">DISTANCE値 × 4点 → INT-CIRCLE値（順番通り）</td>
-            <td style="padding:6px 10px; border:1px solid #dee2e6;">生成時</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- ── Notes ── -->
-    <div style="font-size:0.83rem; color:#555; line-height:1.75; background:#f8f9fa; border-radius:6px; padding:0.85rem 1rem;">
-      <div style="margin-bottom:0.3rem;"><strong>📌 注意事項</strong></div>
-      <div>・TXTは1回の操作で1本のみ対応です（複数ロットは順番に繰り返してください）</div>
-      <div>・重量はホームの「ファイル一覧」から入力・保存しておく必要があります。未入力の場合 B5 は空欄になります</div>
-      <div>・ピンゲージが未保存の状態では ⬇️ DL がブロックされます（警告が表示されます）</div>
-      <div>・保存済みファイルはクラウドに残るため、後日 DL し直すことができます。不要なら 🗑 で削除してください</div>
-      <div>・テンプレートファイル <code>LOT_template.xlsx</code> はリポジトリ内に固定されており、アップロード不要です</div>
-    </div>
-
-  </div><!-- /tuikaHelpBody -->
-</div><!-- /tuikaHelpPanel -->
-
-<script>
-  function toggleTuikaHelp() {
-    const body    = document.getElementById('tuikaHelpBody');
-    const chevron = document.getElementById('tuikaHelpChevron');
-    const isOpen  = body.style.display !== 'none';
-    body.style.display      = isOpen ? 'none' : 'block';
-    chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
-  }
-</script>
+  <div class="breadcrumb-custom"><a href="/">← ホーム</a> / 追加工程</div>
 
   <div class="header">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
@@ -287,23 +93,194 @@
     </div>
   </div>
 
-  <div class="workflow">
-    <div class="workflow-step">
-      <div class="step-number">1</div>
-      <div class="step-title">データ選択</div>
-      <div class="step-desc">.txtファイルから測定値を抽出</div>
+  <div id="tuikaHelpPanel" style="
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+  ">
+    <!-- Collapsible header -->
+    <div
+      onclick="toggleTuikaHelp()"
+      id="tuikaHelpToggle"
+      style="
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.7rem 1.25rem; cursor: pointer; user-select: none;
+        background: #f8f9fa;
+        transition: background 0.15s;
+      "
+      onmouseenter="this.style.background='#eef2f7'"
+      onmouseleave="this.style.background='#f8f9fa'"
+    >
+      <div style="display:flex; align-items:center; gap:0.6rem;">
+        <span style="font-size:0.95rem;">📖</span>
+        <span style="font-weight:600; font-size:0.88rem; color:#2c3e50;">
+          使い方ガイド — 追加工程（LOT検査シート生成）
+        </span>
+        <span style="font-size:0.75rem; color:#6c757d; font-style:italic;">クリックで開閉</span>
+      </div>
+      <span id="tuikaHelpChevron" style="font-size:0.85rem; color:#6c757d; transition:transform 0.2s;">▼</span>
     </div>
-    <div class="workflow-step">
-      <div class="step-number">2</div>
-      <div class="step-title">LOT情報入力</div>
-      <div class="step-desc">番号と検査日を指定</div>
-    </div>
-    <div class="workflow-step">
-      <div class="step-number">3</div>
-      <div class="step-title">保存 → ピンゲージ入力 → DL</div>
-      <div class="step-desc">クラウド保存後、追加値を入力してDL</div>
-    </div>
-  </div>
+
+    <!-- Collapsible body -->
+    <div id="tuikaHelpBody" style="display:none; padding:1.4rem 1.5rem; border-top:1px solid #e9ecef;">
+
+      <!-- ── What is this page ── -->
+      <div style="margin-bottom:1.5rem;">
+        <h4 style="font-size:0.95rem; font-weight:700; color:#2c3e50; margin-bottom:0.6rem;">
+          ➕ このページの目的
+        </h4>
+        <p style="font-size:0.85rem; color:#444; line-height:1.7; margin:0;">
+          3D測定機の <code>.txt</code> ファイルから寸法値（DISTANCE・INT-CIRCLE）を自動抽出し、
+          客先提出用の <strong>LOT検査シート（Excel）</strong> を生成・クラウド保存するページです。<br>
+          ピンゲージ測定値・重量・判定（OK）は<strong>保存後</strong>に入力し、最終的なExcelをダウンロードします。
+        </p>
+      </div>
+
+      <!-- ── Step-by-step flow ── -->
+      <div style="margin-bottom:1.5rem;">
+        <h4 style="font-size:0.95rem; font-weight:700; color:#2c3e50; margin-bottom:0.75rem;">
+          🔢 操作手順
+        </h4>
+        <div style="display:flex; flex-direction:column; gap:0.6rem;">
+
+          <div style="display:flex; gap:0.75rem; align-items:flex-start;">
+            <div style="min-width:26px; height:26px; background:#0d6efd; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.82rem; flex-shrink:0;">1</div>
+            <div style="font-size:0.85rem; color:#333; line-height:1.65;">
+              <strong>TXTファイルをドロップ</strong>（または「選択」ボタン）<br>
+              <span style="color:#6c757d;">3D測定機出力の <code>.txt</code> を1本ずつ読み込みます。DISTANCE値（4点）と INT-CIRCLE値が自動抽出されます。</span>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:0.75rem; align-items:flex-start;">
+            <div style="min-width:26px; height:26px; background:#0d6efd; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.82rem; flex-shrink:0;">2</div>
+            <div style="font-size:0.85rem; color:#333; line-height:1.65;">
+              <strong>LOT番号・検査日を入力</strong><br>
+              <span style="color:#6c757d;">
+                LOT番号は <code>LOT234(234-245)</code> のような形式で入力。<br>
+                検査日は <code>YYYY/MM/DD</code> 形式（例: <code>2025/03/23</code>）。
+              </span>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:0.75rem; align-items:flex-start;">
+            <div style="min-width:26px; height:26px; background:#0d6efd; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.82rem; flex-shrink:0;">3</div>
+            <div style="font-size:0.85rem; color:#333; line-height:1.65;">
+              <strong>「📊 Excel を生成 &amp; 保存」ボタン</strong><br>
+              <span style="color:#6c757d;">
+                テンプレート <code>LOT_template.xlsx</code> に測定値を書き込み、クラウド（Appwrite）へ自動保存します。<br>
+                ピンゲージ・重量・判定はこの時点では空欄のまま保存されます。
+              </span>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:0.75rem; align-items:flex-start;">
+            <div style="min-width:26px; height:26px; background:#fd7e14; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.82rem; flex-shrink:0;">4</div>
+            <div style="font-size:0.85rem; color:#333; line-height:1.65;">
+              <strong>一覧の「✏️ ピンゲージ入力」ボタンから値を入力 → 「💾 保存」</strong><br>
+              <span style="color:#6c757d;">
+                保存済みLOT一覧が自動で開きます。対象行の「✏️ ピンゲージ入力」を押すと入力欄が展開されます。<br>
+                値を入力してEnterまたは「💾 保存」を押してください。<br>
+                ⚠ ピンゲージ値が未保存の場合、ダウンロードはブロックされます。
+              </span>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:0.75rem; align-items:flex-start;">
+            <div style="min-width:26px; height:26px; background:#198754; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.82rem; flex-shrink:0;">5</div>
+            <div style="font-size:0.85rem; color:#333; line-height:1.65;">
+              <strong>「⬇️ ダウンロード」ボタンでExcelを取得</strong><br>
+              <span style="color:#6c757d;">
+                ダウンロード時にExcelへ自動記入される項目：<br>
+                <span style="display:inline-block; margin-top:3px;">
+                  <span style="background:#e9ecef; border-radius:3px; padding:1px 6px; font-size:0.8rem; font-family:monospace;">B4</span> ピンゲージ値 &nbsp;
+                  <span style="background:#e9ecef; border-radius:3px; padding:1px 6px; font-size:0.8rem; font-family:monospace;">B5</span> 重量（ホームで入力済みの値を自動取得） &nbsp;
+                  <span style="background:#e9ecef; border-radius:3px; padding:1px 6px; font-size:0.8rem; font-family:monospace;">B6</span> OK（固定）
+                </span>
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Cell mapping reference ── -->
+      <div style="margin-bottom:1.5rem;">
+        <h4 style="font-size:0.95rem; font-weight:700; color:#2c3e50; margin-bottom:0.6rem;">
+          📋 Excelセルへの書き込み対応表
+        </h4>
+        <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+          <thead>
+            <tr style="background:#f8f9fa;">
+              <th style="padding:6px 10px; border:1px solid #dee2e6; text-align:left; width:60px;">セル</th>
+              <th style="padding:6px 10px; border:1px solid #dee2e6; text-align:left;">内容</th>
+              <th style="padding:6px 10px; border:1px solid #dee2e6; text-align:left; width:160px;">タイミング</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:6px 10px; border:1px solid #dee2e6; font-family:monospace; font-weight:700;">B1</td>
+              <td style="padding:6px 10px; border:1px solid #dee2e6;">LOT番号</td>
+              <td style="padding:6px 10px; border:1px solid #dee2e6;">生成時</td>
+            </tr>
+            <tr style="background:#fafafa;">
+              <td style="padding:6px 10px; border:1px solid #dee2e6; font-family:monospace; font-weight:700;">B2</td>
+              <td style="padding:6px 10px; border:1px solid #dee2e6;">検査日</td>
+              <td style="padding:6px 10px; border:1px solid #dee2e6;">生成時</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px; border:1px solid #dee2e6; font-family:monospace; font-weight:700;">B3</td>
+              <td style="padding:6px 10px; border:1px solid #dee2e6;">LOTプレフィックス（例: LOT234）</td>
+              <td style="padding:6px 10px; border:1px solid #dee2e6;">生成時</td>
+            </tr>
+            <tr style="background:#fff8e1;">
+              <td style="padding:6px 10px; border:1px solid #dee2e6; font-family:monospace; font-weight:700;">B4</td>
+              <td style="padding:6px 10px; border:1px solid #dee2e6;"><strong>ピンゲージ値</strong>（✏️ ピンゲージ入力欄で入力）</td>
+              <td style="padding:6px 10px; border:1px solid #dee2e6;">⬇️ ダウンロード時</td>
+            </tr>
+            <tr style="background:#fff8e1;">
+              <td style="padding:6px 10px; border:1px solid #dee2e6; font-family:monospace; font-weight:700;">B5</td>
+              <td style="padding:6px 10px; border:1px solid #dee2e6;"><strong>重量</strong>（ホームの重量入力から自動取得）</td>
+              <td style="padding:6px 10px; border:1px solid #dee2e6;">⬇️ ダウンロード時</td>
+            </tr>
+            <tr style="background:#fff8e1;">
+              <td style="padding:6px 10px; border:1px solid #dee2e6; font-family:monospace; font-weight:700;">B6</td>
+              <td style="padding:6px 10px; border:1px solid #dee2e6;"><strong>判定: OK</strong>（固定）</td>
+              <td style="padding:6px 10px; border:1px solid #dee2e6;">⬇️ ダウンロード時</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px; border:1px solid #dee2e6; font-family:monospace; font-weight:700;">A列</td>
+              <td style="padding:6px 10px; border:1px solid #dee2e6;">DISTANCE値 × 4点 → INT-CIRCLE値（順番通り）</td>
+              <td style="padding:6px 10px; border:1px solid #dee2e6;">生成時</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── Notes ── -->
+      <div style="font-size:0.83rem; color:#555; line-height:1.75; background:#f8f9fa; border-radius:6px; padding:0.85rem 1rem;">
+        <div style="margin-bottom:0.3rem;"><strong>📌 注意事項</strong></div>
+        <div>・TXTは1回の操作で1本のみ対応です（複数ロットは順番に繰り返してください）</div>
+        <div>・重量はホームの「ファイル一覧」から入力・保存しておく必要があります。未入力の場合 B5 は空欄になります</div>
+        <div>・ピンゲージが未保存の状態では ⬇️ ダウンロード がブロックされます（警告が表示されます）</div>
+        <div>・保存済みファイルはクラウドに残るため、後日ダウンロードし直すことができます。不要なら 🗑 で削除してください</div>
+        <div>・テンプレートファイル <code>LOT_template.xlsx</code> はリポジトリ内に固定されており、アップロード不要です</div>
+      </div>
+
+    </div><!-- /tuikaHelpBody -->
+  </div><!-- /tuikaHelpPanel -->
+
+  <script>
+    function toggleTuikaHelp() {
+      const body    = document.getElementById('tuikaHelpBody');
+      const chevron = document.getElementById('tuikaHelpChevron');
+      const isOpen  = body.style.display !== 'none';
+      body.style.display      = isOpen ? 'none' : 'block';
+      chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+    }
+  </script>
 
   <div id="alertContainer"></div>
 
@@ -467,7 +444,7 @@
               <button class="btn btn-sm btn-primary"
                 onclick="downloadWithExtras('${f.$id}', '${f.filename}', '${f.lot_number}', '${f.inspection_date}')"
                 id="dl-btn-${f.$id}">
-                ⬇️ ダウンロード
+                ⬇️ DL
               </button>
               <button class="btn btn-sm btn-outline-danger" onclick="deleteFile('${f.$id}')">🗑</button>
             </div>
@@ -487,7 +464,7 @@
                 💾 保存
               </button>
               <span class="pingauge-saved-badge" id="pg-badge-${f.$id}">✓ 保存済み</span>
-              <span class="pingauge-hint">保存後に ⬇️ DL でExcelを取得できます (B4=ピンゲージ, B5=重量, B6=OK)</span>
+              <span class="pingauge-hint">保存後に ⬇️ ダウンロード でExcelを取得できます (B4=ピンゲージ, B5=重量, B6=OK)</span>
             </div>
           </div>
         </div>`;
@@ -561,7 +538,7 @@
       if (!pingauge) {
         showAlert('ピンゲージ値が未入力です。✏️ ピンゲージボタンから入力・保存してください。', 'warning');
         dlBtn.disabled = false;
-        dlBtn.innerHTML = '⬇️ ダウンロード';
+        dlBtn.innerHTML = '⬇️ DL';
         return;
       }
 
@@ -604,7 +581,7 @@
       showAlert(`ダウンロードエラー: ${err.message}`, 'error');
     } finally {
       dlBtn.disabled = false;
-      dlBtn.innerHTML = '⬇️ ダウンロード';
+      dlBtn.innerHTML = '⬇️ DL';
     }
   }
 
