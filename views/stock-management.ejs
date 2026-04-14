@@ -449,6 +449,12 @@
       <div class="mb-3">
         <label for="importQuantity" class="form-label form-label-custom">数量</label>
         <input type="number" class="form-control" id="importQuantity" name="quantity" min="1" required>
+        <!-- Shown only when editing — quantity is locked because product numbers are already committed -->
+        <div id="quantityLockNotice" style="display:none; margin-top:0.5rem; padding:0.6rem 0.85rem;
+             background:#fff3cd; border-left:3px solid #e6a817; border-radius:4px; font-size:0.82rem; color:#664d03;">
+          ⚠ <strong>数量は変更できません。</strong><br>
+          製品番号はすでにAppwriteに登録されています。数量を変更するには、この入荷予定を<strong>削除</strong>して新規登録してください（削除するとプレースホルダーも自動的に消えます）。
+        </div>
       </div>
       <div class="mb-3">
         <label for="scheduledDate" class="form-label form-label-custom">予定日</label>
@@ -576,6 +582,9 @@ async function shipOrder(orderId, quantity, itemIds) {
 // IMPORT MODAL
 // ══════════════════════════════════════════════════════════════
 function openImportModal(importId = null) {
+  const qtyInput   = document.getElementById('importQuantity');
+  const lockNotice = document.getElementById('quantityLockNotice');
+
   if (importId) {
     fetch(`/api/imports/${importId}`)
       .then(r => r.json())
@@ -587,10 +596,25 @@ function openImportModal(importId = null) {
         document.getElementById('actualDate').value = data.actual_date
           ? data.actual_date.substring(0, 10) : '';
         document.getElementById('importStatus').value = data.status;
+
+        // Lock quantity — product numbers are already committed to Appwrite.
+        // Changing this number here would make the import record lie about how
+        // many inspection records actually exist. Delete + recreate is the safe path.
+        qtyInput.disabled  = true;
+        qtyInput.style.background = '#f8f9fa';
+        qtyInput.style.color      = '#6c757d';
+        qtyInput.removeAttribute('required');
+        lockNotice.style.display = 'block';
       });
   } else {
     document.getElementById('importForm').reset();
     document.getElementById('importId').value = '';
+    // New import — quantity is freely editable
+    qtyInput.disabled  = false;
+    qtyInput.style.background = '';
+    qtyInput.style.color      = '';
+    qtyInput.setAttribute('required', '');
+    lockNotice.style.display = 'none';
   }
   document.getElementById('importModalBackdrop').classList.add('show');
   document.getElementById('importModal').classList.add('show');
@@ -598,16 +622,28 @@ function openImportModal(importId = null) {
 function closeImportModal() {
   document.getElementById('importModalBackdrop').classList.remove('show');
   document.getElementById('importModal').classList.remove('show');
+  // Re-enable quantity for next open (new import)
+  const qtyInput = document.getElementById('importQuantity');
+  qtyInput.disabled = false;
+  qtyInput.style.background = '';
+  qtyInput.style.color      = '';
+  qtyInput.setAttribute('required', '');
+  document.getElementById('quantityLockNotice').style.display = 'none';
 }
 function editImport(importId) { openImportModal(importId); }
 
 async function deleteImport(importId) {
-  if (!confirm('この入荷予定を削除しますか？')) return;
+  if (!confirm('この入荷予定を削除しますか？\n紐付いたプレースホルダー製品番号も削除されます。\n（すでに測定データや重量が登録された製品番号は保持されます）')) return;
   try {
     const r = await fetch(`/api/imports/${importId}`, { method: 'DELETE' });
     const res = await r.json();
-    if (res.success) location.reload();
-    else alert('削除エラー: ' + res.error);
+    if (res.success) {
+      const msg = res.deletedInspections > 0
+        ? `削除完了（プレースホルダー ${res.deletedInspections} 件も削除しました）`
+        : '削除完了';
+      alert(msg);
+      location.reload();
+    } else alert('削除エラー: ' + res.error);
   } catch(err) { alert('エラー: ' + err.message); }
 }
 
@@ -630,12 +666,19 @@ document.getElementById('importForm').addEventListener('submit', async e => {
   e.preventDefault();
   const fd = new FormData(e.target);
   const importId = fd.get('importId');
+
   const data = {
-    quantity:       fd.get('quantity'),
     scheduled_date: fd.get('scheduled_date'),
     actual_date:    fd.get('actual_date') || null,
     status:         fd.get('status')
   };
+  // Only include quantity on new imports (POST).
+  // On edits (PUT), quantity is locked — product numbers are already in Appwrite
+  // and changing this number without touching those records would corrupt the data.
+  if (!importId) {
+    data.quantity = fd.get('quantity');
+  }
+
   try {
     const url    = importId ? `/api/imports/${importId}` : '/api/imports';
     const method = importId ? 'PUT' : 'POST';
