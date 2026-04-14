@@ -1124,19 +1124,25 @@ app.get("/api/imports/:importId", requireAuth, async (req, res) => {
 
 async function getLastFileNumber() {
   try {
-    const result = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      [Query.orderDesc('uploaded_at'), Query.limit(500)]
-    );
+    // Paginate through ALL inspection records to find the true maximum file number.
+    // Must not rely on uploaded_at ordering or a capped limit — either can miss records
+    // and cause duplicate filename assignments on the next import.
     let max = 0;
-    result.documents.forEach(doc => {
-      const match = doc.filename && doc.filename.match(/^(\d+)/);
-      if (match) {
-        const num = parseInt(match[1]);
-        if (num > max) max = num;
-      }
-    });
+    let lastId = null;
+    while (true) {
+      const pageQueries = [Query.orderAsc('$id'), Query.limit(100)];
+      if (lastId) pageQueries.push(Query.cursorAfter(lastId));
+      const page = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, pageQueries);
+      page.documents.forEach(doc => {
+        const match = doc.filename && doc.filename.match(/^(\d+)/);
+        if (match) {
+          const num = parseInt(match[1]);
+          if (num > max) max = num;
+        }
+      });
+      if (page.documents.length < 100) break;
+      lastId = page.documents[page.documents.length - 1].$id;
+    }
     return max;
   } catch (e) {
     console.error('Error getting last file number:', e);
@@ -1146,20 +1152,20 @@ async function getLastFileNumber() {
 
 async function updateInspectionStatusByImport(importId, newStatus) {
   try {
-    const result = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      [Query.equal('import_id', importId), Query.limit(500)]
-    );
-    for (const doc of result.documents) {
-      await databases.updateDocument(
-        DATABASE_ID,
-        COLLECTION_INSPECTIONS,
-        doc.$id,
-        { status: newStatus }
-      );
+    let updatedCount = 0;
+    let lastId = null;
+    while (true) {
+      const pageQueries = [Query.equal('import_id', importId), Query.limit(100)];
+      if (lastId) pageQueries.push(Query.cursorAfter(lastId));
+      const page = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, pageQueries);
+      for (const doc of page.documents) {
+        await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, doc.$id, { status: newStatus });
+        updatedCount++;
+      }
+      if (page.documents.length < 100) break;
+      lastId = page.documents[page.documents.length - 1].$id;
     }
-    return result.documents.length;
+    return updatedCount;
   } catch (e) {
     console.error('Error bulk updating statuses:', e);
     return 0;
@@ -1276,8 +1282,33 @@ app.put("/api/imports/:importId", requireAuth, async (req, res) => {
 
 app.delete("/api/imports/:importId", requireAuth, async (req, res) => {
   try {
-    await databases.deleteDocument(DATABASE_ID, COLLECTION_IMPORTS, req.params.importId);
-    res.json({ success: true });
+    const { importId } = req.params;
+
+    // Delete all linked inspection placeholder records first.
+    // If we only delete the import document, the orphaned inspection records
+    // stay in the DB — and getLastFileNumber() will see them, causing the next
+    // import to skip those numbers or assign duplicates.
+    let deletedInspections = 0;
+    let lastId = null;
+    while (true) {
+      const pageQueries = [Query.equal('import_id', importId), Query.limit(100)];
+      if (lastId) pageQueries.push(Query.cursorAfter(lastId));
+      const page = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, pageQueries);
+      for (const doc of page.documents) {
+        // Only delete true placeholders (no measurement data, no weight).
+        // If the user already uploaded TXT data to this record, preserve it.
+        const isPlaceholder = (!doc.measurementA || doc.measurementA === '-') && doc.weight === null;
+        if (isPlaceholder) {
+          await databases.deleteDocument(DATABASE_ID, COLLECTION_INSPECTIONS, doc.$id);
+          deletedInspections++;
+        }
+      }
+      if (page.documents.length < 100) break;
+      lastId = page.documents[page.documents.length - 1].$id;
+    }
+
+    await databases.deleteDocument(DATABASE_ID, COLLECTION_IMPORTS, importId);
+    res.json({ success: true, deletedInspections });
   } catch (error) {
     console.error("Error deleting import:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -1319,21 +1350,18 @@ app.put("/api/inspections/advance-status", requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid status values' });
     }
 
-    const result = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTION_INSPECTIONS,
-      [Query.equal('status', fromStatus), Query.limit(500)]
-    );
-
     let updated = 0;
-    for (const doc of result.documents) {
-      await databases.updateDocument(
-        DATABASE_ID,
-        COLLECTION_INSPECTIONS,
-        doc.$id,
-        { status: toStatus }
-      );
-      updated++;
+    let lastId = null;
+    while (true) {
+      const pageQueries = [Query.equal('status', fromStatus), Query.limit(100)];
+      if (lastId) pageQueries.push(Query.cursorAfter(lastId));
+      const page = await databases.listDocuments(DATABASE_ID, COLLECTION_INSPECTIONS, pageQueries);
+      for (const doc of page.documents) {
+        await databases.updateDocument(DATABASE_ID, COLLECTION_INSPECTIONS, doc.$id, { status: toStatus });
+        updated++;
+      }
+      if (page.documents.length < 100) break;
+      lastId = page.documents[page.documents.length - 1].$id;
     }
 
     res.json({ success: true, updated: updated });
