@@ -1256,7 +1256,11 @@ app.put("/api/imports/:importId", requireAuth, async (req, res) => {
     const { quantity, scheduled_date, status, actual_date } = req.body;
 
     const updateData = {};
-    if (quantity !== undefined) updateData.quantity = parseInt(quantity);
+    // Quantity is intentionally excluded from edits.
+    // Product numbers (inspection placeholders) are committed to Appwrite at creation
+    // time and cannot be reshuffled without deleting and re-creating the import.
+    // We ignore any quantity value sent on a PUT to prevent the import record from
+    // lying about how many inspection records actually exist.
     if (scheduled_date !== undefined) updateData.scheduled_date = scheduled_date;
     if (status !== undefined) updateData.status = status;
     if (actual_date !== undefined) updateData.actual_date = actual_date;
