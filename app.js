@@ -1,5 +1,9 @@
 // app.js - EFFICIENT SCHEMA VERSION WITH STOCK MANAGEMENT, TUIKA-PROCESS & CLOUD STORAGE
 // Updated: Added Appwrite Storage for tuika Excel exports
+// PATCHED: Fixed status regression bug where re-uploading a TXT file for a
+//          record that already had a weight recorded would incorrectly reset
+//          its status back to 'inspection' instead of keeping/promoting it to
+//          'finished_inspection'. See processSingleUpload() below.
 
 const express = require("express");
 const multer = require("multer");
@@ -1432,6 +1436,15 @@ async function processSingleUpload(file, req, results) {
     const isPlaceholder = !existingDoc.measurementA || existingDoc.measurementA === '-';
 
     if (isPlaceholder) {
+      // PATCH: previously this always forced status to 'inspection', which
+      // silently demoted records that already had a weight recorded (e.g. the
+      // part was weighed before the TXT/dimensional data was uploaded, which
+      // had already correctly promoted it to 'finished_inspection'). Now we
+      // check for an existing weight and preserve/promote to
+      // 'finished_inspection' instead of overwriting it.
+      const hasWeight = existingDoc.weight !== null && existingDoc.weight !== undefined;
+      const newStatus = hasWeight ? 'finished_inspection' : 'inspection';
+
       await databases.updateDocument(
         DATABASE_ID,
         COLLECTION_INSPECTIONS,
@@ -1439,7 +1452,7 @@ async function processSingleUpload(file, req, results) {
         {
           uploaded_at: new Date().toISOString(),
           is_archived: false,
-          status: 'inspection',
+          status: newStatus,
           ...measurements,
           ...validations
         }

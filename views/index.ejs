@@ -62,6 +62,17 @@
     /* Status badge */
     .status-badge { display: inline-block; padding: 0.3rem 0.7rem; border-radius: 16px; font-size: 0.78rem; margin-top: 0.4rem; color: #333; }
 
+    /* Detail link — restored: opens /files/:fileId in a new tab without
+       triggering the card's selection-toggle click handler */
+    .detail-link {
+      font-size: 0.75rem;
+      color: #0d6efd;
+      text-decoration: none;
+      display: inline-block;
+      margin-top: 6px;
+    }
+    .detail-link:hover { text-decoration: underline; }
+
     /* Result list */
     .result-item { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid #f0f0f0; font-size: 0.88rem; }
     .result-item:last-child { border-bottom: none; }
@@ -425,6 +436,16 @@
             <div class="status-badge" data-color="<%= files[i].statusColor || '#e9ecef' %>">
               <%= files[i].statusLabel %>
             </div>
+            <!-- RESTORED: per-card link into /files/:fileId (the detail page).
+                 This got lost when the card's onclick was repurposed for
+                 range/multi-select. stopPropagation keeps it from also
+                 toggling the selection checkbox. -->
+            <a href="/files/<%= files[i].$id %>"
+               class="detail-link"
+               onclick="event.stopPropagation();"
+               target="_blank" rel="noopener">
+              🔍 詳細を見る
+            </a>
           </div>
         </div>
       <% } %>
@@ -619,8 +640,8 @@
 
   // ── Card tap toggle ────────────────────────────────────────────────
   function toggleCard(fileId, event) {
-    // Don't toggle if clicking on weight input or save button
-    if (event.target.tagName === 'INPUT' || event.target.tagName === 'BUTTON') return;
+    // Don't toggle if clicking on weight input, save button, or the detail link
+    if (event.target.tagName === 'INPUT' || event.target.tagName === 'BUTTON' || event.target.tagName === 'A') return;
     const wrap = document.getElementById('wrap-' + fileId);
     const status = wrap ? wrap.dataset.status : '';
     // For upcoming/imported placeholders, just toggle selection (no detail page)
