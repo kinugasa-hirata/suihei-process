@@ -1656,13 +1656,26 @@ async function processImport(req, res) {
 
     // Parse and validate all rows up front
     const validRows = [];
+    const suspiciousRows = []; // weight === file number is almost always a fill/paste mistake, not a real reading
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
       if (!row || !row[0] || !row[1]) continue;
       const fileNum = String(row[0]).trim().replace(/\.txt$/i, '');
       const weight = parseFloat(String(row[1]).trim());
       if (!fileNum || isNaN(weight) || weight < 0) continue;
-      validRows.push({ fileNum, filename: fileNum + '.txt', roundedWeight: Math.round(weight * 10) / 10 });
+      const roundedWeight = Math.round(weight * 10) / 10;
+
+      // Real nozzle weights are ~300-400g with a decimal; file numbers are bare
+      // sequential integers. If the "weight" exactly equals the file number
+      // (e.g. file 567 -> weight 567), this is almost certainly an Excel
+      // drag-fill / copy-paste mistake, not a measurement. Skip it and report
+      // it instead of silently writing bad data into the database.
+      if (roundedWeight === parseFloat(fileNum)) {
+        suspiciousRows.push(fileNum);
+        continue;
+      }
+
+      validRows.push({ fileNum, filename: fileNum + '.txt', roundedWeight });
     }
 
     const totalRows = validRows.length;
@@ -1722,7 +1735,11 @@ async function processImport(req, res) {
       verified: updated,   // every successful updateDocument is implicitly verified
       verifyFailed: 0,
       notFound,
-      message: `Success: ${updated} records updated in database`
+      suspicious: suspiciousRows.length,
+      suspiciousFiles: suspiciousRows, // file numbers skipped because weight == file number
+      message: suspiciousRows.length > 0
+        ? `Success: ${updated} records updated. ${suspiciousRows.length} rows skipped as suspicious (weight matched file number): ${suspiciousRows.join(', ')}`
+        : `Success: ${updated} records updated in database`
     });
 
   } catch (e) {

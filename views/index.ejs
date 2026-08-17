@@ -626,8 +626,12 @@
 
       resultDiv.style.display = 'block';
       if (data.ok || data.success) {
-        resultDiv.innerHTML = `<span class="text-success">✓ ${data.verified || data.updated} 件確認済み・更新完了（未検出: ${data.notFound || 0} 件）</span>`;
-        setTimeout(() => location.reload(), 1500);
+        let msg = `<span class="text-success">✓ ${data.verified || data.updated} 件確認済み・更新完了（未検出: ${data.notFound || 0} 件）</span>`;
+        if (data.suspicious > 0) {
+          msg += `<br><span class="text-warning">⚠ ${data.suspicious} 件は重量値がファイル番号と一致したためスキップしました（入力ミスの可能性）: ${data.suspiciousFiles.join(', ')}</span>`;
+        }
+        resultDiv.innerHTML = msg;
+        setTimeout(() => location.reload(), data.suspicious > 0 ? 4000 : 1500);
       } else {
         resultDiv.innerHTML = `<span class="text-danger">❌ インポート失敗: ${data.error || '不明なエラー'}</span>`;
       }
