@@ -539,10 +539,15 @@
   // Find the cell(s) on other worksheets that display the pingauge value via
   // a formula referencing this sheet's B4 (e.g. "sheet!B4"), and make sure
   // they're set up to actually show two stacked lines: wrapText enabled,
-  // and the row(s) the cell spans tall enough for two lines.
+  // and the merged cell's TOTAL height (summed across every row it spans)
+  // tall enough for two lines — matching the height of the other measurement
+  // rows (b, c, d...) rather than making this one row noticeably taller.
   function applyPingaugeCellFormatting(workbook, dataSheetName) {
     const refPattern = new RegExp(`${dataSheetName}!\\$?B\\$?4\\b`);
-    const MIN_ROW_HEIGHT_FOR_TWO_LINES = 30;
+    // Total height across the merged cell needed to fit two lines of text.
+    // This is a TOTAL, not a per-row minimum — it gets split evenly across
+    // however many rows the merge spans.
+    const TARGET_TOTAL_HEIGHT_FOR_TWO_LINES = 28;
 
     workbook.worksheets.forEach(sheet => {
       if (sheet.name === dataSheetName) return;
@@ -568,14 +573,27 @@
             const [start, end] = merge.split(':');
             const startRow = sheet.getCell(start).row;
             const endRow = sheet.getCell(end).row;
-            for (let r = startRow; r <= endRow; r++) {
-              const rowObj = sheet.getRow(r);
-              if (!rowObj.height || rowObj.height < MIN_ROW_HEIGHT_FOR_TWO_LINES) {
-                rowObj.height = MIN_ROW_HEIGHT_FOR_TWO_LINES;
+            const numRows = endRow - startRow + 1;
+            const perRowTarget = TARGET_TOTAL_HEIGHT_FOR_TWO_LINES / numRows;
+
+            // Only raise rows that are currently shorter than their share of
+            // the target — never shrink a row, and never touch rows outside
+            // this merge (so sibling measurement rows are untouched).
+            const currentTotal = Array.from({ length: numRows }, (_, i) => {
+              const h = sheet.getRow(startRow + i).height;
+              return h || sheet.properties.defaultRowHeight || 15;
+            }).reduce((a, b) => a + b, 0);
+
+            if (currentTotal < TARGET_TOTAL_HEIGHT_FOR_TWO_LINES) {
+              for (let r = startRow; r <= endRow; r++) {
+                const rowObj = sheet.getRow(r);
+                if (!rowObj.height || rowObj.height < perRowTarget) {
+                  rowObj.height = perRowTarget;
+                }
               }
             }
-          } else if (!row.height || row.height < MIN_ROW_HEIGHT_FOR_TWO_LINES) {
-            row.height = MIN_ROW_HEIGHT_FOR_TWO_LINES;
+          } else if (!row.height || row.height < TARGET_TOTAL_HEIGHT_FOR_TWO_LINES) {
+            row.height = TARGET_TOTAL_HEIGHT_FOR_TWO_LINES;
           }
         });
       });
