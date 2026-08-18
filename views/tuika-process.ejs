@@ -522,6 +522,66 @@
     }
   }
 
+  // Split a pingauge string like "2.950通　3.000止" into two lines so it
+  // stacks vertically instead of overflowing sideways in a narrow cell.
+  // Handles either full-width (　) or half-width ( ) separators, and any
+  // amount of whitespace between the two readings. If the string doesn't
+  // match the expected "…通 …止" pattern (e.g. only one reading was
+  // entered, or a different format), it's left completely untouched rather
+  // than guessing.
+  function formatPingaugeForCell(raw) {
+    if (!raw) return raw;
+    const match = raw.match(/^\s*(\S*通)[\s　]*(\S*止)\s*$/);
+    if (!match) return raw; // doesn't match the expected pattern, leave as-is
+    return `${match[1]}\n${match[2]}`;
+  }
+
+  // Find the cell(s) on other worksheets that display the pingauge value via
+  // a formula referencing this sheet's B4 (e.g. "sheet!B4"), and make sure
+  // they're set up to actually show two stacked lines: wrapText enabled,
+  // and the row(s) the cell spans tall enough for two lines.
+  function applyPingaugeCellFormatting(workbook, dataSheetName) {
+    const refPattern = new RegExp(`${dataSheetName}!\\$?B\\$?4\\b`);
+    const MIN_ROW_HEIGHT_FOR_TWO_LINES = 30;
+
+    workbook.worksheets.forEach(sheet => {
+      if (sheet.name === dataSheetName) return;
+
+      sheet.eachRow({ includeEmpty: false }, row => {
+        row.eachCell({ includeEmpty: false }, cell => {
+          const formula = cell.value && cell.value.formula ? cell.value.formula : null;
+          if (!formula || !refPattern.test(formula)) return;
+
+          cell.alignment = { ...(cell.alignment || {}), wrapText: true, vertical: 'middle' };
+
+          // If this cell is part of a merged range, bump every row the
+          // merge spans; otherwise just bump this cell's own row.
+          const merge = sheet.model.merges && sheet.model.merges.find(m => {
+            const range = sheet.getCell(m.split(':')[0]);
+            return range.row <= cell.row &&
+              sheet.getCell(m.split(':')[1]).row >= cell.row &&
+              range.col <= cell.col &&
+              sheet.getCell(m.split(':')[1]).col >= cell.col;
+          });
+
+          if (merge) {
+            const [start, end] = merge.split(':');
+            const startRow = sheet.getCell(start).row;
+            const endRow = sheet.getCell(end).row;
+            for (let r = startRow; r <= endRow; r++) {
+              const rowObj = sheet.getRow(r);
+              if (!rowObj.height || rowObj.height < MIN_ROW_HEIGHT_FOR_TWO_LINES) {
+                rowObj.height = MIN_ROW_HEIGHT_FOR_TWO_LINES;
+              }
+            }
+          } else if (!row.height || row.height < MIN_ROW_HEIGHT_FOR_TWO_LINES) {
+            row.height = MIN_ROW_HEIGHT_FOR_TWO_LINES;
+          }
+        });
+      });
+    });
+  }
+
   // Download the saved Excel, refilling with pingauge + weight + OK
   async function downloadWithExtras(metaId, filename, lotNumber, inspectionDate) {
     const dlBtn = document.getElementById(`dl-btn-${metaId}`);
@@ -562,9 +622,32 @@
       let ws = workbook.getWorksheet('sheet');
       if (!ws) ws = workbook.worksheets.length > 1 ? workbook.worksheets[1] : workbook.worksheets[0];
 
-      ws.getCell('B4').value = pingauge;
+      // The pingauge value is entered as free text like "2.950通　3.000止"
+      // (通 = goes-through minimum, 止 = stops maximum). On the printed sheet
+      // this gets displayed via a formula reference into a narrow merged
+      // cell, so a single-line string overflows sideways instead of
+      // stacking. Force an explicit line break between the two readings so
+      // it always renders as two lines (通 on top, 止 below) regardless of
+      // column width or font size, rather than relying on Excel's own
+      // auto-wrap (which only kicks in if the column happens to be narrow
+      // enough, and doesn't guarantee the split happens exactly between the
+      // two readings).
+      const formattedPingauge = formatPingaugeForCell(pingauge);
+
+      const b4 = ws.getCell('B4');
+      b4.value = formattedPingauge;
+      b4.alignment = { ...(b4.alignment || {}), wrapText: true, vertical: 'middle' };
+
       ws.getCell('B5').value = weight !== null ? weight : '';
       ws.getCell('B6').value = 'OK';
+
+      // The printed inspection sheet (a different worksheet) references B4
+      // via a formula (e.g. "=sheet!B4") to display the pin gauge reading in
+      // a merged cell. That cell needs wrapText enabled too, and its row(s)
+      // tall enough to actually show two lines instead of clipping the
+      // second one. Find any cell on other worksheets whose formula
+      // references this sheet's B4, and fix up its formatting.
+      applyPingaugeCellFormatting(workbook, ws.name);
 
       // 5. Export
       const buffer = await workbook.xlsx.writeBuffer();
